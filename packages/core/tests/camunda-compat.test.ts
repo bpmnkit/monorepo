@@ -17,7 +17,7 @@ import {
 import type { OptimizationFinding } from "../src/index.js"
 
 const FIXTURES = join(import.meta.dirname, "fixtures", "camunda-compat")
-const FIXTURE_FILES = ["events.bpmn", "tasks.bpmn"]
+const FIXTURE_FILES = ["events.bpmn", "tasks.bpmn", "contents.bpmn", "agents.bpmn"]
 
 /** `version: null` leaves the platform attributes out. */
 function model(body: string, version: string | null = "8.6.0", head = ""): string {
@@ -163,6 +163,50 @@ describe("analyzeCamundaCompat — required properties", () => {
 	})
 })
 
+describe("analyzeCamundaCompat — expressions, secrets and links", () => {
+	const task = (inputs: string) => `    <bpmn:serviceTask id="svc">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>${inputs}</zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>`
+
+	it("reports a FEEL built-in newer than the target, unless a local name shadows it", () => {
+		const body = task(`<zeebe:input source="=uuid()" target="id" />`)
+		expect(compat(model(body), "8.5").map((f) => [f.id, f.message])).toEqual([
+			["compat/feel-compatibility", "FEEL function <uuid> requires Camunda >=8.6"],
+		])
+		expect(compat(model(body), "8.6")).toEqual([])
+		const shadowed = task(`<zeebe:input source="={uuid: function() 1, id: uuid()}" target="id" />`)
+		expect(compat(model(shadowed), "8.5")).toEqual([])
+	})
+
+	it("accepts {{secrets.X}} until camunda.secrets.X exists, then calls it legacy", () => {
+		const body = task(`<zeebe:input source="{{secrets.TOKEN}}" target="token" />`)
+		expect(compat(model(body), "8.9")).toEqual([])
+		expect(compat(model(body), "8.10").map((f) => [f.id, f.severity, f.message])).toEqual([
+			["compat/secrets", "warning", "Property <source> uses legacy secret expression format"],
+		])
+	})
+
+	it("leaves an unnamed link event to bpmnlint's link-event when that rule runs", () => {
+		const xml = model(
+			`    <bpmn:intermediateThrowEvent id="go"><bpmn:linkEventDefinition id="l" /></bpmn:intermediateThrowEvent>`,
+		)
+		const ids = (rc: unknown) =>
+			lintDiagram(Bpmn.parse(xml), {
+				bpmnlint: resolveBpmnlintConfig(parseBpmnlintConfig(JSON.stringify(rc))),
+			})
+				.diagnostics.filter((d) => d.elementIds[0] === "go")
+				.map((d) => d.id)
+		const extend = "plugin:camunda-compat/camunda-cloud-8-6"
+		expect(ids({ extends: extend })).toContain("compat/link-event")
+		const both = ids({ extends: extend, rules: { "link-event": "error" } })
+		expect(both).toContain("flow/link-event-mismatch")
+		expect(both).not.toContain("compat/link-event")
+	})
+})
+
 describe("normalizeCamundaVersion", () => {
 	it("reduces a patch version to the table's major.minor", () => {
 		expect(normalizeCamundaVersion("8.6.2")).toBe("8.6")
@@ -253,6 +297,7 @@ describe(".bpmnlintrc — plugin:camunda-compat", () => {
 			rules: {
 				"camunda-compat/element-type": "warn",
 				"camunda-compat/user-task-definition": "off",
+				"camunda-compat/no-such-rule": "error",
 			},
 		})
 		const xml = model(
@@ -265,7 +310,7 @@ describe(".bpmnlintrc — plugin:camunda-compat", () => {
 			["compat/element-type", "warning", "camunda-compat/element-type"],
 		])
 		const unsupported = (report.bpmnlintUnsupported ?? []).map((u) => u.name)
-		expect(unsupported).toContain("camunda-compat/no-loop")
+		expect(unsupported).toEqual(["camunda-compat/no-such-rule"])
 		expect(unsupported).not.toContain("plugin:camunda-compat/camunda-cloud-8-6")
 		expect(unsupported).not.toContain("camunda-compat/element-type")
 	})
@@ -297,6 +342,36 @@ const IMPLEMENTED = new Set(
 		.map(([name]) => name),
 )
 
+/** The rules that keep the plugin's messages word for word. */
+const NEW_RULES = new Set([
+	"agent-fromai-contract",
+	"agent-tool-output-key",
+	"connector-properties",
+	"duplicate-execution-listener-headers",
+	"feel-compatibility",
+	"link-event",
+	"no-loop",
+	"secrets",
+	"unresolvable-secret-reference",
+	"variable-name",
+])
+
+/** `rule elementId` → the sorted messages, for the rules in NEW_RULES. */
+function messages(findings: readonly OptimizationFinding[]): Record<string, string[]> {
+	const byKey: Record<string, string[]> = {}
+	for (const f of findings) {
+		const rule = f.id.slice("compat/".length)
+		if (!NEW_RULES.has(rule)) continue
+		const key = `${rule} ${f.elementIds[0]}`
+		byKey[key] = [...(byKey[key] ?? []), f.message].sort()
+	}
+	return Object.fromEntries(
+		Object.keys(byKey)
+			.sort()
+			.map((k) => [k, byKey[k] as string[]]),
+	)
+}
+
 /** `rule elementId severity`, once each — the plugin can report one element twice under a rule. */
 function keyed(findings: readonly OptimizationFinding[]): string[] {
 	const keys = findings.map(
@@ -307,10 +382,17 @@ function keyed(findings: readonly OptimizationFinding[]): string[] {
 }
 
 describe("matches bpmnlint-plugin-camunda-compat on the fixtures", () => {
-	// Recorded once by running bpmnlint 11.14 with the plugin's camunda-cloud-X-Y
-	// configs over these files; `expected.json` says how.
+	// Recorded by running the real plugin outside this repo: in a scratch directory,
+	// `npm install bpmnlint@11.14.0 bpmnlint-plugin-camunda-compat@2.61.0 bpmn-moddle
+	// zeebe-bpmn-moddle modeler-moddle`, then for each fixture and each
+	// camunda-cloud-X-Y config, read the file with BpmnModdle({ zeebe, modeler }) and
+	// run `new Linter({ config: { extends: "plugin:camunda-compat/camunda-cloud-X-Y" } })`
+	// on it — the same calls as "matches the installed plugin" below. Each report is
+	// stored as `rule elementId category`; for the rules whose wording BPMN Kit keeps
+	// (NEW_RULES), the messages too. Re-record when the fixtures or the plugin change.
 	const expected = JSON.parse(readFileSync(join(FIXTURES, "expected.json"), "utf8")) as {
 		reports: Record<string, Record<string, string[]>>
+		messages: Record<string, Record<string, Record<string, string[]>>>
 	}
 
 	for (const [version, files] of Object.entries(expected.reports)) {
@@ -318,9 +400,11 @@ describe("matches bpmnlint-plugin-camunda-compat on the fixtures", () => {
 			for (const file of FIXTURE_FILES) {
 				const defs = Bpmn.parse(readFileSync(join(FIXTURES, file), "utf8"))
 				const want = (files[file] ?? []).filter((k) => IMPLEMENTED.has(k.split(" ")[0] as string))
-				expect({ file, reports: keyed(analyzeCamundaCompat(defs, version)) }).toEqual({
+				const found = analyzeCamundaCompat(defs, version)
+				expect({ file, reports: keyed(found) }).toEqual({ file, reports: [...want].sort() })
+				expect({ file, messages: messages(found) }).toEqual({
 					file,
-					reports: [...want].sort(),
+					messages: expected.messages[version]?.[file] ?? {},
 				})
 			}
 		})

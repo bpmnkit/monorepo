@@ -1,5 +1,5 @@
 {
-	"_source": "bpmnlint 11.14.0 + bpmnlint-plugin-camunda-compat 2.61.0, config camunda-cloud-<version>, run once over these fixtures (see camunda-compat.test.ts). Rules BPMN Kit does not implement are left out.",
+	"_source": "bpmnlint 11.14.0 + bpmnlint-plugin-camunda-compat 2.61.0 (with @camunda/feel-builtins 1.4.1, @bpmn-io/feel-analyzer 0.3.0, @bpmn-io/lezer-feel 2.5.0; models read by bpmn-moddle 10.3.1, zeebe-bpmn-moddle 2.0.0 and modeler-moddle 0.2.0), config camunda-cloud-<version>, run once over these fixtures by the script described in camunda-compat.test.ts. Left out: executable-process, feel and agent-tool-documentation, which other BPMN Kit findings stand in for. `messages` has the plugin's messages for the rules whose wording BPMN Kit keeps.",
 	"reports": {
 		"1.0": {
 			"events.bpmn": [
@@ -91,6 +91,58 @@
 				"start-event-form start error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"element-type adHocInner error",
+				"element-type badDecisionResult error",
+				"element-type badOutputCollection error",
+				"element-type badResult error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopA error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"no-zeebe-properties pollingCatch error",
+				"no-zeebe-properties secretProperty error",
+				"no-zeebe-properties secretsTask error",
+				"no-zeebe-properties webhookStart error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type chainC error",
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"no-template legacyAgent error",
+				"no-zeebe-properties tools error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"1.1": {
@@ -180,6 +232,196 @@
 				"start-event-form start error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"element-type adHocInner error",
+				"element-type badOutputCollection error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"implementation badDecisionResult error",
+				"implementation badResult error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"no-zeebe-properties pollingCatch error",
+				"no-zeebe-properties secretProperty error",
+				"no-zeebe-properties secretsTask error",
+				"no-zeebe-properties webhookStart error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation chainC error",
+				"no-template legacyAgent error",
+				"no-zeebe-properties tools error",
+				"sequence-flow-condition branchToA error"
+			]
+		},
+		"1.2": {
+			"events.bpmn": [
+				"element-type boundaryCompensation error",
+				"element-type boundaryEscalation error",
+				"element-type catchConditional error",
+				"element-type catchLink error",
+				"element-type catchSignalNoName error",
+				"element-type endSignalNoRef error",
+				"element-type endTerminate error",
+				"element-type startSignal error",
+				"element-type subSignal error",
+				"element-type throwCompensation error",
+				"element-type throwEscalationNoCode error",
+				"element-type throwEscalationNoRef error",
+				"error-reference boundaryErrorNoRef error",
+				"error-reference endErrorNoCode error",
+				"error-reference endErrorNoRef error",
+				"implementation throwMessage error",
+				"message-reference catchMsgNoName error",
+				"message-reference catchMsgNoRef error",
+				"no-expression boundaryErrorExpr error",
+				"no-expression endErrorExpr error",
+				"no-multiple-none-start-events start error",
+				"no-multiple-none-start-events start2 error",
+				"subscription catchMsgNoKey error",
+				"subscription catchMsgNoName error",
+				"subscription subMessage error",
+				"timer boundaryCycle error",
+				"timer catchBadDuration error",
+				"timer catchCycle error",
+				"timer catchDate error",
+				"timer catchNoTimer error",
+				"timer startCron error",
+				"timer startTimerDuration error",
+				"timer subTimerCycle error"
+			],
+			"tasks.bpmn": [
+				"called-element callNoProcess error",
+				"collapsed-subprocess collapsed error",
+				"duplicate-task-headers headers error",
+				"element-type adHocEmpty error",
+				"element-type complex error",
+				"element-type complexInNonExecutable error",
+				"element-type data error",
+				"element-type joinInclusive error",
+				"element-type plainTask error",
+				"element-type tx error",
+				"event-based-gateway-target afterEventGateway error",
+				"implementation brtBinding error",
+				"implementation brtNoResult error",
+				"implementation brtTagExpr error",
+				"implementation emptyType error",
+				"implementation noType error",
+				"implementation scriptFeel error",
+				"implementation scriptNone error",
+				"implementation sendNoType error",
+				"io-mapping headers error",
+				"loop-characteristics multi error",
+				"loop-characteristics multiNoZeebe error",
+				"message-reference receiveNoRef error",
+				"no-binding-type brtBinding error",
+				"no-binding-type brtTagExpr error",
+				"no-binding-type callOptions error",
+				"no-business-id callOptions error",
+				"no-cancel-execution-listener multi error",
+				"no-candidate-users jobWorkerTask error",
+				"no-execution-listener-headers multi error",
+				"no-execution-listeners headers error",
+				"no-execution-listeners multi error",
+				"no-execution-listeners tasks error",
+				"no-job-priority-definition multiNoZeebe error",
+				"no-priority-definition zeebeTask error",
+				"no-propagate-all-parent-variables callOptions error",
+				"no-task-listeners zeebeTask error",
+				"no-task-schedule jobWorkerTask error",
+				"no-template headers error",
+				"no-version-tag tasks error",
+				"no-zeebe-properties headers error",
+				"no-zeebe-user-task noForm error",
+				"no-zeebe-user-task zeebeTask error",
+				"no-zeebe-user-task zeebeTaskOk error",
+				"sequence-flow-condition flowConditionFromTask error",
+				"sequence-flow-condition flowNoCondition error",
+				"start-event-form start error",
+				"user-task-definition noForm warn",
+				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"element-type adHocInner error",
+				"element-type badOutputCollection error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"implementation badDecisionResult error",
+				"implementation badResult error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"no-zeebe-properties pollingCatch error",
+				"no-zeebe-properties secretProperty error",
+				"no-zeebe-properties secretsTask error",
+				"no-zeebe-properties webhookStart error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation chainC error",
+				"no-template legacyAgent error",
+				"no-zeebe-properties tools error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"1.3": {
@@ -266,6 +508,56 @@
 				"start-event-form start error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"element-type adHocInner error",
+				"element-type badOutputCollection error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"implementation badResult error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"no-zeebe-properties pollingCatch error",
+				"no-zeebe-properties secretProperty error",
+				"no-zeebe-properties secretsTask error",
+				"no-zeebe-properties webhookStart error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation chainC error",
+				"no-template legacyAgent error",
+				"no-zeebe-properties tools error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.0": {
@@ -350,6 +642,57 @@
 				"start-event-form start error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type adHocInner error",
+				"element-type badOutputCollection error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"implementation badResult error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"no-zeebe-properties pollingCatch error",
+				"no-zeebe-properties secretProperty error",
+				"no-zeebe-properties secretsTask error",
+				"no-zeebe-properties webhookStart error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation chainC error",
+				"no-zeebe-properties tools error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.1": {
@@ -431,6 +774,52 @@
 				"start-event-form start error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type adHocInner error",
+				"element-type badOutputCollection error",
+				"element-type linkCatch1 error",
+				"element-type linkCatch2 error",
+				"element-type linkCatchBlank error",
+				"element-type linkNoName error",
+				"element-type loopB error",
+				"element-type waitsTask error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility feelTimer error",
+				"feel-compatibility toLoopB error",
+				"implementation badResult error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"error-reference toolBoundaryError error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation chainC error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.2": {
@@ -504,6 +893,45 @@
 				"task-schedule jobWorkerTask error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"subscription pollingCatch error",
+				"timer feelTimer error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.3": {
@@ -575,6 +1003,46 @@
 				"task-schedule jobWorkerTask error",
 				"user-task-definition noForm warn",
 				"user-task-form jobWorkerTask error"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.4": {
@@ -643,6 +1111,46 @@
 				"start-event-form start error",
 				"task-schedule jobWorkerTask error",
 				"user-task-definition noForm warn"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.5": {
@@ -708,6 +1216,46 @@
 				"task-schedule jobWorkerTask error",
 				"user-task-definition noForm warn",
 				"user-task-form zeebeTask error"
+			],
+			"contents.bpmn": [
+				"connector-properties pollingCatch warn",
+				"connector-properties webhookStart warn",
+				"element-type badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-execution-listeners contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.6": {
@@ -773,6 +1321,43 @@
 				"version-tag brtTagExpr error",
 				"version-tag tasks error",
 				"zeebe-user-task jobWorkerTask warn"
+			],
+			"contents.bpmn": [
+				"element-type badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"element-type definedAgent error",
+				"element-type forkedAgent error",
+				"element-type legacyAgent error",
+				"element-type plainAdHoc error",
+				"element-type tools error",
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.7": {
@@ -839,6 +1424,40 @@
 				"version-tag brtTagExpr error",
 				"version-tag tasks error",
 				"zeebe-user-task jobWorkerTask warn"
+			],
+			"contents.bpmn": [
+				"ad-hoc-sub-process badOutputCollection error",
+				"feel-compatibility feelNew error",
+				"feel-compatibility toLoopB error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"feel-compatibility branchToA error",
+				"feel-compatibility chainB error",
+				"feel-compatibility outsideTool error",
+				"feel-compatibility plainTool error",
+				"feel-compatibility toolCasing error",
+				"feel-compatibility toolDuplicateKey error",
+				"feel-compatibility toolGood error",
+				"feel-compatibility toolOutputFromAi error",
+				"feel-compatibility toolSubStep error",
+				"feel-compatibility toolUnmapped error",
+				"implementation forkedAgent error",
+				"implementation legacyAgent error",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.8": {
@@ -905,6 +1524,45 @@
 				"version-tag brtTagExpr error",
 				"version-tag tasks error",
 				"zeebe-user-task jobWorkerTask warn"
+			],
+			"contents.bpmn": [
+				"feel-compatibility feelNew error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"agent-fromai-contract branchToA error",
+				"agent-fromai-contract chainB error",
+				"agent-fromai-contract outsideTool error",
+				"agent-fromai-contract plainTool error",
+				"agent-fromai-contract toolCasing error",
+				"agent-fromai-contract toolDuplicateKey error",
+				"agent-fromai-contract toolOutputFromAi error",
+				"agent-fromai-contract toolSubStep error",
+				"agent-fromai-contract toolUnmapped error",
+				"agent-tool-output-key branchB warn",
+				"agent-tool-output-key chainB warn",
+				"agent-tool-output-key chainC warn",
+				"agent-tool-output-key forkedTool warn",
+				"agent-tool-output-key legacyTool warn",
+				"agent-tool-output-key toolCasing warn",
+				"agent-tool-output-key toolDuplicateKey warn",
+				"agent-tool-output-key toolNoResult warn",
+				"agent-tool-output-key toolSubStep warn",
+				"agent-tool-output-key toolUnmapped warn",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.9": {
@@ -971,6 +1629,44 @@
 				"version-tag brtTagExpr error",
 				"version-tag tasks error",
 				"zeebe-user-task jobWorkerTask warn"
+			],
+			"contents.bpmn": [
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-execution-listener-headers contents error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"agent-fromai-contract branchToA error",
+				"agent-fromai-contract chainB error",
+				"agent-fromai-contract outsideTool error",
+				"agent-fromai-contract plainTool error",
+				"agent-fromai-contract toolCasing error",
+				"agent-fromai-contract toolDuplicateKey error",
+				"agent-fromai-contract toolOutputFromAi error",
+				"agent-fromai-contract toolSubStep error",
+				"agent-fromai-contract toolUnmapped error",
+				"agent-tool-output-key branchB warn",
+				"agent-tool-output-key chainB warn",
+				"agent-tool-output-key chainC warn",
+				"agent-tool-output-key forkedTool warn",
+				"agent-tool-output-key legacyTool warn",
+				"agent-tool-output-key toolCasing warn",
+				"agent-tool-output-key toolDuplicateKey warn",
+				"agent-tool-output-key toolNoResult warn",
+				"agent-tool-output-key toolSubStep warn",
+				"agent-tool-output-key toolUnmapped warn",
+				"sequence-flow-condition branchToA error"
 			]
 		},
 		"8.10": {
@@ -1032,7 +1728,1175 @@
 				"version-tag brtBinding error",
 				"version-tag tasks error",
 				"zeebe-user-task jobWorkerTask warn"
+			],
+			"contents.bpmn": [
+				"duplicate-execution-listener-headers contents error",
+				"link-event linkCatch1 error",
+				"link-event linkCatch2 error",
+				"link-event linkCatchBlank error",
+				"link-event linkNoName error",
+				"no-loop contents error",
+				"no-loop recursive error",
+				"secrets secretReceive warn",
+				"secrets secretsTask warn",
+				"subscription pollingCatch error",
+				"unresolvable-secret-reference secretIfContext error",
+				"unresolvable-secret-reference secretList error",
+				"unresolvable-secret-reference secretLiteral error",
+				"unresolvable-secret-reference secretProperty error",
+				"unresolvable-secret-reference secretQuoted error",
+				"variable-name badDecisionResult error",
+				"variable-name badOutputCollection error",
+				"variable-name badResult error",
+				"variable-name badVars error"
+			],
+			"agents.bpmn": [
+				"agent-fromai-contract branchToA error",
+				"agent-fromai-contract chainB error",
+				"agent-fromai-contract outsideTool error",
+				"agent-fromai-contract plainTool error",
+				"agent-fromai-contract toolCasing error",
+				"agent-fromai-contract toolDuplicateKey error",
+				"agent-fromai-contract toolOutputFromAi error",
+				"agent-fromai-contract toolSubStep error",
+				"agent-fromai-contract toolUnmapped error",
+				"agent-tool-output-key branchB warn",
+				"agent-tool-output-key chainB warn",
+				"agent-tool-output-key chainC warn",
+				"agent-tool-output-key definedTool warn",
+				"agent-tool-output-key forkedTool warn",
+				"agent-tool-output-key legacyTool warn",
+				"agent-tool-output-key toolCasing warn",
+				"agent-tool-output-key toolDuplicateKey warn",
+				"agent-tool-output-key toolNoResult warn",
+				"agent-tool-output-key toolSubStep warn",
+				"agent-tool-output-key toolUnmapped warn",
+				"sequence-flow-condition branchToA error"
 			]
+		}
+	},
+	"messages": {
+		"1.0": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"1.1": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"1.2": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"1.3": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.0": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.1": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <random number> requires Camunda >=8.2",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility feelTimer": [
+					"FEEL function <last day of month> requires Camunda >=8.2"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.2": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.3": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.4": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.5": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"connector-properties pollingCatch": [
+					"Connector property <name> with value <deduplicationModeManualFlag> only allowed by Camunda 8.6 or newer."
+				],
+				"connector-properties webhookStart": [
+					"Connector property <name> with value <consumeUnmatchedEvents> only allowed by Camunda 8.6 or newer.",
+					"Connector property <name> with value <messageTtl> only allowed by Camunda 8.6 or newer."
+				],
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7",
+					"FEEL function <to base64> requires Camunda >=8.6",
+					"FEEL function <uuid> requires Camunda >=8.6"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.6": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": [
+					"FEEL function <from json> requires Camunda >=8.9",
+					"FEEL function <partition> requires Camunda >=8.7"
+				],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.7": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": ["FEEL function <from json> requires Camunda >=8.9"],
+				"feel-compatibility toLoopB": ["FEEL function <is blank> requires Camunda >=8.8"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"feel-compatibility branchToA": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility chainB": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility outsideTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility plainTool": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolCasing": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolDuplicateKey": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolGood": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				],
+				"feel-compatibility toolOutputFromAi": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolSubStep": ["FEEL function <fromAi> requires Camunda >=8.8"],
+				"feel-compatibility toolUnmapped": [
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8",
+					"FEEL function <fromAi> requires Camunda >=8.8"
+				]
+			}
+		},
+		"8.8": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"feel-compatibility feelNew": ["FEEL function <from json> requires Camunda >=8.9"],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"agent-fromai-contract branchToA": [
+					"fromAi() defines a tool input and cannot be used in a sequence flow condition. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract chainB": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract outsideTool": [
+					"fromAi() should only be used inside an agentic sub-process."
+				],
+				"agent-fromai-contract plainTool": [
+					"The \"Plain\" sub-process is not marked as agentic, so fromAi() has no effect."
+				],
+				"agent-fromai-contract toolCasing": [
+					"Wrong function name \"FromAI\". Use fromAi (case-sensitive).",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a List.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a ParenthesizedExpression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a conditional expression. The connector requires a plain reference regardless of which branch would apply at runtime.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a number.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not an arithmetic expression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not null.",
+					"fromAi() key must be a single name under toolCall. Use toolCall.b instead of toolCall.a.b.",
+					"fromAi() key must start with \"toolCall.\". Got other.x.",
+					"fromAi() key must use dot notation, not bracket notation. Use toolCall.name instead of toolCall[\"name\"]."
+				],
+				"agent-fromai-contract toolDuplicateKey": [
+					"fromAi() key toolCall.q is declared more than once in this tool. Declare it once and reference it directly elsewhere."
+				],
+				"agent-fromai-contract toolOutputFromAi": [
+					"fromAi() defines a tool input and has no effect in an output mapping. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract toolSubStep": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract toolUnmapped": [
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path, not a string literal. Remove the quotes around \"city\".",
+					"fromAi() key must start with \"toolCall.\". Use toolCall.city instead of a bare name.",
+					"fromAi() requires a key argument: a FEEL path like toolCall.url."
+				],
+				"agent-tool-output-key branchB": [
+					"Wrong casing \"toolcallresult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key chainB": [
+					"This overwrites the \"toolCallResult\" value set on \"Fetch\"."
+				],
+				"agent-tool-output-key chainC": [
+					"This overwrites the \"toolCallResult\" value set on \"chainB\"."
+				],
+				"agent-tool-output-key forkedTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key legacyTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolCasing": [
+					"Wrong casing \"ToolCallResult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolDuplicateKey": [
+					"Wrong casing \"toolcallresult.extra\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolNoResult": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolSubStep": ["\"toolCallResult\" output is not mapped."],
+				"agent-tool-output-key toolUnmapped": ["\"toolCallResult\" output is not mapped."]
+			}
+		},
+		"8.9": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": ["Property <source> uses deprecated secret expression format"],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"agent-fromai-contract branchToA": [
+					"fromAi() defines a tool input and cannot be used in a sequence flow condition. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract chainB": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract outsideTool": [
+					"fromAi() should only be used inside an agentic sub-process."
+				],
+				"agent-fromai-contract plainTool": [
+					"The \"Plain\" sub-process is not marked as agentic, so fromAi() has no effect."
+				],
+				"agent-fromai-contract toolCasing": [
+					"Wrong function name \"FromAI\". Use fromAi (case-sensitive).",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a List.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a ParenthesizedExpression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a conditional expression. The connector requires a plain reference regardless of which branch would apply at runtime.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a number.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not an arithmetic expression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not null.",
+					"fromAi() key must be a single name under toolCall. Use toolCall.b instead of toolCall.a.b.",
+					"fromAi() key must start with \"toolCall.\". Got other.x.",
+					"fromAi() key must use dot notation, not bracket notation. Use toolCall.name instead of toolCall[\"name\"]."
+				],
+				"agent-fromai-contract toolDuplicateKey": [
+					"fromAi() key toolCall.q is declared more than once in this tool. Declare it once and reference it directly elsewhere."
+				],
+				"agent-fromai-contract toolOutputFromAi": [
+					"fromAi() defines a tool input and has no effect in an output mapping. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract toolSubStep": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract toolUnmapped": [
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path, not a string literal. Remove the quotes around \"city\".",
+					"fromAi() key must start with \"toolCall.\". Use toolCall.city instead of a bare name.",
+					"fromAi() requires a key argument: a FEEL path like toolCall.url."
+				],
+				"agent-tool-output-key branchB": [
+					"Wrong casing \"toolcallresult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key chainB": [
+					"This overwrites the \"toolCallResult\" value set on \"Fetch\"."
+				],
+				"agent-tool-output-key chainC": [
+					"This overwrites the \"toolCallResult\" value set on \"chainB\"."
+				],
+				"agent-tool-output-key forkedTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key legacyTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolCasing": [
+					"Wrong casing \"ToolCallResult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolDuplicateKey": [
+					"Wrong casing \"toolcallresult.extra\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolNoResult": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolSubStep": ["\"toolCallResult\" output is not mapped."],
+				"agent-tool-output-key toolUnmapped": ["\"toolCallResult\" output is not mapped."]
+			}
+		},
+		"8.10": {
+			"events.bpmn": {},
+			"tasks.bpmn": {},
+			"contents.bpmn": {
+				"duplicate-execution-listener-headers contents": [
+					"Properties of type <zeebe:Header> have property <key> with duplicate value of <channel>"
+				],
+				"link-event linkCatch1": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatch2": [
+					"Property of type <bpmn:LinkEventDefinition> has property <name> with duplicate value of <L>"
+				],
+				"link-event linkCatchBlank": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"link-event linkNoName": [
+					"Element of type <bpmn:LinkEventDefinition> must have property <name>"
+				],
+				"no-loop contents": ["Loop detected: loopA -> loopGateway -> loopB -> loopA"],
+				"no-loop recursive": [
+					"Loop detected: recursiveCall -> recursiveStart -> recursiveSub -> recursiveSubStart -> recursiveCall"
+				],
+				"secrets secretReceive": [
+					"Property <correlationKey> uses deprecated secret expression format"
+				],
+				"secrets secretsTask": [
+					"Property <source> uses deprecated secret expression format",
+					"Property <source> uses legacy secret expression format",
+					"Property <value> uses legacy secret expression format"
+				],
+				"unresolvable-secret-reference secretIfContext": [
+					"Property <source> must not assign a secret reference inside a context returned by an if expression branch"
+				],
+				"unresolvable-secret-reference secretList": [
+					"Property <source> must not assign a secret reference inside a list"
+				],
+				"unresolvable-secret-reference secretLiteral": [
+					"Property <source> must use a secret reference as an expression (e.g. =camunda.secrets.NAME), not as a string literal"
+				],
+				"unresolvable-secret-reference secretProperty": [
+					"Property <value> must use a secret reference as an expression (e.g. =camunda.secrets.NAME), not as a string literal"
+				],
+				"unresolvable-secret-reference secretQuoted": [
+					"Property <source> must use a secret reference as an expression (e.g. =camunda.secrets.NAME), not as a string literal"
+				],
+				"variable-name badDecisionResult": ["Property value of <2x> not allowed"],
+				"variable-name badOutputCollection": ["Property value of <all result...> not allowed"],
+				"variable-name badResult": ["Property value of <a-b> not allowed"],
+				"variable-name badVars": [
+					"Property value of <1st> not allowed",
+					"Property value of <item-x> not allowed",
+					"Property value of <my variabl...> not allowed"
+				]
+			},
+			"agents.bpmn": {
+				"agent-fromai-contract branchToA": [
+					"fromAi() defines a tool input and cannot be used in a sequence flow condition. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract chainB": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract outsideTool": [
+					"fromAi() should only be used inside an agentic sub-process."
+				],
+				"agent-fromai-contract plainTool": [
+					"The \"Plain\" sub-process is not marked as agentic, so fromAi() has no effect."
+				],
+				"agent-fromai-contract toolCasing": [
+					"Wrong function name \"FromAI\". Use fromAi (case-sensitive).",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a List.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a ParenthesizedExpression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a conditional expression. The connector requires a plain reference regardless of which branch would apply at runtime.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not a number.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not an arithmetic expression.",
+					"fromAi() key must be a FEEL path starting with \"toolCall.\", not null.",
+					"fromAi() key must be a single name under toolCall. Use toolCall.b instead of toolCall.a.b.",
+					"fromAi() key must start with \"toolCall.\". Got other.x.",
+					"fromAi() key must use dot notation, not bracket notation. Use toolCall.name instead of toolCall[\"name\"]."
+				],
+				"agent-fromai-contract toolDuplicateKey": [
+					"fromAi() key toolCall.q is declared more than once in this tool. Declare it once and reference it directly elsewhere."
+				],
+				"agent-fromai-contract toolOutputFromAi": [
+					"fromAi() defines a tool input and has no effect in an output mapping. Define it in an input mapping on the tool's entry element."
+				],
+				"agent-fromai-contract toolSubStep": [
+					"fromAi() is ignored here: only the tool's entry element defines AI inputs. Define it there and read the toolCall variable directly."
+				],
+				"agent-fromai-contract toolUnmapped": [
+					"fromAi() description must be a string literal: a quoted string describing what the agent should provide.",
+					"fromAi() key must be a FEEL path, not a string literal. Remove the quotes around \"city\".",
+					"fromAi() key must start with \"toolCall.\". Use toolCall.city instead of a bare name.",
+					"fromAi() requires a key argument: a FEEL path like toolCall.url."
+				],
+				"agent-tool-output-key branchB": [
+					"Wrong casing \"toolcallresult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key chainB": [
+					"This overwrites the \"toolCallResult\" value set on \"Fetch\"."
+				],
+				"agent-tool-output-key chainC": [
+					"This overwrites the \"toolCallResult\" value set on \"chainB\"."
+				],
+				"agent-tool-output-key definedTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key forkedTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key legacyTool": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolCasing": [
+					"Wrong casing \"ToolCallResult\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolDuplicateKey": [
+					"Wrong casing \"toolcallresult.extra\": use toolCallResult (case-sensitive)."
+				],
+				"agent-tool-output-key toolNoResult": [
+					"Tool returns nothing to the agent. Set a \"toolCallResult\" (at minimum, note the task completed)."
+				],
+				"agent-tool-output-key toolSubStep": ["\"toolCallResult\" output is not mapped."],
+				"agent-tool-output-key toolUnmapped": ["\"toolCallResult\" output is not mapped."]
+			}
 		}
 	}
 }
