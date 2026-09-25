@@ -134,6 +134,18 @@
 			]
 		},
 		{
+			"id": "cli.casen.local-proxy",
+			"file": "chunks/cli.casen.local-proxy.md",
+			"tokens": 721,
+			"tags": [
+				"cli",
+				"casen",
+				"local",
+				"proxy"
+			],
+			"entities": []
+		},
+		{
 			"id": "cli.casen.mcp-server-mode",
 			"file": "chunks/cli.casen.mcp-server-mode.md",
 			"tokens": 204,
@@ -3827,7 +3839,7 @@
 		{
 			"id": "packages.connectors.workspace-templates",
 			"file": "chunks/packages.connectors.workspace-templates.md",
-			"tokens": 639,
+			"tokens": 710,
 			"tags": [
 				"packages",
 				"connectors",
@@ -3845,8 +3857,8 @@
 				"a/",
 				"a/.camunda/element-templates/",
 				"b/",
-				"diagramPath",
-				"workspaceRoot"
+				"workspaceRoot",
+				"diagramPath"
 			]
 		},
 		{
@@ -4832,7 +4844,7 @@
 		{
 			"id": "packages.operate.connection-cors-and-security-notes",
 			"file": "chunks/packages.operate.connection-cors-and-security-notes.md",
-			"tokens": 293,
+			"tokens": 384,
 			"tags": [
 				"packages",
 				"operate",

@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 335 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 336 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -20,6 +20,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [casen CLI — BPMN generation pipeline](.llms/chunks/cli.casen.bpmn-generation-pipeline.md) — 341 tokens
 - [casen CLI — AIKit Skills](.llms/chunks/cli.casen.aikit-skills.md) — 196 tokens
 - [casen CLI — Worker commands](.llms/chunks/cli.casen.worker-commands.md) — 342 tokens
+- [casen CLI — Local proxy](.llms/chunks/cli.casen.local-proxy.md) — 721 tokens
 - [casen CLI — MCP Server Mode](.llms/chunks/cli.casen.mcp-server-mode.md) — 204 tokens
 - [casen connector](.llms/chunks/cli.connector.md) — 166 tokens
 - [casen connector — Browse the bundled OOTB catalog](.llms/chunks/cli.connector.browse-the-bundled-ootb-catalog.md) — 213 tokens
@@ -279,7 +280,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/connectors — Installation](.llms/chunks/packages.connectors.installation.md) — 240 tokens
 - [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 503 tokens
 - [@bpmnkit/connectors — Applying to an element — inbound connectors and linked resources](.llms/chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md) — 667 tokens
-- [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 639 tokens
+- [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 710 tokens
 - [@bpmnkit/connectors — Validating a template](.llms/chunks/packages.connectors.validating-a-template.md) — 213 tokens
 - [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 262 tokens
 - [@bpmnkit/connectors — Stability](.llms/chunks/packages.connectors.stability.md) — 137 tokens
@@ -341,7 +342,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/operate](.llms/chunks/packages.operate.md) — 186 tokens
 - [@bpmnkit/operate — What it does, and what it does not do](.llms/chunks/packages.operate.what-it-does-and-what-it-does-not-do.md) — 484 tokens
 - [@bpmnkit/operate — Installation](.llms/chunks/packages.operate.installation.md) — 488 tokens
-- [@bpmnkit/operate — Connection, CORS and security notes](.llms/chunks/packages.operate.connection-cors-and-security-notes.md) — 293 tokens
+- [@bpmnkit/operate — Connection, CORS and security notes](.llms/chunks/packages.operate.connection-cors-and-security-notes.md) — 384 tokens
 - [@bpmnkit/operate — API reference](.llms/chunks/packages.operate.api-reference.md) — 494 tokens
 - [@bpmnkit/operate — Limits](.llms/chunks/packages.operate.limits.md) — 126 tokens
 - [@bpmnkit/plugins — Overview](.llms/chunks/packages.plugins.overview.md) — 162 tokens

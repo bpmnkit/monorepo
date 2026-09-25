@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-25 — Lock the local proxy down (loopback, trusted origins, workspace roots)
+
+- **Security fix, default behaviour changes.** `@bpmnkit/proxy` listened on all interfaces, sent `Access-Control-Allow-Origin: *`, and its `/fs/*` routes read, wrote, moved and deleted any absolute path — so any web page or LAN host could read local files, use Camunda profiles via `/api/*`, read secrets via `/secrets/*`, relay through `/http-request` and start AI CLIs via `/chat`. The desktop app's Rust server (`apps/proxy-rs`) had the same open bind and CORS.
+- `apps/proxy/src/access.ts` (new): listens on 127.0.0.1 and ::1 by default (`--host` / `BPMNKIT_PROXY_HOST` opts out with a warning); refuses with 403 and no CORS any browser Origin other than bpmnkit.com, the Studio origins, the Tauri webview origins and loopback origins on any port (`--allow-origin` / `BPMNKIT_PROXY_ALLOWED_ORIGINS` add more; `*` is rejected); reflects allowed origins with `Vary: Origin`; answers Private Network Access preflights; refuses cross-site no-Origin requests by `Sec-Fetch-Site`; refuses non-loopback `Host` headers against DNS rebinding (`--allow-host` / `BPMNKIT_PROXY_ALLOWED_HOSTS`).
+- `apps/proxy/src/workspace.ts` (new) replaces the unused `fsValidate`: `/fs/*` and `/element-templates` work only inside roots from `--root` / `BPMNKIT_PROXY_ROOTS` or opened by a client, which may not be `/`, home, a folder containing home, or a hidden folder; only `.bpmn`/`.dmn`/`.form`/`.md` files; realpath-checked against `..`, symlink and dangling-symlink escapes.
+- `@bpmnkit/proxy` exports `createProxyServer`, `listenProxy`, `ProxyServerOptions`; `casen proxy start` gains `--host`, `--allow-origin`, `--allow-host`, `--root`.
+- Studio sends its project root on every `/fs` call and shows the proxy's refusal reason; `apps/proxy-rs` gets the same loopback bind, Host and origin rules.
+- Tests: proxy `access.test.ts`, `workspace.test.ts`; Studio `proxy-fs.test.ts`; CLI `proxy.test.ts`; proxy-rs unit tests. Docs: `cli/casen.md` "Local proxy", Operate security notes, connectors workspace note, READMEs, SECURITY.md.
+- Residual risks: `/chat` starts the claude CLI with permission checks bypassed, so a request that passes the origin gate can make it run shell commands; a compromised first-party origin still has full API use.
+
 ## 2026-09-25 — Camunda version check covers every camunda-compat rule
 
 - `@bpmnkit/core` now reproduces 62 of the 65 `bpmnlint-plugin-camunda-compat` 2.61.0 rules (3 more are covered by existing findings). New: `compat/feel-compatibility`, `variable-name`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers`, `link-event`, `no-loop`, `agent-fromai-contract` and `agent-tool-output-key`, with the plugin's semantics and messages.

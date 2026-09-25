@@ -44,6 +44,11 @@ const catalog = createConnectorCatalogPlugin(configPanelBpmn, palette, {
 await catalog.setDiagramPath("processes/billing/invoice.bpmn");
 ```
 
+The proxy serves `/element-templates` only for a `workspaceRoot` it accepts as a workspace: a
+folder passed with `casen proxy start --root`, or a project folder that is not your home
+directory, the filesystem root or a hidden folder. The diagram path must resolve inside that
+root. See [Local proxy](/docs/cli/casen#local-proxy).
+
 The previous diagram's templates are unregistered before the next diagram's are registered, and
 a bundled template they shadowed comes back, so the properties panel's connector picker lists
 only the current diagram's templates plus the bundled and built-in ones. A host that resolves
