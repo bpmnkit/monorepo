@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-09-25 — Labels render in their BPMNLabelStyle font
+
+- `@bpmnkit/canvas`, `exportSvg` and the editor's inline label editor draw a label in the `dc:Font` of the `BPMNLabelStyle` its `BPMNLabel labelStyle` references: family (default stack kept as fallback, names CSS-quoted), size in px, bold, italic, underline, strike-through.
+- Resolution follows BPMN DI: the label's own `labelStyle` only, looked up by id across all diagrams (QName prefix tolerated). No reference or an unknown id → default font; DI has no diagram/plane default style and no inheritance.
+- Label wrapping and line height use the resolved size (canvas measures with the real font; the no-canvas estimate is scaled); label positions still come from DI bounds.
+- New `@bpmnkit/core` API: `collectLabelStyles`, `resolveLabelFont`, `labelFontCss`, `BpmnLabelFont`, `LabelFontCss` (additive).
+- Editor: `setLabelPosition` no longer drops `labelStyle` and other `BPMNLabel` attributes.
+- Tests: canvas font assertions for styled / unstyled / unknown-id labels and MIWG A.2.1; core resolution and `exportSvg` tests incl. MIWG C.4.0; editor label-editor font and labelStyle preservation. Visual before/after check of MIWG A.2.1 and C.4.0 in Chromium.
+
 ## 2026-09-24 — Reebe: process instance modification, DMN versions, fromAi() rejection
 
 - Reebe rejects a `fromAi()` call Zeebe rejects at deployment, with Zeebe's `FromAiTaggedParameterExtractor` message wrapped as `AdHocSubProcessTransformer` wraps it; `@bpmnkit/engine`'s `Engine.deploy` throws the same message. `buildAiAgentSubProcess` writes `{}` instead of the `null` schema Zeebe rejects (the Camunda docs allow `null`; Zeebe's source does not — we follow the source).
