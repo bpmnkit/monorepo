@@ -30,7 +30,6 @@ const ALL_CATEGORIES: OptimizationCategory[] = [
 	"deploy",
 	"agentic",
 	"connector",
-	"compat",
 ]
 
 function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
@@ -92,7 +91,10 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 		}
 	}
 
-	if (resolved.categories.includes("compat")) {
+	// Camunda-version compatibility findings are deployability findings (category
+	// `deploy`, ids `compat/…`); a version pinned by a `.bpmnlintrc` asks for them
+	// even when the `deploy` category is off, as on a model that names no platform.
+	if (resolved.categories.includes("deploy") || options?.camundaVersion !== undefined) {
 		findings.push(...analyzeCamundaCompat(defs, resolved.camundaVersion))
 		findings = dedupeCamundaCompat(findings)
 	}

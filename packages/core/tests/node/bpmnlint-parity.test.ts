@@ -66,7 +66,11 @@ describe("parity with bpmnlint under bpmnlint:all", () => {
 		const { findings } = applyBpmnlintConfig(defs, optimize(defs).findings, ALL)
 		const ours = byRule(
 			findings.flatMap((f) =>
-				f.bpmnlintRule === undefined ? [] : [[f.bpmnlintRule, f.elementIds]],
+				// A finding about a whole process (no start event, say) names no element;
+				// bpmnlint reports it on the process, so compare by the process id.
+				f.bpmnlintRule === undefined
+					? []
+					: [[f.bpmnlintRule, f.elementIds.length > 0 ? f.elementIds : [f.processId]]],
 			),
 		)
 

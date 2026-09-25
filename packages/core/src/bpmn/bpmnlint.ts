@@ -322,11 +322,7 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		match: "exact",
 	},
 	"fake-join": { findings: ["flow/multi-incoming-task"], match: "exact" },
-	global: {
-		findings: ["pattern/global-element"],
-		match: "exact",
-		note: "Also reports a global element with no name attribute at all; bpmnlint only reports an empty one.",
-	},
+	global: { findings: ["pattern/global-element"], match: "exact" },
 	"label-required": {
 		findings: ["naming/missing-label"],
 		replaces: [

@@ -402,6 +402,55 @@ function resolveMessage(messageName: string, rootMessages: BpmnMessage[]): strin
 }
 
 /** Builds the `zeebe:subscription` extension element for a correlated message catch. */
+/**
+ * Moves each element's `zeebe:subscription` onto the `bpmn:message` it refers to.
+ *
+ * Zeebe reads a message's correlation key from the message, and its schema
+ * allows `zeebe:subscription` only there; Camunda's linter rejects it anywhere
+ * else. The builders take the key on the catching element, so this runs once
+ * the model is complete. A message shared by elements that name different keys
+ * cannot hold both, so those stay on their elements, where lint reports them,
+ * rather than one silently winning.
+ */
+function hoistMessageSubscriptions(defs: BpmnDefinitions): BpmnDefinitions {
+	const isSubscription = (el: XmlElement) => el.name === "zeebe:subscription"
+	const owners = new Map<string, { host: BpmnFlowElement; sub: XmlElement }[]>()
+	const visit = (elements: readonly BpmnFlowElement[]) => {
+		for (const el of elements) {
+			const sub = el.extensionElements.find(isSubscription)
+			if (sub) {
+				const ref =
+					"messageRef" in el && typeof el.messageRef === "string"
+						? el.messageRef
+						: "eventDefinitions" in el
+							? el.eventDefinitions.find((d) => d.type === "message")?.messageRef
+							: undefined
+				if (ref !== undefined) {
+					const list = owners.get(ref) ?? []
+					list.push({ host: el, sub })
+					owners.set(ref, list)
+				}
+			}
+			if ("flowElements" in el && Array.isArray(el.flowElements)) visit(el.flowElements)
+		}
+	}
+	for (const process of defs.processes) visit(process.flowElements)
+	for (const [ref, list] of owners) {
+		const message = defs.messages.find((m) => m.id === ref)
+		const first = list[0]
+		if (!message || !first) continue
+		const existing = message.extensionElements?.find(isSubscription)
+		const keys = new Set(list.map(({ sub }) => sub.attributes.correlationKey))
+		if (existing) keys.add(existing.attributes.correlationKey)
+		if (keys.size > 1) continue
+		if (!existing) message.extensionElements = [...(message.extensionElements ?? []), first.sub]
+		for (const { host, sub } of list) {
+			host.extensionElements = host.extensionElements.filter((x) => x !== sub)
+		}
+	}
+	return defs
+}
+
 function buildMessageSubscriptionExt(correlationKey?: string): XmlElement[] {
 	if (!correlationKey) return []
 	return zeebeExtensionsToXmlElements({ subscription: { correlationKey } })
@@ -3056,7 +3105,7 @@ export class ProcessBuilder {
 				: [],
 		}
 
-		return this._autoLayout ? applyAutoLayout(defs) : defs
+		return hoistMessageSubscriptions(this._autoLayout ? applyAutoLayout(defs) : defs)
 	}
 
 	/**
@@ -3100,7 +3149,7 @@ export class ProcessBuilder {
 		definitions.signals = this.rootSignals
 		definitions.escalations = this.rootEscalations
 
-		return this._autoLayout ? applyAutoLayout(definitions) : definitions
+		return hoistMessageSubscriptions(this._autoLayout ? applyAutoLayout(definitions) : definitions)
 	}
 
 	/**
@@ -3431,7 +3480,7 @@ export class DiagramBuilder {
 	}
 
 	build(): BpmnDefinitions {
-		return {
+		return hoistMessageSubscriptions({
 			id: this._id,
 			targetNamespace: "http://bpmn.io/schema/bpmn",
 			exporter: "@bpmnkit/core",
@@ -3456,7 +3505,7 @@ export class DiagramBuilder {
 			collaborations: this.buildCollaborations(),
 			processes: this._processes,
 			diagrams: [],
-		}
+		})
 	}
 
 	/**

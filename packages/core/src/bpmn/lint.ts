@@ -4,7 +4,11 @@ import {
 	type UnsupportedBpmnlintRule,
 	applyBpmnlintConfig,
 } from "./bpmnlint.js"
-import { applyCamundaCompatConfig, splitCamundaCompatConfig } from "./camunda-compat.js"
+import {
+	applyCamundaCompatConfig,
+	isCamundaCompatFinding,
+	splitCamundaCompatConfig,
+} from "./camunda-compat.js"
 import { optimize } from "./optimize/index.js"
 import type {
 	OptimizationCategory,
@@ -35,15 +39,10 @@ export interface DetectedPlatform {
  * Zeebe extensions, every other category either stays quiet or reports
  * something structural that holds regardless, while `deploy` reports
  * "serviceTask has no zeebe:taskDefinition type" as an **error** — a demand the
- * author never signed up for. `connector`, `agentic` and `compat` are the same
+ * author never signed up for. `connector` and `agentic` (and the `compat/…` findings `deploy` carries) are the same
  * kind of claim about the same engine.
  */
-const ENGINE_CATEGORIES: readonly OptimizationCategory[] = [
-	"deploy",
-	"connector",
-	"agentic",
-	"compat",
-]
+const ENGINE_CATEGORIES: readonly OptimizationCategory[] = ["deploy", "connector", "agentic"]
 
 /** A finding as plain data — no functions, so a host can forward it anywhere. */
 export interface LintDiagnostic {
@@ -163,7 +162,7 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 
 	const { forceEngineRules: _ignored, bpmnlint, bpmnlintDelegated, ...optimizeOptions } = options
 	// A `.bpmnlintrc` extending `plugin:camunda-compat/camunda-cloud-X-Y`, or an
-	// explicit `camundaVersion`, pins the version the `compat` category checks —
+	// explicit `camundaVersion`, pins the version the `compat/…` findings check —
 	// even on a model that names no platform.
 	const split = bpmnlint === undefined ? undefined : splitCamundaCompatConfig(bpmnlint)
 	const pinned = split?.compat?.version ?? optimizeOptions.camundaVersion
@@ -178,7 +177,7 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 		: report.findings.filter(
 				(f) =>
 					!ENGINE_CATEGORIES.includes(f.category) ||
-					(f.category === "compat" && pinned !== undefined),
+					(isCamundaCompatFinding(f) && pinned !== undefined),
 			)
 	const compat =
 		split?.compat === undefined
@@ -243,7 +242,6 @@ const ALL_CATEGORIES: readonly OptimizationCategory[] = [
 	"deploy",
 	"agentic",
 	"connector",
-	"compat",
 ]
 
 /**
@@ -267,8 +265,7 @@ export function lintCategories(
 	const engineRules =
 		options.forceEngineRules === true || detectExecutionPlatform(definitions).id !== "none"
 	if (engineRules) return [...base]
-	return base.filter(
-		(c) =>
-			!ENGINE_CATEGORIES.includes(c) || (c === "compat" && options.camundaVersion !== undefined),
-	)
+	// A pinned `camundaVersion` still runs the compatibility check: `optimize`
+	// runs it whenever a version is given, and `lintDiagram` keeps its findings.
+	return base.filter((c) => !ENGINE_CATEGORIES.includes(c))
 }

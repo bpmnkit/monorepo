@@ -6,7 +6,7 @@ casen lint lint diagrams/order.bpmn
 
 ```text
 → Using /work/project/.bpmnlintrc (BPMN Kit's equivalents of its rules).
-→ Not applied — no BPMN Kit equivalent: plugin:camunda-compat/camunda-cloud-8-6 (a plugin config — install bpmnlint in the project to use it).
+→ Not applied — no BPMN Kit equivalent: plugin:acme/recommended (a plugin config — install bpmnlint in the project to use it).
 → ⚠ [pattern] [Error_payment] Global error "Error_payment" is not referenced by any element. (global)
 → ✖ [pattern] [End_done] Element "End_done" has no diagram information (BPMNDI). (no-bpmndi)
 ```

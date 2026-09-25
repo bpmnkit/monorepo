@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 332 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 335 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -127,11 +127,14 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [BPMN Diagrams in Markdown — Theming](.llms/chunks/guides.bpmn-in-markdown.theming.md) — 179 tokens
 - [BPMN Diagrams in Markdown — Accessibility](.llms/chunks/guides.bpmn-in-markdown.accessibility.md) — 201 tokens
 - [BPMN Diagrams in Markdown — Output is deterministic](.llms/chunks/guides.bpmn-in-markdown.output-is-deterministic.md) — 79 tokens
-- [bpmnlint Compatibility](.llms/chunks/guides.bpmnlint.md) — 488 tokens
-- [bpmnlint Compatibility — `casen lint`](.llms/chunks/guides.bpmnlint.casen-lint.md) — 434 tokens
+- [bpmnlint Compatibility](.llms/chunks/guides.bpmnlint.md) — 518 tokens
+- [bpmnlint Compatibility — `casen lint`](.llms/chunks/guides.bpmnlint.casen-lint.md) — 433 tokens
 - [bpmnlint Compatibility — VS Code](.llms/chunks/guides.bpmnlint.vs-code.md) — 162 tokens
-- [bpmnlint Compatibility — Rule mapping](.llms/chunks/guides.bpmnlint.rule-mapping.md) — 1004 tokens
-- [bpmnlint Compatibility — Rule mapping (2)](.llms/chunks/guides.bpmnlint.rule-mapping-2.md) — 192 tokens
+- [bpmnlint Compatibility — Rule mapping](.llms/chunks/guides.bpmnlint.rule-mapping.md) — 983 tokens
+- [bpmnlint Compatibility — Rule mapping (2)](.llms/chunks/guides.bpmnlint.rule-mapping-2.md) — 200 tokens
+- [bpmnlint Compatibility — Camunda version compatibility](.llms/chunks/guides.bpmnlint.camunda-version-compatibility.md) — 628 tokens
+- [bpmnlint Compatibility — Camunda version compatibility — With a `.bpmnlintrc`](.llms/chunks/guides.bpmnlint.camunda-version-compatibility-with-a-.bpmnlintrc.md) — 154 tokens
+- [bpmnlint Compatibility — Camunda version compatibility — What is covered](.llms/chunks/guides.bpmnlint.camunda-version-compatibility-what-is-covered.md) — 422 tokens
 - [bpmnlint Compatibility — From your own code](.llms/chunks/guides.bpmnlint.from-your-own-code.md) — 233 tokens
 - [Building Processes — Service Tasks](.llms/chunks/guides.building-processes.service-tasks.md) — 202 tokens
 - [Building Processes — Events](.llms/chunks/guides.building-processes.events.md) — 244 tokens

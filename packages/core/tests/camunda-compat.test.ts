@@ -51,7 +51,7 @@ describe("analyzeCamundaCompat — version gating", () => {
 		expect(rest).toEqual([])
 		expect(finding).toMatchObject({
 			id: "compat/element-type",
-			category: "compat",
+			category: "deploy",
 			severity: "error",
 			elementIds: ["tools"],
 			message:
@@ -181,7 +181,7 @@ describe("normalizeCamundaVersion", () => {
 	})
 })
 
-describe("optimize — compat category", () => {
+describe("optimize — compat findings", () => {
 	it("runs by default and leaves problems deploy already reports to deploy", () => {
 		const body = `    <bpmn:serviceTask id="svc" />
     <bpmn:complexGateway id="g" />`
@@ -191,14 +191,18 @@ describe("optimize — compat category", () => {
 		)
 		expect(findings.map((f) => f.id)).not.toContain("compat/implementation")
 		expect(findings.map((f) => f.id)).toContain("compat/element-type")
-		// Asked for on its own, compat reports the missing job type itself.
-		const alone = optimize(Bpmn.parse(model(body)), { categories: ["compat"] }).findings
+		// With the other categories off, a pinned version runs compat alone, and it
+		// reports the missing job type itself.
+		const alone = optimize(Bpmn.parse(model(body)), {
+			categories: [],
+			camundaVersion: "8.8",
+		}).findings
 		expect(rules(alone)).toEqual(["compat/implementation svc", "compat/element-type g"])
 	})
 
 	it("takes the target version from options", () => {
 		const alone = optimize(Bpmn.parse(model(AD_HOC, "8.8.0")), {
-			categories: ["compat"],
+			categories: [],
 			camundaVersion: "8.6",
 		})
 		expect(rules(alone.findings)).toEqual(["compat/element-type tools"])
@@ -256,7 +260,7 @@ describe(".bpmnlintrc — plugin:camunda-compat", () => {
 			"8.8.0",
 		)
 		const report = lintDiagram(Bpmn.parse(xml), { bpmnlint })
-		const found = report.diagnostics.filter((d) => d.category === "compat")
+		const found = report.diagnostics.filter((d) => d.id.startsWith("compat/"))
 		expect(found.map((d) => [d.id, d.severity, d.bpmnlintRule])).toEqual([
 			["compat/element-type", "warning", "camunda-compat/element-type"],
 		])
@@ -269,15 +273,18 @@ describe(".bpmnlintrc — plugin:camunda-compat", () => {
 	it("applies to a model that names no platform", () => {
 		const bpmnlint = resolved({ extends: "plugin:camunda-compat/camunda-cloud-8-6" })
 		const report = lintDiagram(Bpmn.parse(model(AD_HOC, null)), { bpmnlint })
-		expect(report.categories).toContain("compat")
+		// The engine categories stay off on a platform-less model; only the pinned
+		// compatibility check runs.
 		expect(report.categories).not.toContain("deploy")
-		expect(report.diagnostics.map((d) => d.id)).toContain("compat/element-type")
+		const ids = report.diagnostics.map((d) => d.id)
+		expect(ids).toContain("compat/element-type")
+		expect(ids.filter((id) => id.startsWith("deploy/"))).toEqual([])
 	})
 
 	it("steps aside when the project's bpmnlint ran the plugin itself", () => {
 		const bpmnlint = resolved({ extends: "plugin:camunda-compat/camunda-cloud-8-6" })
 		const report = lintDiagram(Bpmn.parse(model(AD_HOC)), { bpmnlint, bpmnlintDelegated: true })
-		expect(report.diagnostics.filter((d) => d.category === "compat")).toEqual([])
+		expect(report.diagnostics.filter((d) => d.id.startsWith("compat/"))).toEqual([])
 	})
 })
 

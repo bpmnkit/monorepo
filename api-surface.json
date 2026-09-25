@@ -432,6 +432,7 @@
 			"isBpmnTask": "value",
 			"isBpmnTransaction": "value",
 			"isBpmnUserTask": "value",
+			"isCamundaCompatFinding": "value",
 			"isZeebePlacementAllowed": "value",
 			"labelFontCss": "value",
 			"layoutDmn": "value",

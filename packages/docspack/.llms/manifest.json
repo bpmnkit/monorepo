@@ -1623,20 +1623,20 @@
 		{
 			"id": "guides.bpmnlint",
 			"file": "chunks/guides.bpmnlint.md",
-			"tokens": 488,
+			"tokens": 518,
 			"tags": [
 				"guides",
 				"bpmnlint"
 			],
 			"entities": [
-				"camunda-compat/timer",
+				"acme/no-foo",
 				"import()"
 			]
 		},
 		{
 			"id": "guides.bpmnlint.casen-lint",
 			"file": "chunks/guides.bpmnlint.casen-lint.md",
-			"tokens": 434,
+			"tokens": 433,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1664,7 +1664,7 @@
 		{
 			"id": "guides.bpmnlint.rule-mapping",
 			"file": "chunks/guides.bpmnlint.rule-mapping.md",
-			"tokens": 1004,
+			"tokens": 983,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1689,7 +1689,7 @@
 		{
 			"id": "guides.bpmnlint.rule-mapping-2",
 			"file": "chunks/guides.bpmnlint.rule-mapping-2.md",
-			"tokens": 192,
+			"tokens": 200,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1698,6 +1698,62 @@
 			],
 			"entities": [
 				"bpmnlint/label-required"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility.md",
+			"tokens": 628,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility"
+			],
+			"entities": [
+				"@camunda/linting",
+				"optimize()",
+				"formId",
+				"bindingType",
+				"beforeAll",
+				"timeDate",
+				"@bpmnkit/core",
+				"deploy/service-task-no-type",
+				"compat/implementation"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility-with-a-.bpmnlintrc",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility-with-a-.bpmnlintrc.md",
+			"tokens": 154,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility",
+				"bpmnlintrc"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility-what-is-covered",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility-what-is-covered.md",
+			"tokens": 422,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility",
+				"covered"
+			],
+			"entities": [
+				"deploy/process-not-executable",
+				"feel-syntax/parse-error",
+				"agentic/tool-no-description",
+				"@bpmnkit/patterns"
 			]
 		},
 		{

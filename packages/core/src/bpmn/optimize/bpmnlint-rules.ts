@@ -410,8 +410,9 @@ const RULES: Record<string, NativeRule> = {
 			]
 			for (const [kind, elements] of groups) {
 				for (const element of elements) {
-					const name = element.name?.trim() ?? ""
-					if (name === "") {
+					// bpmnlint's `hasName` is `name?.trim() !== ""`: a missing name attribute
+					// passes, and only an empty or blank one is reported.
+					if (element.name !== undefined && element.name.trim() === "") {
 						report(
 							"pattern/global-element",
 							`Global ${kind} "${element.id}" has no name.`,

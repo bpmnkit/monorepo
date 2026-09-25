@@ -13,7 +13,6 @@ export type OptimizationCategory =
 	| "deploy"
 	| "agentic"
 	| "connector"
-	| "compat"
 
 export interface ApplyFixResult {
 	description: string
@@ -67,7 +66,9 @@ export interface OptimizeOptions {
 	 */
 	resolveConnectorRequirements?: (templateId: string, boundKeys: string[]) => string[]
 	/**
-	 * The Camunda 8 version the `compat` category checks against, e.g. `"8.6"`.
+	 * The Camunda 8 version the `compat/…` findings check against, e.g. `"8.6"`.
+	 * Given explicitly, the compatibility check runs even when the `deploy`
+	 * category is not requested.
 	 * Defaults to the model's `modeler:executionPlatformVersion`; without either,
 	 * `compat` reports nothing.
 	 */

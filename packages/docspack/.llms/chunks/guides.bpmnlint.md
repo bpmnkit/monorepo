@@ -28,8 +28,10 @@ rule bpmnlint just ran, so no problem is reported twice.
 - A rule your config does not mention keeps BPMN Kit's default. The `.bpmnlintrc` overrides
   BPMN Kit where the two overlap. It does not switch off BPMN Kit's other checks (FEEL syntax,
   data flow, Camunda 8 deployability and so on).
-- A plugin rule (`camunda-compat/timer`), an unknown rule, or a `plugin:` config in `extends`
-  cannot be applied without bpmnlint. BPMN Kit says so rather than ignoring it silently.
+- A plugin rule (`acme/no-foo`), an unknown rule, or a `plugin:` config in `extends`
+  cannot be applied without bpmnlint. BPMN Kit says so rather than ignoring it silently. The
+  exception is `bpmnlint-plugin-camunda-compat`: BPMN Kit has its own
+  [Camunda version check](#camunda-version-compatibility) and uses it in place of the plugin.
 
 bpmnlint is never a dependency of BPMN Kit. It is loaded with a dynamic `import()` from your
 project, only when your project has it, the same way editor integrations load a project's

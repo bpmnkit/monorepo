@@ -1,5 +1,12 @@
 # Features
 
+## Camunda version compatibility and exact bpmnlint parity (2026-09-25)
+
+- Lint checks a diagram against the Camunda 8 version it targets, as Camunda Modeler does
+  (52 of `bpmnlint-plugin-camunda-compat`'s rules); all 28 bpmnlint built-in rules match
+  bpmnlint exactly, proven by a parity test over every `.bpmn` in the repository; labels render
+  in their `BPMNLabelStyle` font.
+
 ## Reebe: process instance modification and DMN versions (2026-09-24)
 
 - Activate, terminate and move instructions over REST and gRPC; DMN decisions versioned and

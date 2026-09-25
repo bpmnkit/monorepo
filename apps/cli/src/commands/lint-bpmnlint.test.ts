@@ -128,9 +128,9 @@ describe("casen lint — .bpmnlintrc", () => {
 		const out = text(await run())
 		// The model names no platform; the config's version applies anyway.
 		expect(out).toMatch(
-			/✖ \[compat\] \[or\] Inclusive gateway "or" needs Camunda 8\.1 or newer; this model targets Camunda 8\.0\. \(camunda-compat\/element-type\)/,
+			/✖ \[deploy\] \[or\] Inclusive gateway "or" needs Camunda 8\.1 or newer; this model targets Camunda 8\.0\. \(camunda-compat\/element-type\)/,
 		)
-		expect(out).toMatch(/\[compat\] \[join\] Task "Join" needs Camunda 8\.2 or newer/)
+		expect(out).toMatch(/\[deploy\] \[join\] Task "Join" needs Camunda 8\.2 or newer/)
 		expect(out).not.toContain("plugin:camunda-compat/camunda-cloud-8-0")
 		// Plugin rules BPMN Kit does not reproduce are still named.
 		expect(out).toContain("camunda-compat/no-loop")

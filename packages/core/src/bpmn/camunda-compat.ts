@@ -8,7 +8,9 @@
  * `plugin:camunda-compat/camunda-cloud-X-Y`. Which construct needs which
  * version lives in `camunda-compat-data.ts`, taken from
  * `bpmnlint-plugin-camunda-compat`; this module applies it. Findings are
- * `compat/<plugin rule name>`, in the `compat` category.
+ * `compat/<plugin rule name>`, in the `deploy` category: they are deployability
+ * findings for the target version, and a new category would widen a union the
+ * 1.0 API returns.
  *
  * Problems an existing `deploy/*` (or `feel/*`) check already reports on the
  * same element are left to that check — see `dedupeCamundaCompat`.
@@ -290,7 +292,7 @@ function report(
 	if (!ruleActive(rule, ctx.version)) return
 	ctx.findings.push({
 		id: `compat/${rule}`,
-		category: "compat",
+		category: "deploy",
 		severity: severity ?? SEVERITY[CAMUNDA_COMPAT_RULES[rule]?.severity ?? "error"],
 		message,
 		suggestion,
@@ -841,7 +843,6 @@ function checkReferences(
 					keyOnElement
 						? "Move the zeebe:subscription onto the bpmn:message."
 						: "Add a zeebe:subscription with a correlationKey to the message.",
-					keyOnElement ? "warning" : undefined,
 				)
 			} else if (isEmpty(onMessage[0]?.attributes.correlationKey)) {
 				report(
@@ -1496,6 +1497,11 @@ function checkForms(ctx: Context, el: BpmnFlowElement): void {
 // Existing checks
 // ---------------------------------------------------------------------------
 
+/** Whether a finding comes from the Camunda-version compatibility check (`compat/…`). */
+export function isCamundaCompatFinding(finding: Pick<OptimizationFinding, "id">): boolean {
+	return finding.id.startsWith("compat/")
+}
+
 /**
  * Drops the compatibility findings another BPMN Kit check already reports on
  * the same element — `compat/implementation` where `deploy/service-task-no-type`
@@ -1509,7 +1515,7 @@ export function dedupeCamundaCompat(
 ): OptimizationFinding[] {
 	const reported = new Set(findings.map((f) => `${f.id}\u0000${f.elementIds[0] ?? ""}`))
 	return findings.filter((f) => {
-		if (f.category !== "compat") return true
+		if (!isCamundaCompatFinding(f)) return true
 		const equivalents = CAMUNDA_COMPAT_RULES[f.id.slice("compat/".length)]?.equivalents ?? []
 		return !equivalents.some((id) => reported.has(`${id}\u0000${f.elementIds[0] ?? ""}`))
 	})

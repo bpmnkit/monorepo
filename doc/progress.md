@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-09-25 — Camunda version compatibility lint (`compat/…` findings)
+
+- New `compat/…` findings in `@bpmnkit/core` (in the existing `deploy` category, so the returned `OptimizationCategory` union is unchanged — adding to it would be a major change): check a diagram against the Camunda 8 version it targets (`modeler:executionPlatformVersion`), as Camunda Modeler does with `@camunda/linting`. Reports constructs the target cannot run ("Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.") and properties it requires (timer values, error/escalation codes, signal and message names, implementations, input collections, listener types).
+- Version table as data in `camunda-compat-data.ts`, taken from `bpmnlint-plugin-camunda-compat` 2.61.0 (`@camunda/linting` 3.57.0): 52 of its 65 rules reproduced, 3 covered by existing findings; the FEEL-analysis rules, `no-loop`, secrets/connector rules and 8.10 listener-header duplicates are not.
+- Problems a `deploy/*` or `feel/empty-condition` finding already reports on the same element are not repeated.
+- Runs in `optimize()`, `lintDiagram()` (editor lint panel, VS Code Problems panel) and `casen lint`; a model with no Camunda 8 version gets no findings; non-executable processes are skipped from 8.2.
+- `.bpmnlintrc`: `extends: "plugin:camunda-compat/camunda-cloud-X-Y"` pins the target version (even on a platform-less model) instead of being reported as not applied; `camunda-compat/<rule>` entries re-level or turn off findings; the project's own bpmnlint takes over when it runs the plugin.
+- Verified against the real plugin: two fixtures covering every covered rule give identical reports under all 15 `camunda-cloud-*` configs, recorded in `tests/fixtures/camunda-compat/expected.json`, plus a live comparison when `BPMNKIT_CAMUNDA_COMPAT_MODULES` is set. The 25 templates match too.
+- New core exports: `analyzeCamundaCompat`, `splitCamundaCompatConfig`, `applyCamundaCompatConfig`, `normalizeCamundaVersion`, `CAMUNDA_COMPAT_RULES`, `CAMUNDA_COMPAT_VERSIONS`, `CAMUNDA_COMPAT_PLUGIN_VERSION`, `isCamundaCompatFinding`; `OptimizeOptions.camundaVersion`.
+- Builder fix found by it: the process builders wrote a message catch's `zeebe:subscription` on the receive task, catch event or boundary event; Zeebe's schema allows it only on the `bpmn:message`, and Camunda's linter rejects it elsewhere (three templates hit it). A pass at build time now moves it onto the message; conflicting keys for one message stay on their elements, where lint reports them. `compat/subscription` is an error again, as in the plugin.
+- Integration fixes: bpmnlint's `global` rule reports only an empty name, not a missing one (now matched), and the parity test compares process-level findings by process id; parity holds on all 45 `.bpmn` files.
+
 ## 2026-09-25 — All 28 bpmnlint rules match bpmnlint exactly
 
 - The seven approximate rules (`conditional-flows`, `fake-join`, `label-required`, `no-gateway-join-fork`, `no-implicit-end`, `no-implicit-start`, `superfluous-gateway`) now check inside embedded, event and ad-hoc sub-processes and transactions, with bpmnlint's exemptions: link events, compensation handlers and boundary events, event sub-processes, the contents of ad-hoc sub-processes, data objects and data stores.

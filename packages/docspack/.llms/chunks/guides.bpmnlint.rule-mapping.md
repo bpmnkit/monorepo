@@ -25,7 +25,7 @@ reports everything that cannot be reached from a start event, and bpmnlint's
 | `event-based-gateway` | error | `flow/event-gateway-invalid` (native) | Exact | |
 | `event-sub-process-typed-start-event` | error | `flow/event-sub-process-untyped-start` (native) | Exact | |
 | `fake-join` | warn | `flow/multi-incoming-task` (native inside sub-processes and for start events) | Exact | |
-| `global` | warn | `pattern/global-element` (native) | Exact | Also reports a global element with no `name` attribute. bpmnlint only reports an empty name. |
+| `global` | warn | `pattern/global-element` (native) | Exact | |
 | `label-required` | error | `naming/missing-label` (native) | Exact | Replaces `naming/unlabeled-task`, `naming/unlabeled-start-event`, `naming/unlabeled-end-event`, `naming/split-gateway-no-label` and `naming/missing-flow-condition`. Lanes are read from the process's first lane set, the one BPMN Kit models. |
 | `link-event` | error | `flow/link-event-mismatch` (native) | Exact | |
 | `no-bpmndi` | error | `pattern/missing-di` (native) | Exact | |

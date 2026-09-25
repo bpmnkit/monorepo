@@ -6,8 +6,9 @@ presets. Rule names are normalised the way bpmnlint normalises them, so
 
 Rules that have no equivalent without bpmnlint installed:
 
-- **Plugin rules and configs.** Everything from `bpmnlint-plugin-*`, including
-  `bpmnlint-plugin-camunda-compat`. Install bpmnlint in the project and they run.
+- **Plugin rules and configs.** Everything from `bpmnlint-plugin-*`, except the
+  `bpmnlint-plugin-camunda-compat` rules listed as covered below. Install bpmnlint in the
+  project and they run.
 - **Unknown rule names.** These are reported as unknown, the same as bpmnlint would report
   them.
 

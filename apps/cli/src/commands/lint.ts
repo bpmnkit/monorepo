@@ -128,7 +128,7 @@ export async function lintBpmn(
 						categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
 				})
 	// Extending `plugin:camunda-compat/camunda-cloud-X-Y` pins the Camunda version
-	// the `compat` category checks; BPMN Kit's own check stands in for the plugin.
+	// the `compat/…` findings check; BPMN Kit's own check stands in for the plugin.
 	const split = setup === undefined ? undefined : splitCamundaCompatConfig(setup.config)
 	const camundaVersion = split?.compat?.version
 

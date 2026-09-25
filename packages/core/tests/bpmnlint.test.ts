@@ -452,15 +452,18 @@ describe("native bpmnlint rules", () => {
 		])
 	})
 
+	// As bpmnlint: a blank name is reported, a missing name attribute is not.
 	it("global: unnamed, unused and duplicate-named root elements", () => {
 		const extras = `
 		  <bpmn:error id="err1" name="Failed" errorCode="E1" />
 		  <bpmn:error id="err2" name="Failed" errorCode="E2" />
-		  <bpmn:message id="msg1" />
+		  <bpmn:message id="msg1" name=" " />
+		  <bpmn:message id="msg2" />
 		  <bpmn:signal id="sig1" name="Go" />`
 		const body = `${LINEAR}
 		  <bpmn:boundaryEvent id="b1" attachedToRef="a"><bpmn:errorEventDefinition errorRef="err1" /></bpmn:boundaryEvent>
 		  <bpmn:receiveTask id="r" name="Wait" messageRef="msg1" />
+		  <bpmn:receiveTask id="r2" name="Wait too" messageRef="msg2" />
 		  <bpmn:intermediateThrowEvent id="t"><bpmn:signalEventDefinition signalRef="sig1" /></bpmn:intermediateThrowEvent>`
 		const messages = withRule(doc(body, extras), "global").map((f) => f.message)
 		expect(messages).toEqual([

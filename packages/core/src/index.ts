@@ -92,6 +92,7 @@ export type {
 export {
 	analyzeCamundaCompat,
 	applyCamundaCompatConfig,
+	isCamundaCompatFinding,
 	normalizeCamundaVersion,
 	splitCamundaCompatConfig,
 } from "./bpmn/camunda-compat.js"
