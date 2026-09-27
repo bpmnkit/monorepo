@@ -2,12 +2,13 @@
 
 ### SaaS
 
-Control Swagger UI access through the Camunda Console:
+Control Swagger UI access in [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/organization/manage-clusters/settings):
 
-1. Navigate to your cluster in the Camunda Console
-2. Go to **Cluster Settings**
-3. Toggle **Enable Swagger** on or off
-4. Changes apply automatically to your orchestration cluster
+1. Open Camunda Hub.
+1. In the left navigation under **Clusters**, select a cluster.
+1. Click the **Settings** tab.
+1. Toggle **Enable Swagger** on or off.
+1. Changes apply automatically to your orchestration cluster.
 
 ### Self-Managed
 

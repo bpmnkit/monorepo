@@ -1,9 +1,12 @@
 # Data flow — Query path
 
 Operate, Tasklist, and the REST Query API (`GET /v2/...`) read exclusively from the configured secondary storage. They never read directly from the engine.
-See it in red in the diagram below:
 
-![Camunda 8.8+ architecture overview - Data Flow Query path](assets/architecture-8.8plus-data-flow-query.jpg)
+This path is highlighted red in the following diagram:
+
+<!-- Source: Miro board https://miro.com/app/board/uXjVGiNnJBc=/?moveToWidget=3458764684816430552&cot=14 -->
+
+![Camunda 8.10+ architecture overview - Data Flow Query path](assets/architecture-8.10plus-data-flow-query.jpg)
 
 Query results depend on the performance of both the primary (processing path) and secondary storage (exporting pipeline). They are **eventually consistent**: there is always some lag between a command completing in the engine and the result being visible in search results or the UI. This is measured as the **data availability latency**.
 

@@ -5,12 +5,15 @@ Resolving is cache-first on both paths: the broker's background scheduler and th
 Listing is different by design. What a store's cache holds is the values it has resolved so far, not the tenant's full set of secrets. `/v2/secrets/list` always reads the configured stores directly rather than serving from the cache.
 
 
-## Not currently supported
+## Unsupported features
 
-- More than one secret store per physical tenant. A reference always addresses the `default` store.
-- Pinning an AWS Secrets Manager secret to a version stage other than `AWSCURRENT`, or a GCP Secret Manager secret to a version other than `latest`.
-- Filtering or paginating a `POST /v2/secrets/list` response, see [Secrets](https://docs.camunda.io/docs/next/apis-tools/orchestration-cluster-api-rest/orchestration-cluster-api-rest-secrets#list-secrets).
-- The general limitations that apply to every alpha feature, see [alpha features](https://docs.camunda.io/docs/next/components/early-access/alpha/alpha-features).
+The following features are not currently supported:
+
+| Unsupported feature                                        | Details                                                                                                                                                                    |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| More than one secret store per physical tenant             | A reference always addresses the `default` store.                                                                                                                          |
+| Pinning a secret to a non-current version                  | AWS Secrets Manager secrets cannot be pinned to a version stage other than `AWSCURRENT`, and GCP Secret Manager secrets cannot be pinned to a version other than `latest`. |
+| Filtering or paginating a `POST /v2/secrets/list` response | See [secrets](https://docs.camunda.io/docs/next/apis-tools/orchestration-cluster-api-rest/orchestration-cluster-api-rest-secrets#list-secrets).                                                          |
 
 ---
 Source: https://docs.camunda.io/docs/next/components/concepts/secret-resolution

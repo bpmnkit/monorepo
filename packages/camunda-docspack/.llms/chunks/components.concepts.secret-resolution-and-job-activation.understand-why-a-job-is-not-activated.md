@@ -10,7 +10,7 @@ The activation response has to stay within `camunda.cluster.network.max-message-
 
 The broker replaces the placeholder at its recorded position in the job variables. If a later variable merge overwrites the expected placeholder, or if the broker cannot read the variables, the broker does not activate the job and raises an incident. The incident also takes the job out of activation until the incident is resolved, so the same failing injection is not retried on every activation.
 
-For how to inspect and resolve either incident, see [troubleshoot secret resolution failures](https://docs.camunda.io/docs/next/components/concepts/secret-resolution-incidents).
+To learn how to inspect and resolve either incident, see [troubleshoot secret resolution failures](https://docs.camunda.io/docs/next/components/concepts/secret-resolution-incidents).
 
 ---
 Source: https://docs.camunda.io/docs/next/components/concepts/secret-resolution-and-job-activation

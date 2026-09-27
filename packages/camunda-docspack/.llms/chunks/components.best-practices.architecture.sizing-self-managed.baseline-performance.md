@@ -1,6 +1,8 @@
 # Self-Managed resource planning — Baseline performance
 
-Considering this [baseline resource configuration](#baseline-resource-configuration), you can expect the following performance:
+With this [baseline resource configuration](#baseline-resource-configuration), you can expect the following **sustained** performance. This is a reliability target that the configuration has consistently demonstrated it can maintain, not the hardware’s absolute limit.
+
+For the maximum throughput this configuration can achieve under stress using a much simpler process, see the `max`/stress variant in [How we test](#how-we-test).
 
 | Metric                                          | Value                                          |
 | ----------------------------------------------- | ---------------------------------------------- |
@@ -10,7 +12,7 @@ Considering this [baseline resource configuration](#baseline-resource-configurat
 | Data availability (query API latency)           | < 5 seconds                                    |
 
 **Important**
-These numbers were measured using Camunda's [load test application](https://github.com/camunda/camunda/tree/main/load-tests/load-tester) with a [realistic reference process](https://github.com/camunda/camunda/blob/main/load-tests/load-tester/src/main/resources/bpmn/realistic/bankCustomerComplaintDisputeHandling.bpmn) and [realistic payload](https://github.com/camunda/camunda/blob/main/load-tests/load-tester/src/main/resources/bpmn/realistic/realisticPayload.json) (~11 KB). For details on the testing methodology, see the [reliability testing documentation](https://github.com/camunda/camunda/blob/main/docs/testing/reliability-testing.md).
+These numbers reflect Camunda 8.10, measured using Camunda's [load test application](https://github.com/camunda/camunda/tree/main/load-tests/load-tester) with a [realistic reference process](https://github.com/camunda/camunda/blob/main/load-tests/load-tester/src/main/resources/bpmn/realistic/bankCustomerComplaintDisputeHandling.bpmn) and [realistic payload](https://github.com/camunda/camunda/blob/main/load-tests/load-tester/src/main/resources/bpmn/realistic/realisticPayload.json) (~11 KB). For details on the testing methodology, see the [reliability testing documentation](https://github.com/camunda/camunda/blob/main/docs/testing/reliability-testing.md).
 
 The realistic reference process starts one root process instance, which spawns 50 sub-process instances via call activities. It covers a wide variety of BPMN elements, including call activities, multi-instance, sub-processes, and DMN. The process is based on the [Credit Card Fraud Dispute Handling](https://marketplace.camunda.com/en-US/apps/449510/credit-card-fraud-dispute-handling) blueprint from the Camunda Marketplace.
 

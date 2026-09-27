@@ -12,7 +12,7 @@ The speaker might also be your Camunda Consultant - they are used to presenting 
 - _Cloud Access_: Make sure you have an account for Camunda 8 with an active subscription or trial account.
 
 - _Installations_: Make sure your _developer systems_, as well as any _target systems_ for the POC test and production you wish to use are set up. In particular install:
-  - Camunda _Modeler_ (https://camunda.org/download/modeler/)
+  - Camunda [Desktop Modeler](https://docs.camunda.io/downloads/)
   - Java, Maven, and your favorite IDE (e.g. Eclipse)
   - Make sure _Maven_ runs and builds and it can access all necessary dependencies. [Download and build this project](https://github.com/camunda/camunda-platform-tutorials/tree/main/quick-start/microservice-orchestration/worker-java) to verify that your build runs.
 

@@ -1,6 +1,6 @@
 # BPMN coverage
 
-List of BPMN symbols supported in Modelers
+List of BPMN symbols supported in Camunda Hub and Desktop Modeler
 
 {children}
 

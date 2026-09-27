@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/camunda-docspack",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"documents": [
 		"camunda@8.10"
 	],
@@ -20,7 +20,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites.md",
-			"tokens": 610,
+			"tokens": 643,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -34,7 +34,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites-set-up-authentication",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites-set-up-authentication.md",
-			"tokens": 371,
+			"tokens": 384,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -148,7 +148,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.using-a-token-oidc-jwt",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.using-a-token-oidc-jwt.md",
-			"tokens": 731,
+			"tokens": 729,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -345,7 +345,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.getting-started",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.getting-started.md",
-			"tokens": 724,
+			"tokens": 734,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -371,7 +371,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-base-urls",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-base-urls.md",
-			"tokens": 192,
+			"tokens": 198,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -552,7 +552,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites.md",
-			"tokens": 297,
+			"tokens": 280,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -564,7 +564,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md",
-			"tokens": 270,
+			"tokens": 268,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -590,7 +590,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability.md",
-			"tokens": 157,
+			"tokens": 170,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -5729,7 +5729,7 @@
 		{
 			"id": "apis-tools.orchestration-cluster-api-rest.tutorial.getting-started",
 			"file": "chunks/apis-tools.orchestration-cluster-api-rest.tutorial.getting-started.md",
-			"tokens": 394,
+			"tokens": 407,
 			"tags": [
 				"apis-tools",
 				"orchestration-cluster-api-rest",
@@ -5824,7 +5824,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow",
 			"file": "chunks/components.best-practices.architecture.data-flow.md",
-			"tokens": 322,
+			"tokens": 345,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5836,7 +5836,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow.command-processing-path",
 			"file": "chunks/components.best-practices.architecture.data-flow.command-processing-path.md",
-			"tokens": 321,
+			"tokens": 336,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5851,7 +5851,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow.export-pipeline",
 			"file": "chunks/components.best-practices.architecture.data-flow.export-pipeline.md",
-			"tokens": 471,
+			"tokens": 617,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5865,7 +5865,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow.query-path",
 			"file": "chunks/components.best-practices.architecture.data-flow.query-path.md",
-			"tokens": 191,
+			"tokens": 206,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5879,7 +5879,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow.optimize-data-flow",
 			"file": "chunks/components.best-practices.architecture.data-flow.optimize-data-flow.md",
-			"tokens": 567,
+			"tokens": 581,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5894,7 +5894,7 @@
 		{
 			"id": "components.best-practices.architecture.data-flow.performance-and-sizing-factors",
 			"file": "chunks/components.best-practices.architecture.data-flow.performance-and-sizing-factors.md",
-			"tokens": 162,
+			"tokens": 159,
 			"tags": [
 				"components",
 				"best-practices",
@@ -5909,7 +5909,7 @@
 		{
 			"id": "components.best-practices.architecture.deciding-about-your-stack",
 			"file": "chunks/components.best-practices.architecture.deciding-about-your-stack.md",
-			"tokens": 736,
+			"tokens": 734,
 			"tags": [
 				"components",
 				"best-practices",
@@ -6056,7 +6056,7 @@
 		{
 			"id": "components.best-practices.architecture.sizing-self-managed.baseline-performance",
 			"file": "chunks/components.best-practices.architecture.sizing-self-managed.baseline-performance.md",
-			"tokens": 282,
+			"tokens": 346,
 			"tags": [
 				"components",
 				"best-practices",
@@ -6064,6 +6064,19 @@
 				"sizing-self-managed",
 				"baseline",
 				"performance"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.best-practices.architecture.sizing-self-managed.how-we-test",
+			"file": "chunks/components.best-practices.architecture.sizing-self-managed.how-we-test.md",
+			"tokens": 581,
+			"tags": [
+				"components",
+				"best-practices",
+				"architecture",
+				"sizing-self-managed",
+				"test"
 			],
 			"entities": []
 		},
@@ -6085,7 +6098,7 @@
 		{
 			"id": "components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-without-optimize",
 			"file": "chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-without-optimize.md",
-			"tokens": 337,
+			"tokens": 549,
 			"tags": [
 				"components",
 				"best-practices",
@@ -6101,7 +6114,7 @@
 		{
 			"id": "components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-with-optimize",
 			"file": "chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-with-optimize.md",
-			"tokens": 468,
+			"tokens": 687,
 			"tags": [
 				"components",
 				"best-practices",
@@ -6227,7 +6240,7 @@
 		{
 			"id": "components.best-practices.architecture.sizing-self-managed.scale-your-cluster",
 			"file": "chunks/components.best-practices.architecture.sizing-self-managed.scale-your-cluster.md",
-			"tokens": 444,
+			"tokens": 503,
 			"tags": [
 				"components",
 				"best-practices",
@@ -6241,7 +6254,7 @@
 		{
 			"id": "components.best-practices.architecture.sizing-self-managed.secondary-storage-considerations",
 			"file": "chunks/components.best-practices.architecture.sizing-self-managed.secondary-storage-considerations.md",
-			"tokens": 183,
+			"tokens": 270,
 			"tags": [
 				"components",
 				"best-practices",
@@ -7949,7 +7962,7 @@
 		{
 			"id": "components.best-practices.development.writing-good-workers.performance-best-practices",
 			"file": "chunks/components.best-practices.development.writing-good-workers.performance-best-practices.md",
-			"tokens": 265,
+			"tokens": 262,
 			"tags": [
 				"components",
 				"best-practices",
@@ -8144,7 +8157,7 @@
 		{
 			"id": "components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-selecting-the-time-frame",
 			"file": "chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-selecting-the-time-frame.md",
-			"tokens": 186,
+			"tokens": 182,
 			"tags": [
 				"components",
 				"best-practices",
@@ -8163,7 +8176,7 @@
 		{
 			"id": "components.best-practices.management.doing-a-proper-poc.presenting-the-results",
 			"file": "chunks/components.best-practices.management.doing-a-proper-poc.presenting-the-results.md",
-			"tokens": 802,
+			"tokens": 803,
 			"tags": [
 				"components",
 				"best-practices",
@@ -8521,7 +8534,7 @@
 		{
 			"id": "components.best-practices.modeling.choosing-the-resource-binding-type.supported-binding-types",
 			"file": "chunks/components.best-practices.modeling.choosing-the-resource-binding-type.supported-binding-types.md",
-			"tokens": 653,
+			"tokens": 656,
 			"tags": [
 				"components",
 				"best-practices",
@@ -8847,7 +8860,7 @@
 		{
 			"id": "components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-during-one-or-several-activities",
 			"file": "chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-during-one-or-several-activities.md",
-			"tokens": 801,
+			"tokens": 805,
 			"tags": [
 				"components",
 				"best-practices",
@@ -9394,9 +9407,9 @@
 			"entities": []
 		},
 		{
-			"id": "components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids-with-camunda-modeler",
-			"file": "chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids-with-camunda-modeler.md",
-			"tokens": 431,
+			"id": "components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids",
+			"file": "chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids.md",
+			"tokens": 445,
 			"tags": [
 				"components",
 				"best-practices",
@@ -9406,9 +9419,7 @@
 				"conventions",
 				"bpmn",
 				"ids",
-				"editing",
-				"camunda",
-				"modeler"
+				"editing"
 			],
 			"entities": []
 		},
@@ -9435,7 +9446,7 @@
 		{
 			"id": "components.best-practices.modeling.naming-technically-relevant-ids.generating-id-constants-classes",
 			"file": "chunks/components.best-practices.modeling.naming-technically-relevant-ids.generating-id-constants-classes.md",
-			"tokens": 175,
+			"tokens": 174,
 			"tags": [
 				"components",
 				"best-practices",
@@ -10077,7 +10088,7 @@
 		{
 			"id": "components.concepts.batch-operations.types",
 			"file": "chunks/components.concepts.batch-operations.types.md",
-			"tokens": 268,
+			"tokens": 312,
 			"tags": [
 				"components",
 				"concepts",
@@ -10126,7 +10137,7 @@
 		{
 			"id": "components.concepts.bpmn-dmn-feel",
 			"file": "chunks/components.concepts.bpmn-dmn-feel.md",
-			"tokens": 207,
+			"tokens": 208,
 			"tags": [
 				"components",
 				"concepts",
@@ -10187,7 +10198,7 @@
 		{
 			"id": "components.concepts.concepts-overview",
 			"file": "chunks/components.concepts.concepts-overview.md",
-			"tokens": 538,
+			"tokens": 550,
 			"tags": [
 				"components",
 				"concepts",
@@ -10226,7 +10237,7 @@
 		{
 			"id": "components.concepts.concepts-overview.what-are-the-camunda-8-components",
 			"file": "chunks/components.concepts.concepts-overview.what-are-the-camunda-8-components.md",
-			"tokens": 672,
+			"tokens": 781,
 			"tags": [
 				"components",
 				"concepts",
@@ -10386,7 +10397,7 @@
 		{
 			"id": "components.concepts.element-templates",
 			"file": "chunks/components.concepts.element-templates.md",
-			"tokens": 281,
+			"tokens": 279,
 			"tags": [
 				"components",
 				"concepts",
@@ -10781,7 +10792,7 @@
 		{
 			"id": "components.concepts.incidents.resolving",
 			"file": "chunks/components.concepts.incidents.resolving.md",
-			"tokens": 518,
+			"tokens": 638,
 			"tags": [
 				"components",
 				"concepts",
@@ -11009,7 +11020,7 @@
 			],
 			"entities": [
 				"withLease",
-				"leaseToken"
+				"jobLeaseToken"
 			]
 		},
 		{
@@ -11282,7 +11293,7 @@
 		{
 			"id": "components.concepts.multi-tenancy.enable-multi-tenancy-checks",
 			"file": "chunks/components.concepts.multi-tenancy.enable-multi-tenancy-checks.md",
-			"tokens": 225,
+			"tokens": 234,
 			"tags": [
 				"components",
 				"concepts",
@@ -11378,34 +11389,6 @@
 				"outbound-connectors-job-workers",
 				"learn",
 				"more"
-			],
-			"entities": []
-		},
-		{
-			"id": "components.concepts.process-applications",
-			"file": "chunks/components.concepts.process-applications.md",
-			"tokens": 230,
-			"tags": [
-				"process application",
-				"project",
-				"components",
-				"concepts",
-				"process-applications"
-			],
-			"entities": []
-		},
-		{
-			"id": "components.concepts.process-applications.next-steps",
-			"file": "chunks/components.concepts.process-applications.next-steps.md",
-			"tokens": 41,
-			"tags": [
-				"process application",
-				"project",
-				"components",
-				"concepts",
-				"process-applications",
-				"next",
-				"steps"
 			],
 			"entities": []
 		},
@@ -11573,7 +11556,7 @@
 		{
 			"id": "components.concepts.process-instance-creation.feel-context-variables-uniqueness-control",
 			"file": "chunks/components.concepts.process-instance-creation.feel-context-variables-uniqueness-control.md",
-			"tokens": 508,
+			"tokens": 511,
 			"tags": [
 				"components",
 				"concepts",
@@ -11635,7 +11618,7 @@
 		{
 			"id": "components.concepts.process-instance-creation.next-steps",
 			"file": "chunks/components.concepts.process-instance-creation.next-steps.md",
-			"tokens": 41,
+			"tokens": 42,
 			"tags": [
 				"components",
 				"concepts",
@@ -12084,6 +12067,102 @@
 			"entities": []
 		},
 		{
+			"id": "components.concepts.process-instance-suspension",
+			"file": "chunks/components.concepts.process-instance-suspension.md",
+			"tokens": 172,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.suspend-and-resume-a-process-instance",
+			"file": "chunks/components.concepts.process-instance-suspension.suspend-and-resume-a-process-instance.md",
+			"tokens": 170,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"suspend",
+				"resume",
+				"process",
+				"instance"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.behavior-during-suspension",
+			"file": "chunks/components.concepts.process-instance-suspension.behavior-during-suspension.md",
+			"tokens": 530,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"behavior",
+				"during",
+				"suspension"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.allowed-actions-on-suspended-instances",
+			"file": "chunks/components.concepts.process-instance-suspension.allowed-actions-on-suspended-instances.md",
+			"tokens": 212,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"allowed",
+				"actions",
+				"suspended",
+				"instances"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.impact-on-connectors",
+			"file": "chunks/components.concepts.process-instance-suspension.impact-on-connectors.md",
+			"tokens": 164,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"impact",
+				"connectors"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.in-flight-batch-operations",
+			"file": "chunks/components.concepts.process-instance-suspension.in-flight-batch-operations.md",
+			"tokens": 615,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"in-flight",
+				"batch",
+				"operations"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.process-instance-suspension.limitations",
+			"file": "chunks/components.concepts.process-instance-suspension.limitations.md",
+			"tokens": 269,
+			"tags": [
+				"components",
+				"concepts",
+				"process-instance-suspension",
+				"limitations"
+			],
+			"entities": [
+				"maxMessageSize"
+			]
+		},
+		{
 			"id": "components.concepts.processes",
 			"file": "chunks/components.concepts.processes.md",
 			"tokens": 336,
@@ -12097,7 +12176,7 @@
 		{
 			"id": "components.concepts.processes.bpmn",
 			"file": "chunks/components.concepts.processes.bpmn.md",
-			"tokens": 226,
+			"tokens": 195,
 			"tags": [
 				"components",
 				"concepts",
@@ -12120,6 +12199,69 @@
 			"entities": []
 		},
 		{
+			"id": "components.concepts.projects",
+			"file": "chunks/components.concepts.projects.md",
+			"tokens": 145,
+			"tags": [
+				"process application",
+				"project",
+				"components",
+				"concepts",
+				"projects"
+			],
+			"entities": [
+				"consumer-loan-application.bpmn",
+				"interest-rate-calculation.dmn",
+				"credit-score-calculation.dmn",
+				"loan-application-review.form"
+			]
+		},
+		{
+			"id": "components.concepts.projects.using-projects",
+			"file": "chunks/components.concepts.projects.using-projects.md",
+			"tokens": 193,
+			"tags": [
+				"process application",
+				"project",
+				"components",
+				"concepts",
+				"projects"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.projects.process-applications-in-desktop-modeler",
+			"file": "chunks/components.concepts.projects.process-applications-in-desktop-modeler.md",
+			"tokens": 158,
+			"tags": [
+				"process application",
+				"project",
+				"components",
+				"concepts",
+				"projects",
+				"process",
+				"applications",
+				"desktop",
+				"modeler"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.projects.next-steps",
+			"file": "chunks/components.concepts.projects.next-steps.md",
+			"tokens": 75,
+			"tags": [
+				"process application",
+				"project",
+				"components",
+				"concepts",
+				"projects",
+				"next",
+				"steps"
+			],
+			"entities": []
+		},
+		{
 			"id": "components.concepts.resource-deletion",
 			"file": "chunks/components.concepts.resource-deletion.md",
 			"tokens": 163,
@@ -12133,7 +12275,7 @@
 		{
 			"id": "components.concepts.resource-deletion.deleting-a-process-definition",
 			"file": "chunks/components.concepts.resource-deletion.deleting-a-process-definition.md",
-			"tokens": 592,
+			"tokens": 182,
 			"tags": [
 				"components",
 				"concepts",
@@ -12142,6 +12284,69 @@
 				"process",
 				"definition"
 			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.resource-deletion.deleting-a-process-definition-deleting-the-latest-version",
+			"file": "chunks/components.concepts.resource-deletion.deleting-a-process-definition-deleting-the-latest-version.md",
+			"tokens": 195,
+			"tags": [
+				"components",
+				"concepts",
+				"resource-deletion",
+				"deleting",
+				"process",
+				"definition",
+				"latest",
+				"version"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.resource-deletion.deleting-a-process-definition-call-activities",
+			"file": "chunks/components.concepts.resource-deletion.deleting-a-process-definition-call-activities.md",
+			"tokens": 78,
+			"tags": [
+				"components",
+				"concepts",
+				"resource-deletion",
+				"deleting",
+				"process",
+				"definition",
+				"call",
+				"activities"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.resource-deletion.deleting-a-process-definition-draining",
+			"file": "chunks/components.concepts.resource-deletion.deleting-a-process-definition-draining.md",
+			"tokens": 403,
+			"tags": [
+				"components",
+				"concepts",
+				"resource-deletion",
+				"deleting",
+				"process",
+				"definition",
+				"draining"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.resource-deletion.deleting-a-process-definition-historic-data",
+			"file": "chunks/components.concepts.resource-deletion.deleting-a-process-definition-historic-data.md",
+			"tokens": 327,
+			"tags": [
+				"components",
+				"concepts",
+				"resource-deletion",
+				"deleting",
+				"process",
+				"definition",
+				"historic",
+				"data"
+			],
 			"entities": [
 				"deleteHistory"
 			]
@@ -12149,7 +12354,7 @@
 		{
 			"id": "components.concepts.resource-deletion.deleting-a-decision-requirements-graph",
 			"file": "chunks/components.concepts.resource-deletion.deleting-a-decision-requirements-graph.md",
-			"tokens": 333,
+			"tokens": 384,
 			"tags": [
 				"components",
 				"concepts",
@@ -12166,7 +12371,7 @@
 		{
 			"id": "components.concepts.secret-resolution-and-job-activation",
 			"file": "chunks/components.concepts.secret-resolution-and-job-activation.md",
-			"tokens": 297,
+			"tokens": 275,
 			"tags": [
 				"components",
 				"concepts",
@@ -12177,7 +12382,7 @@
 		{
 			"id": "components.concepts.secret-resolution-and-job-activation.availability",
 			"file": "chunks/components.concepts.secret-resolution-and-job-activation.availability.md",
-			"tokens": 256,
+			"tokens": 268,
 			"tags": [
 				"components",
 				"concepts",
@@ -12292,7 +12497,7 @@
 		{
 			"id": "components.concepts.secret-resolution-and-job-activation.understand-why-a-job-is-not-activated",
 			"file": "chunks/components.concepts.secret-resolution-and-job-activation.understand-why-a-job-is-not-activated.md",
-			"tokens": 314,
+			"tokens": 315,
 			"tags": [
 				"components",
 				"concepts",
@@ -12309,7 +12514,7 @@
 		{
 			"id": "components.concepts.secret-resolution-and-job-activation.tune-the-resolution-scheduler",
 			"file": "chunks/components.concepts.secret-resolution-and-job-activation.tune-the-resolution-scheduler.md",
-			"tokens": 553,
+			"tokens": 561,
 			"tags": [
 				"components",
 				"concepts",
@@ -12355,7 +12560,7 @@
 		{
 			"id": "components.concepts.secret-resolution-incidents",
 			"file": "chunks/components.concepts.secret-resolution-incidents.md",
-			"tokens": 183,
+			"tokens": 167,
 			"tags": [
 				"components",
 				"concepts",
@@ -12366,7 +12571,7 @@
 		{
 			"id": "components.concepts.secret-resolution-incidents.find-your-symptom",
 			"file": "chunks/components.concepts.secret-resolution-incidents.find-your-symptom.md",
-			"tokens": 519,
+			"tokens": 536,
 			"tags": [
 				"components",
 				"concepts",
@@ -12381,7 +12586,7 @@
 		{
 			"id": "components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures",
 			"file": "chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md",
-			"tokens": 393,
+			"tokens": 503,
 			"tags": [
 				"components",
 				"concepts",
@@ -12396,7 +12601,7 @@
 		{
 			"id": "components.concepts.secret-resolution-incidents.resolve-secret-injection-failures",
 			"file": "chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md",
-			"tokens": 551,
+			"tokens": 640,
 			"tags": [
 				"components",
 				"concepts",
@@ -12411,7 +12616,7 @@
 		{
 			"id": "components.concepts.secret-resolution-incidents.reduce-oversized-secret-values",
 			"file": "chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md",
-			"tokens": 325,
+			"tokens": 426,
 			"tags": [
 				"components",
 				"concepts",
@@ -12521,13 +12726,15 @@
 		{
 			"id": "components.concepts.secret-resolution",
 			"file": "chunks/components.concepts.secret-resolution.md",
-			"tokens": 307,
+			"tokens": 416,
 			"tags": [
 				"components",
 				"concepts",
 				"secret-resolution"
 			],
-			"entities": []
+			"entities": [
+				"camunda.connector.secret-resolver.legacy.mode"
+			]
 		},
 		{
 			"id": "components.concepts.secret-resolution.reference-syntax",
@@ -12545,14 +12752,13 @@
 			]
 		},
 		{
-			"id": "components.concepts.secret-resolution.two-resolution-paths",
-			"file": "chunks/components.concepts.secret-resolution.two-resolution-paths.md",
-			"tokens": 341,
+			"id": "components.concepts.secret-resolution.resolution-paths",
+			"file": "chunks/components.concepts.secret-resolution.resolution-paths.md",
+			"tokens": 357,
 			"tags": [
 				"components",
 				"concepts",
 				"secret-resolution",
-				"two",
 				"resolution",
 				"paths"
 			],
@@ -12561,12 +12767,13 @@
 		{
 			"id": "components.concepts.secret-resolution.physical-tenant-scope",
 			"file": "chunks/components.concepts.secret-resolution.physical-tenant-scope.md",
-			"tokens": 150,
+			"tokens": 151,
 			"tags": [
 				"components",
 				"concepts",
 				"secret-resolution",
-				"physical-tenant",
+				"physical",
+				"tenant",
 				"scope"
 			],
 			"entities": [
@@ -12577,7 +12784,7 @@
 		{
 			"id": "components.concepts.secret-resolution.cache-behavior",
 			"file": "chunks/components.concepts.secret-resolution.cache-behavior.md",
-			"tokens": 237,
+			"tokens": 329,
 			"tags": [
 				"components",
 				"concepts",
@@ -12595,6 +12802,85 @@
 				"components",
 				"concepts",
 				"secret-resolution",
+				"related",
+				"resources"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.secrets",
+			"file": "chunks/components.concepts.secrets.md",
+			"tokens": 274,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets"
+			],
+			"entities": [
+				"camunda.secrets.MY_SECRET"
+			]
+		},
+		{
+			"id": "components.concepts.secrets.reference-a-secret",
+			"file": "chunks/components.concepts.secrets.reference-a-secret.md",
+			"tokens": 391,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets",
+				"reference",
+				"secret"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.secrets.store-and-create-secrets",
+			"file": "chunks/components.concepts.secrets.store-and-create-secrets.md",
+			"tokens": 504,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets",
+				"store",
+				"create"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.secrets.resolve-list-and-troubleshoot",
+			"file": "chunks/components.concepts.secrets.resolve-list-and-troubleshoot.md",
+			"tokens": 140,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets",
+				"resolve",
+				"list",
+				"troubleshoot"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.secrets.control-access-to-secrets",
+			"file": "chunks/components.concepts.secrets.control-access-to-secrets.md",
+			"tokens": 678,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets",
+				"control",
+				"access"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.concepts.secrets.related-resources",
+			"file": "chunks/components.concepts.secrets.related-resources.md",
+			"tokens": 211,
+			"tags": [
+				"components",
+				"concepts",
+				"secrets",
 				"related",
 				"resources"
 			],
@@ -12640,7 +12926,7 @@
 		{
 			"id": "components.concepts.user-task-listeners-guide.prerequisites",
 			"file": "chunks/components.concepts.user-task-listeners-guide.prerequisites.md",
-			"tokens": 433,
+			"tokens": 405,
 			"tags": [
 				"components",
 				"concepts",
@@ -12685,7 +12971,7 @@
 		{
 			"id": "components.concepts.user-task-listeners-guide.step-5-deploy-and-run-the-process",
 			"file": "chunks/components.concepts.user-task-listeners-guide.step-5-deploy-and-run-the-process.md",
-			"tokens": 334,
+			"tokens": 345,
 			"tags": [
 				"components",
 				"concepts",
@@ -13043,7 +13329,7 @@
 		{
 			"id": "components.concepts.variables.variable-scopes-define-local-variables",
 			"file": "chunks/components.concepts.variables.variable-scopes-define-local-variables.md",
-			"tokens": 124,
+			"tokens": 134,
 			"tags": [
 				"components",
 				"concepts",
@@ -13060,7 +13346,7 @@
 		{
 			"id": "components.concepts.variables.variable-scopes-scope-behavior-in-common-modeling-patterns",
 			"file": "chunks/components.concepts.variables.variable-scopes-scope-behavior-in-common-modeling-patterns.md",
-			"tokens": 522,
+			"tokens": 659,
 			"tags": [
 				"components",
 				"concepts",
@@ -13100,7 +13386,7 @@
 		{
 			"id": "components.concepts.variables.input-output-variable-mappings-input-mappings",
 			"file": "chunks/components.concepts.variables.input-output-variable-mappings-input-mappings.md",
-			"tokens": 470,
+			"tokens": 480,
 			"tags": [
 				"components",
 				"concepts",
@@ -13118,7 +13404,7 @@
 		{
 			"id": "components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings",
 			"file": "chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings.md",
-			"tokens": 922,
+			"tokens": 896,
 			"tags": [
 				"components",
 				"concepts",
@@ -13605,7 +13891,7 @@
 		{
 			"id": "components.modeler.bpmn.automating-a-process-using-bpmn.set-up",
 			"file": "chunks/components.modeler.bpmn.automating-a-process-using-bpmn.set-up.md",
-			"tokens": 773,
+			"tokens": 770,
 			"tags": [
 				"workflow",
 				"modeling",
@@ -13620,7 +13906,7 @@
 		{
 			"id": "components.modeler.bpmn.automating-a-process-using-bpmn.execute-your-process-diagram",
 			"file": "chunks/components.modeler.bpmn.automating-a-process-using-bpmn.execute-your-process-diagram.md",
-			"tokens": 234,
+			"tokens": 211,
 			"tags": [
 				"workflow",
 				"modeling",
@@ -13637,7 +13923,7 @@
 		{
 			"id": "components.modeler.bpmn.automating-a-process-using-bpmn.additional-resources-and-next-steps",
 			"file": "chunks/components.modeler.bpmn.automating-a-process-using-bpmn.additional-resources-and-next-steps.md",
-			"tokens": 87,
+			"tokens": 79,
 			"tags": [
 				"workflow",
 				"modeling",
@@ -13655,7 +13941,7 @@
 		{
 			"id": "components.modeler.bpmn.bpmn-coverage",
 			"file": "chunks/components.modeler.bpmn.bpmn-coverage.md",
-			"tokens": 156,
+			"tokens": 162,
 			"tags": [
 				"components",
 				"modeler",
@@ -13682,7 +13968,7 @@
 		{
 			"id": "components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams",
 			"file": "chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams.md",
-			"tokens": 74,
+			"tokens": 68,
 			"tags": [
 				"components",
 				"modeler",
@@ -13797,7 +14083,7 @@
 		{
 			"id": "components.modeler.bpmn.bpmn",
 			"file": "chunks/components.modeler.bpmn.bpmn.md",
-			"tokens": 141,
+			"tokens": 148,
 			"tags": [
 				"components",
 				"modeler",
@@ -13808,13 +14094,26 @@
 		{
 			"id": "components.modeler.bpmn.bpmn.start-modeling",
 			"file": "chunks/components.modeler.bpmn.bpmn.start-modeling.md",
-			"tokens": 262,
+			"tokens": 143,
 			"tags": [
 				"components",
 				"modeler",
 				"bpmn",
 				"start",
 				"modeling"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.modeler.bpmn.bpmn.creating-bpmn-elements",
+			"file": "chunks/components.modeler.bpmn.bpmn.creating-bpmn-elements.md",
+			"tokens": 143,
+			"tags": [
+				"components",
+				"modeler",
+				"bpmn",
+				"creating",
+				"elements"
 			],
 			"entities": []
 		},
@@ -14226,9 +14525,9 @@
 			]
 		},
 		{
-			"id": "components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-modeler",
-			"file": "chunks/components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-modeler.md",
-			"tokens": 201,
+			"id": "components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-camunda-hub-and-desktop-modeler",
+			"file": "chunks/components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-camunda-hub-and-desktop-modeler.md",
+			"tokens": 210,
 			"tags": [
 				"components",
 				"modeler",
@@ -14236,7 +14535,10 @@
 				"conditional-events",
 				"modeling",
 				"conditional",
-				"events"
+				"events",
+				"camunda",
+				"hub",
+				"desktop"
 			],
 			"entities": []
 		},
@@ -14340,7 +14642,7 @@
 		{
 			"id": "components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.collapsed-subprocesses",
 			"file": "chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.collapsed-subprocesses.md",
-			"tokens": 228,
+			"tokens": 231,
 			"tags": [
 				"components",
 				"modeler",
@@ -14645,7 +14947,7 @@
 		{
 			"id": "components.modeler.bpmn.exclusive-gateways.exclusive-gateways",
 			"file": "chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.md",
-			"tokens": 369,
+			"tokens": 374,
 			"tags": [
 				"components",
 				"modeler",
@@ -14771,6 +15073,21 @@
 				"modeler",
 				"bpmn",
 				"markers"
+			],
+			"entities": []
+		},
+		{
+			"id": "components.modeler.bpmn.markers.add-a-marker-to-an-element",
+			"file": "chunks/components.modeler.bpmn.markers.add-a-marker-to-an-element.md",
+			"tokens": 103,
+			"tags": [
+				"components",
+				"modeler",
+				"bpmn",
+				"markers",
+				"add",
+				"marker",
+				"element"
 			],
 			"entities": []
 		},
@@ -15650,7 +15967,7 @@
 		{
 			"id": "components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-forms",
 			"file": "chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-forms.md",
-			"tokens": 663,
+			"tokens": 671,
 			"tags": [
 				"components",
 				"modeler",
@@ -15727,7 +16044,7 @@
 		{
 			"id": "components.modeler.bpmn.user-tasks.user-tasks.additional-resources",
 			"file": "chunks/components.modeler.bpmn.user-tasks.user-tasks.additional-resources.md",
-			"tokens": 540,
+			"tokens": 542,
 			"tags": [
 				"components",
 				"modeler",
@@ -16810,7 +17127,7 @@
 		{
 			"id": "components.modeler.feel.cluster-variable.data-types",
 			"file": "chunks/components.modeler.feel.cluster-variable.data-types.md",
-			"tokens": 351,
+			"tokens": 321,
 			"tags": [
 				"components",
 				"modeler",
@@ -16961,7 +17278,7 @@
 		{
 			"id": "components.modeler.feel.cluster-variable.get-started.step-2-override-for-a-specific-tenant",
 			"file": "chunks/components.modeler.feel.cluster-variable.get-started.step-2-override-for-a-specific-tenant.md",
-			"tokens": 372,
+			"tokens": 377,
 			"tags": [
 				"components",
 				"modeler",
@@ -16981,7 +17298,7 @@
 		{
 			"id": "components.modeler.feel.cluster-variable.get-started.step-4-deploy-and-test-your-process",
 			"file": "chunks/components.modeler.feel.cluster-variable.get-started.step-4-deploy-and-test-your-process.md",
-			"tokens": 200,
+			"tokens": 205,
 			"tags": [
 				"components",
 				"modeler",
@@ -17216,7 +17533,7 @@
 		{
 			"id": "components.modeler.feel.cluster-variable.usage-guide.access-using-feel-expressions",
 			"file": "chunks/components.modeler.feel.cluster-variable.usage-guide.access-using-feel-expressions.md",
-			"tokens": 480,
+			"tokens": 482,
 			"tags": [
 				"components",
 				"modeler",

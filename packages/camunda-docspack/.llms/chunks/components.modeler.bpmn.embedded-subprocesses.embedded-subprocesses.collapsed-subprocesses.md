@@ -10,7 +10,7 @@ A collapsed subprocess conceals its internal details, thereby hiding complexity 
 Collapsed subprocesses serve purely display purposes. For the creation of reusable processes, it is recommended to utilize [call activities](https://docs.camunda.io/docs/next/components/modeler/bpmn/call-activities/call-activities).
 
 **Info**
-When you add a **collapsed subprocess**, Modeler shows a link for drill-down. This link only opens the embedded subprocess within the same diagram. You can’t target or reuse a different process from that link. To reference another process you’ve already created, use a [call activity](https://docs.camunda.io/docs/next/components/modeler/bpmn/call-activities/call-activities) instead.
+When you add a **collapsed subprocess**, the modeling interface shows a link for drill-down. This link only opens the embedded subprocess within the same diagram. You can’t target or reuse a different process from that link. To reference another process you’ve already created, use a [call activity](https://docs.camunda.io/docs/next/components/modeler/bpmn/call-activities/call-activities) instead.
 
 ![collapsed-subprocess](assets/collapsed-subprocess.png)
 

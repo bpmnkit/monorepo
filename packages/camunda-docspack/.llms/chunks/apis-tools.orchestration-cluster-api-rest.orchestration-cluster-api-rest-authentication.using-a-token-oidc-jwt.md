@@ -9,7 +9,7 @@ OIDC-based authentication is recommended for production and required for SaaS. O
 
 ### saas
 
-1. [Create client credentials](https://docs.camunda.io/docs/next/components/hub/organization/manage-clusters/manage-api-clients#create-a-client) in the Camunda Console.
+1. [Create client credentials](https://docs.camunda.io/docs/next/components/hub/organization/manage-clusters/manage-api-clients#create-a-client) in Camunda Hub.
 2. Request an access token using the credentials:
 
 ```shell

@@ -4,7 +4,7 @@ Input mappings can be used to create new variables. They can be defined on [serv
 
 When an input mapping is applied, it creates a new [**local variable**](#local-variables) in the scope where the mapping is defined.
 
-In Modeler, define these mappings in the element properties.
+In [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/workspace/modeler/index) or Desktop Modeler, define these mappings in the element properties.
 
 You can use [expressions](https://docs.camunda.io/docs/next/components/concepts/expressions) or static values for input mappings. You can leave the `source` empty to map the `target` variable to `null`.
 

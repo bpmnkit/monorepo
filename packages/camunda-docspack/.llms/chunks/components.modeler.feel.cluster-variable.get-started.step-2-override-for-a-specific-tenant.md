@@ -22,9 +22,9 @@ Content-Type: application/json
 Processes running in the `dev-environment` tenant automatically use the development API configuration, while all other tenants use the production configuration.
 
 
-## Step 3: Access the variable in Modeler
+## Step 3: Access the variable when modeling
 
-Open Camunda Modeler and create or open a BPMN process. Add a service task to your process that calls the payment API.
+Open Camunda Hub or Desktop Modeler, and create or open a BPMN process. Add a service task to your process that calls the payment API.
 
 To use your cluster variable in a service task:
 

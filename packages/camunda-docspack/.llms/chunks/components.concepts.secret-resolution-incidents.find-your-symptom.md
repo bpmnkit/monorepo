@@ -1,7 +1,9 @@
 # Troubleshoot secret resolution failures — Find your symptom
 
+Start by identifying the symptom, and then refer to the relevant troubleshooting section:
+
 | Symptom                                                                          | What happened                                                                                                | Section                                                                                           |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| :------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
 | An incident message starts with `Failed to resolve secret`                       | The secret store could not return the value, either permanently or after exhausting all retries.             | [Resolve secret lookup failures](#resolve-secret-lookup-failures)                                 |
 | An incident message names a job key and variable path                            | The secret value was available, but Camunda could not inject it into the job variables.                      | [Resolve secret injection failures](#resolve-secret-injection-failures)                           |
 | An incident message reports growth in bytes and the configured message size      | The resolved values are too large to fit in an activation batch.                                             | [Reduce oversized secret values](#reduce-oversized-secret-values)                                 |

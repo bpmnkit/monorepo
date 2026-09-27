@@ -35,6 +35,10 @@ While the incident is active, the job is not activatable, so the broker does not
 
 Resolve the incident only after correcting the variable value or the input mapping that produced it. Resolving the incident makes the job activatable again, and Camunda retries injection against the current job variables.
 
+Camunda retries injection only when a worker next activates the job. If no worker is connected for the job type, the broker does not activate the job or retry injection. As a result, the incident does not reappear even if the underlying cause is still present.
+
+Keep a worker connected for the affected job type so Camunda can raise a new incident promptly if injection still fails.
+
 If you cannot restore the placeholder, use [process instance modification](https://docs.camunda.io/docs/next/components/concepts/process-instance-modification) to reactivate the element. This creates a new job and detects its secret references again.
 
 ---

@@ -12,9 +12,11 @@ You can deploy Camunda 8 in two ways:
 - **Camunda 8 SaaS**: A fully managed cloud service for rapid deployment and minimal operational overhead.
 - **Camunda 8 Self-Managed**: A self-hosted solution for organizations requiring full control over their infrastructure.
 
-Camunda 8 combines powerful execution engines for BPMN processes and DMN decisions with tools for collaborative modeling, operations, and analytics. Camunda 8 [components](https://docs.camunda.io/docs/next/components/components-overview) work together to form the complete Camunda 8 experience, allowing you to design, automate, and improve your business processes.
+Camunda 8 combines powerful execution engines for BPMN processes and DMN decisions with tools for collaborative modeling, operations, and analytics. Camunda 8 [components](https://docs.camunda.io/docs/next/components/components-overview#camunda-components) work together to form the complete Camunda 8 experience, allowing you to design, automate, and improve your business processes.
 
 Camunda 8 separates runtime execution data from analytical and operational data by using distinct storage roles.
+
+<!-- source: https://miro.com/app/board/uXjVJfVj0oY=/?moveToWidget=3458764684198375785&cot=14 -->
 
 ### Storage architecture
 
