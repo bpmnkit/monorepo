@@ -26,6 +26,7 @@
 		"@bpmnkit/engine": "workspace:^",
 		"@bpmnkit/patterns": "workspace:^",
 		"@bpmnkit/profiles": "workspace:^",
+		"@types/node": "^22.0.0",
 		"better-sqlite3": "^12.8.0",
 		"imapflow": "^1.2.18",
 		"isolated-vm": "^7.0.0",

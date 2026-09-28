@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// The public API returns `http.Server`, so consumers need Node's types too.
+/// <reference types="node" preserve="true" />
 import {
 	existsSync,
 	mkdirSync,

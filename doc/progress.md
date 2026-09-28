@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-09-28 — Fix: `@bpmnkit/proxy` declarations compile without the consumer's Node types
+
+- The release job's `pnpm check:consumable` failed: `dist/index.d.ts` and `dist/access.d.ts` import `node:http` and use `NodeJS.ProcessEnv` (from the new `createProxyServer` / `listenProxy` / `optionsFromEnv` API), but nothing gave a consumer Node's types.
+- `@bpmnkit/proxy` now lists `@types/node` under `dependencies`, and `src/index.ts` carries `/// <reference types="node" preserve="true" />` so the directive survives into the emitted `.d.ts`. Both are needed: the dependency alone is not loaded by a consumer with `types: []`.
+
 ## 2026-09-27 — Security hardening: AI CLIs run without tools or permission bypass
 
 - The proxy's AI routes (`/chat`, `/improve`, `/operate/chat`, `/operate/incident-assist`, `/operate/ai-search`), the `io.bpmnkit:llm:1` worker and `casen ask` no longer start `claude` with its permission checks bypassed, or `copilot` / `gemini` in their approve-everything modes; the desktop app's `proxy-rs` gets the same change.

@@ -500,6 +500,9 @@ importers:
       '@bpmnkit/profiles':
         specifier: workspace:^
         version: link:../../packages/profiles
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
