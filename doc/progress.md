@@ -1,5 +1,676 @@
 # Progress
 
+## 2026-09-27 — Security hardening: AI CLIs run without tools or permission bypass
+
+- The proxy's AI routes (`/chat`, `/improve`, `/operate/chat`, `/operate/incident-assist`, `/operate/ai-search`), the `io.bpmnkit:llm:1` worker and `casen ask` no longer start `claude` with its permission checks bypassed, or `copilot` / `gemini` in their approve-everything modes; the desktop app's `proxy-rs` gets the same change.
+- `claude` runs with no built-in tools, no user MCP servers or settings, a non-bypass permission mode and the conversation on stdin; `/chat` edits allow only the eight `mcp__bpmn__` diagram tools. `copilot` denies shell/write/url and approves only `bpmn(<tool>)`; `gemini` loads a deny-all tool policy with extensions off.
+- Each run starts in a fresh empty temp folder, so no project instructions, settings or MCP servers load.
+- `compose_diagram`, `sdk_search` and `sdk_execute` run model code in an isolated-vm isolate (`runSandboxedSync`); under `node:vm` a Bridge function's `constructor` reached `process` and a shell — a second code-execution path, also reachable through the MCP server.
+- Chat text, diagrams, findings, incident details and variables reach the model inside `<untrusted-input>` fences the system prompt marks as data.
+- New `askText` export in `@bpmnkit/proxy`; `casen ask` uses it.
+- Tests: exact argv per adapter (Vitest and Rust), mocked-spawn route tests, MCP sandbox-escape tests; verified live against `claude` 2.1.283 with an injected "run Bash" instruction that the model could not act on.
+- Residual: copilot has no strict-MCP flag, so a user's own copilot MCP servers still load (their tools need approval, refused in `-p` mode); older CLI versions without the new flags exit with a flag error; Bedrock/Vertex set up through Claude `settings.json` must move to the proxy's environment.
+
+## 2026-09-25 — Lock the local proxy down (loopback, trusted origins, workspace roots)
+
+- **Security fix, default behaviour changes.** `@bpmnkit/proxy` listened on all interfaces, sent `Access-Control-Allow-Origin: *`, and its `/fs/*` routes read, wrote, moved and deleted any absolute path — so any web page or LAN host could read local files, use Camunda profiles via `/api/*`, read secrets via `/secrets/*`, relay through `/http-request` and start AI CLIs via `/chat`. The desktop app's Rust server (`apps/proxy-rs`) had the same open bind and CORS.
+- `apps/proxy/src/access.ts` (new): listens on 127.0.0.1 and ::1 by default (`--host` / `BPMNKIT_PROXY_HOST` opts out with a warning); refuses with 403 and no CORS any browser Origin other than bpmnkit.com, the Studio origins, the Tauri webview origins and loopback origins on any port (`--allow-origin` / `BPMNKIT_PROXY_ALLOWED_ORIGINS` add more; `*` is rejected); reflects allowed origins with `Vary: Origin`; answers Private Network Access preflights; refuses cross-site no-Origin requests by `Sec-Fetch-Site`; refuses non-loopback `Host` headers against DNS rebinding (`--allow-host` / `BPMNKIT_PROXY_ALLOWED_HOSTS`).
+- `apps/proxy/src/workspace.ts` (new) replaces the unused `fsValidate`: `/fs/*` and `/element-templates` work only inside roots from `--root` / `BPMNKIT_PROXY_ROOTS` or opened by a client, which may not be `/`, home, a folder containing home, or a hidden folder; only `.bpmn`/`.dmn`/`.form`/`.md` files; realpath-checked against `..`, symlink and dangling-symlink escapes.
+- `@bpmnkit/proxy` exports `createProxyServer`, `listenProxy`, `ProxyServerOptions`; `casen proxy start` gains `--host`, `--allow-origin`, `--allow-host`, `--root`.
+- Studio sends its project root on every `/fs` call and shows the proxy's refusal reason; `apps/proxy-rs` gets the same loopback bind, Host and origin rules.
+- Tests: proxy `access.test.ts`, `workspace.test.ts`; Studio `proxy-fs.test.ts`; CLI `proxy.test.ts`; proxy-rs unit tests. Docs: `cli/casen.md` "Local proxy", Operate security notes, connectors workspace note, READMEs, SECURITY.md.
+- Residual risks: `/chat` starts the claude CLI with permission checks bypassed, so a request that passes the origin gate can make it run shell commands; a compromised first-party origin still has full API use.
+
+## 2026-09-25 — Camunda version check covers every camunda-compat rule
+
+- `@bpmnkit/core` now reproduces 62 of the 65 `bpmnlint-plugin-camunda-compat` 2.61.0 rules (3 more are covered by existing findings). New: `compat/feel-compatibility`, `variable-name`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers`, `link-event`, `no-loop`, `agent-fromai-contract` and `agent-tool-output-key`, with the plugin's semantics and messages.
+- The per-version FEEL built-in table is copied from `@camunda/feel-builtins` 1.4.1 (`FEEL_BUILTIN_SINCE`), and the inbound connector property table from the plugin's `connector-properties/config.js`. FEEL is analysed on `@bpmnkit/feel`'s AST (`camunda-compat-feel.ts`).
+- `compat/link-event` maps onto bpmnlint's `link-event`: `lintDiagram` removes duplicate findings again after bpmnlint's own rules run, so `flow/link-event-mismatch` stands in on the same element.
+- Two new fixtures (`contents.bpmn`, `agents.bpmn`); `expected.json` re-recorded with bpmnlint 11.14 and the real plugin under all 15 `camunda-cloud-*` configs, with messages for the new rules. Findings match element for element and messages word for word; the live comparison and the 25 templates also match the plugin.
+
+## 2026-09-25 — Per-file element-template resolution
+
+- Proxy: `GET /element-templates?root=…&file=…` returns only the templates one diagram sees (`discoverElementTemplates`); `file` must lie inside `root`, `configFolder` must be a folder name; `?root=` alone is unchanged.
+- `@bpmnkit/plugins`: connector-catalog gains `diagramPath`, `setDiagramPath()` and `setWorkspaceTemplates()`; templates live in layers (resolved > host > base), so switching diagrams or uninstalling takes the previous set back. config-panel-bpmn gains `unregisterTemplate()`, which restores a shadowed bundled template.
+- Studio resolves templates for the open model's file through the proxy.
+- `casen lint` and the `casen dev` checks judge connector inputs against each diagram's own `.camunda/element-templates/` chain (root: cwd / served folder), scoped per call.
+- VS Code: the Problems panel does the same from the extension host, with the workspace folder as root and no proxy (connector-input findings are new there).
+- bpmnkit.com/editor and Drop stay on bundled templates (no filesystem); documented in the connectors page, the VS Code guide and the `casen dev` page.
+
+## 2026-09-25 — Camunda version compatibility lint (`compat/…` findings)
+
+- New `compat/…` findings in `@bpmnkit/core` (in the existing `deploy` category, so the returned `OptimizationCategory` union is unchanged — adding to it would be a major change): check a diagram against the Camunda 8 version it targets (`modeler:executionPlatformVersion`), as Camunda Modeler does with `@camunda/linting`. Reports constructs the target cannot run ("Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.") and properties it requires (timer values, error/escalation codes, signal and message names, implementations, input collections, listener types).
+- Version table as data in `camunda-compat-data.ts`, taken from `bpmnlint-plugin-camunda-compat` 2.61.0 (`@camunda/linting` 3.57.0): 52 of its 65 rules reproduced, 3 covered by existing findings; the FEEL-analysis rules, `no-loop`, secrets/connector rules and 8.10 listener-header duplicates are not.
+- Problems a `deploy/*` or `feel/empty-condition` finding already reports on the same element are not repeated.
+- Runs in `optimize()`, `lintDiagram()` (editor lint panel, VS Code Problems panel) and `casen lint`; a model with no Camunda 8 version gets no findings; non-executable processes are skipped from 8.2.
+- `.bpmnlintrc`: `extends: "plugin:camunda-compat/camunda-cloud-X-Y"` pins the target version (even on a platform-less model) instead of being reported as not applied; `camunda-compat/<rule>` entries re-level or turn off findings; the project's own bpmnlint takes over when it runs the plugin.
+- Verified against the real plugin: two fixtures covering every covered rule give identical reports under all 15 `camunda-cloud-*` configs, recorded in `tests/fixtures/camunda-compat/expected.json`, plus a live comparison when `BPMNKIT_CAMUNDA_COMPAT_MODULES` is set. The 25 templates match too.
+- New core exports: `analyzeCamundaCompat`, `splitCamundaCompatConfig`, `applyCamundaCompatConfig`, `normalizeCamundaVersion`, `CAMUNDA_COMPAT_RULES`, `CAMUNDA_COMPAT_VERSIONS`, `CAMUNDA_COMPAT_PLUGIN_VERSION`, `isCamundaCompatFinding`; `OptimizeOptions.camundaVersion`.
+- Builder fix found by it: the process builders wrote a message catch's `zeebe:subscription` on the receive task, catch event or boundary event; Zeebe's schema allows it only on the `bpmn:message`, and Camunda's linter rejects it elsewhere (three templates hit it). A pass at build time now moves it onto the message; conflicting keys for one message stay on their elements, where lint reports them. `compat/subscription` is an error again, as in the plugin.
+- Integration fixes: bpmnlint's `global` rule reports only an empty name, not a missing one (now matched), and the parity test compares process-level findings by process id; parity holds on all 45 `.bpmn` files.
+
+## 2026-09-25 — All 28 bpmnlint rules match bpmnlint exactly
+
+- The seven approximate rules (`conditional-flows`, `fake-join`, `label-required`, `no-gateway-join-fork`, `no-implicit-end`, `no-implicit-start`, `superfluous-gateway`) now check inside embedded, event and ad-hoc sub-processes and transactions, with bpmnlint's exemptions: link events, compensation handlers and boundary events, event sub-processes, the contents of ad-hoc sub-processes, data objects and data stores.
+- `fake-join`, `no-gateway-join-fork` and `superfluous-gateway` keep BPMN Kit's top-level finding; a native check reports the same id inside sub-processes (and for start events, for `fake-join`).
+- The other four get native findings with bpmnlint's semantics: `feel/missing-condition`, `naming/missing-label`, `flow/implicit-end` and `flow/implicit-start`. A new optional `replaces` field on `BpmnlintRuleMapping` drops BPMN Kit's own finding for the same concern while a `.bpmnlintrc` sets the rule. Without a config, `casen lint` reports the same as before.
+- Parity is now a test: `tests/node/bpmnlint-parity.test.ts` runs real bpmnlint beside BPMN Kit under `bpmnlint:all` on every `.bpmn` file in the repository (43, the MIWG models included, plus a new fixture with each rule's violations and exemptions in every kind of sub-process), and requires the same elements for every rule.
+- Docs: 28 exact, 0 approximate on the bpmnlint guide and the conformance page.
+
+## 2026-09-25 — Labels render in their BPMNLabelStyle font
+
+- `@bpmnkit/canvas`, `exportSvg` and the editor's inline label editor draw a label in the `dc:Font` of the `BPMNLabelStyle` its `BPMNLabel labelStyle` references: family (default stack kept as fallback, names CSS-quoted), size in px, bold, italic, underline, strike-through.
+- Resolution follows BPMN DI: the label's own `labelStyle` only, looked up by id across all diagrams (QName prefix tolerated). No reference or an unknown id → default font; DI has no diagram/plane default style and no inheritance.
+- Label wrapping and line height use the resolved size (canvas measures with the real font; the no-canvas estimate is scaled); label positions still come from DI bounds.
+- New `@bpmnkit/core` API: `collectLabelStyles`, `resolveLabelFont`, `labelFontCss`, `BpmnLabelFont`, `LabelFontCss` (additive).
+- Editor: `setLabelPosition` no longer drops `labelStyle` and other `BPMNLabel` attributes.
+- Tests: canvas font assertions for styled / unstyled / unknown-id labels and MIWG A.2.1; core resolution and `exportSvg` tests incl. MIWG C.4.0; editor label-editor font and labelStyle preservation. Visual before/after check of MIWG A.2.1 and C.4.0 in Chromium.
+
+## 2026-09-24 — Reebe: process instance modification, DMN versions, fromAi() rejection
+
+- Reebe rejects a `fromAi()` call Zeebe rejects at deployment, with Zeebe's `FromAiTaggedParameterExtractor` message wrapped as `AdHocSubProcessTransformer` wraps it; `@bpmnkit/engine`'s `Engine.deploy` throws the same message. `buildAiAgentSubProcess` writes `{}` instead of the `null` schema Zeebe rejects (the Camunda docs allow `null`; Zeebe's source does not — we follow the source).
+- An ad-hoc `completionCondition` is evaluated in the ad-hoc sub-process's scope; after an event sub-process inside it, a non-boolean result raises an `EXTRACT_VALUE_ERROR` incident on the event sub-process (resolving retries), as in Zeebe.
+- Process instance modification (activate, terminate and 8.9 move instructions, ancestor selection, variable instructions, Zeebe's rejections) over REST `POST /v2/process-instances/{key}/modification` and gRPC `ModifyProcessInstance`; gRPC maps rejections to NOT_FOUND / INVALID_ARGUMENT / FAILED_PRECONDITION.
+- DMN is versioned as Zeebe's `DmnResourceTransformer` does (duplicates keep their version, changed content is a new version); decisions evaluate by id (latest) or key through a `DECISION_EVALUATION` engine command, over gRPC `EvaluateDecision` and REST `POST /v2/decision-definitions/evaluation`.
+- gRPC `DeployProcess`/`DeployResource` now reach the engine (they sent no resources) and answer process, decision and DRG metadata; `EvaluateDecisionResponse` field numbers match Zeebe's proto.
+- The BPMN parser keeps a business rule task's flows and I/O mappings (they went to the enclosing sub-process); the wasm runner fills in a `null` business rule task result.
+- The embedded SQLite backend gets the DMN, element instance and variable tables it lacked — no process instance could run on it before; a new `--features embedded` test runs DMN on SQLite. New Postgres suites: `reebe-api/tests/rest.rs`, `reebe-grpc/tests/calls.rs`.
+- Known gaps: decision evaluation returns an empty `evaluatedDecisions`; redeployed BPMN always gets a new version; modification runs no execution listeners and ignores `operationReference`.
+
+## 2026-09-24 — Reebe: Zeebe's adHocSubProcessElements, completion-condition incidents, empty-tag elements, gRPC variables
+
+- `adHocSubProcessElements` has Zeebe's `AdHocActivityMetadata` shape in Reebe and `@bpmnkit/engine`: `fromAi()` parameters named by their whole reference (`toolCall.orderId`), calls on any reference listed, literal-only description/type/schema/options, no search inside `fromAi()` arguments, null/empty fields left out, empty property values `null`. Tests port Zeebe's `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` cases. `mockAiAgent` keeps the connector's argument names (`orderId`) and fails, with the connector's message, for a parameter outside `toolCall.`. Engine changeset is a patch: the types are unreleased since 1.0.0.
+- A terminated compensation handler keeps its throw event waiting, as Zeebe's `completeCompensationHandler` only runs on completion.
+- Multi-instance and ad-hoc `completionCondition`s that are not booleans raise `EXTRACT_VALUE_ERROR` incidents with Zeebe's messages on the completing instance; resolving evaluates the condition again.
+- Empty-tag flow elements parse like full ones (namespace-aware, so `<zeebe:userTask/>` is not a task); `bpmn:task` and `bpmn:manualTask` pass through as `TASK` / `MANUAL_TASK`.
+- gRPC calls pass their `variables` documents on through one helper and reject non-objects with `INVALID_ARGUMENT` as Zeebe's gateway does; CreateProcessInstance reaches instance creation (it used to return key 0), SetVariables takes an element instance scope, FailJob variables are task-local (REST too), EvaluateDecision evaluates, and DMN decisions are stored on PostgreSQL. New Postgres suite `reebe-grpc/tests/variables.rs`.
+- `CONDITION_ERROR` uses Zeebe's exact `Expected at least one condition to evaluate to true, or to have a default flow` for both gateways.
+
+## 2026-09-24 — Reebe: condition incidents, adHocSubProcessElements, ad-hoc activation API, gRPC job results
+
+- Gateway conditions that do not evaluate to a boolean (null for a missing variable included) raise `EXTRACT_VALUE_ERROR` instead of counting as false; resolving the incident retries the gateway. Conditions on other elements' outgoing flows are ignored, as Zeebe does.
+- Every ad-hoc sub-process creates `adHocSubProcessElements` (name, documentation, `zeebe:properties`, `fromAi()` parameters); a patterns test checks that the TS engine and Reebe agree on `ai-agent-tool-loop`. Reebe FEEL evaluates `fromAi()`, with positional or named arguments.
+- New `POST /v2/element-instances/ad-hoc-activities/{key}/activation` (engine command `AD_HOC_SUB_PROCESS_INSTRUCTION`/`ACTIVATE`) with Zeebe's rejection messages and `cancelRemainingInstances`.
+- gRPC `CompleteJobRequest.result` (Zeebe's `JobResult`, field numbers taken from Zeebe's gateway.proto) is mapped to the REST completion payload; `CompleteJob` variables are now parsed as JSON.
+- Compensation: handlers run in the throw event's scope with no copy of the compensated activity's locals; a throw event in an event sub-process also compensates the event sub-process's own activities; a terminated handler lets its throw event continue (Zeebe would keep waiting; documented).
+- The complex-gateway deployment error now uses Zeebe's full message.
+- Known gaps: `adHocSubProcessElements` parameter names follow the TS engine (`orderId`, where Zeebe uses `toolCall.orderId`); completion conditions still treat non-booleans as false; other gRPC calls still drop their variables; self-closing flow elements are not parsed.
+
+## 2026-09-24 — Reebe: link events, compensation, ad-hoc sub-process inner elements, Zeebe gateway rules
+
+- Link events: a link throw event continues at the link catch event of its name in the same scope; deployment rejects unpaired, duplicate and empty link names; inclusive-join reachability follows links.
+- Compensation: handlers linked by an association deploy; completed compensable activities are recorded (new `compensation_subscriptions` table, Postgres and SQLite migration 021); a compensation throw or end event starts the handlers of its scope and of completed sub-processes in it at once, most recent first, and waits for them; `activityRef`; throws inside event sub-processes compensate the outer scope; multi-instance compensated once; compensation start events in event sub-processes rejected, as Zeebe has none.
+- Ad-hoc sub-processes: each activation runs in an `AD_HOC_SUB_PROCESS_INNER_INSTANCE`; `activeElementsCollection`, `completionCondition`, `cancelRemainingInstances`, `outputCollection`/`outputElement`; job results (`activateElements`, `isCompletionConditionFulfilled`, `isCancelRemainingInstances`) with the job re-created after each activation; REST job completion passes `result`; completion without a result still completes the sub-process.
+- Exclusive gateways raise `CONDITION_ERROR` without a match or default flow; exclusive and inclusive gateways choose flows while activating, so resolving the incident retries them; parallel gateways ignore conditions; default flows are marked at every depth.
+- Resolving an incident raised during activation retries the same element instance (I/O mappings, gateways, multi-instance input collections, ad-hoc active elements) instead of creating a new one.
+- Error variables thrown by a job reach the catching boundary event or event sub-process; event sub-processes report `EVENT_SUB_PROCESS`; complex gateways fail deployment as in Zeebe.
+- Tests: 29 new in-memory engine tests, 5 parser tests and a Postgres compatibility test for links and compensation; all 59 template scenarios pass on both runners.
+- Still open: a gateway condition that fails to evaluate counts as false (Zeebe raises an incident); `adHocSubProcessElements` is not provided to the job; gRPC job completion has no `result`; the link deployment messages and compensation handler variable/scope details follow recalled Zeebe behaviour that the docs do not state.
+
+## 2026-09-24 — Reebe: event sub-processes, inclusive joins, waiting join tokens
+
+- Reebe arms the timer, message and signal start events of event sub-processes when their flow scope (process or embedded sub-process) activates: timers and correlation keys are evaluated with FEEL against the scope, and everything is disarmed when the scope completes or is terminated. An interrupting event sub-process terminates the rest of its scope (jobs, user tasks, called processes, other event sub-processes, waiting join tokens), triggers once and disarms the others; a non-interrupting one runs alongside each time its event occurs, and a timer cycle repeats. Message and signal variables propagate from the start event as a catch event's do. It all runs through `catch_event.rs`'s wait/trigger path.
+- Joins count tokens per flow scope, gateway and incoming sequence flow (new `join_tokens` table, migration 020, replacing `gateway_tokens`; tokens waiting at a join when an existing database is upgraded are lost). A parallel join needs a token on every incoming flow. An inclusive join (new `processor/join.rs`) activates once every incoming flow has a token or can no longer be reached from an active element, a pending activation or another waiting join of its scope — a static walk over sequence flows and boundary events that does not evaluate conditions or follow link events. The inclusive split takes its default flow only when no condition holds, and raises a CONDITION_ERROR incident when there is none.
+- A token waiting at a parallel or inclusive join keeps its flow scope, and the process instance, active, as in Zeebe, even if the join can never fire.
+- 19 new in-memory engine tests and a Postgres compatibility test; the Reebe README and the conformance page are updated.
+- Conformance page corrected: it claimed Reebe executes link events and compensation. It does not (a link catch event fails deployment; compensation handlers are not parsed or run). Both are now listed as gaps, with the other differences from Zeebe the work turned up, in the page and the Reebe README.
+
+## 2026-09-24 — Reebe: start events, Zeebe scope completion, no replay on restart
+
+- Timer start events are scheduled on deployment: `timeDate` fires once, `timeCycle` repeats (`R/…`, `Rn/…`, Spring cron such as `0 0 9-17 * * MON-FRI`), each firing creates an instance, and a new version cancels the previous version's timers.
+- Message start events create an instance per published message with its variables; with a correlation key only one instance started by that key is active at a time, and a buffered message starts the next one when it ends. A new version closes the old subscriptions; messages published before deployment are ignored.
+- Creating an instance starts it at the none start event only.
+- Sub-processes and process instances complete only when nothing inside them is active and no token is on its way (Zeebe's rule); a terminate end event terminates the rest of its own scope and completes it. Flows in sub-processes nested two levels deep are found.
+- The server stores the processed position per partition (migration 019, Postgres and SQLite) and resumes after it on restart instead of replaying the log. API commands are appended atomically, so the processing loop can no longer skip one or answer it before its caller listens.
+- `test_timer_accuracy` runs engine and scheduler on a shared virtual clock: never early, and fires within poll interval plus slack once due.
+- Known gaps: timer, message and signal event sub-processes; inclusive joins; a parallel join that can never fire does not keep its scope open.
+
+## 2026-09-24 — Reebe: timer boundary events, event-based gateway, multi-instance on every activity
+
+- Boundary events: timer, message and signal boundaries are armed when their activity activates (FEEL-evaluated duration, date or `R…` cycle) and cancelled when it completes or is terminated. Interrupting ones terminate the activity with its jobs, user tasks, inner elements and called process; non-interrupting ones keep it, and a cycle repeats. One wait/trigger path (`processor/catch_event.rs`) now serves timers, messages and signals for catch events, receive tasks, boundaries and gateways.
+- Event-based gateway: arms the following catch events and receive tasks; the first trigger wins and the others are cancelled; a buffered message correlates at once. Messages correlate only to open subscriptions (both backends used to match used-up ones and complete their elements again).
+- Multi-instance (`processor/multi_instance.rs`): a body with parallel or sequential inner instances on every task type, sub-process and call activity (replacing the sub-process-only loop); local `inputElement`/`loopCounter`, ordered `outputCollection` handed to the parent scope, `completionCondition` with the `numberOf*` properties; `isSequential` and `<bpmn:completionCondition>` parsed from the BPMN elements. No `loopCardinality`, as in Zeebe.
+- Variable scopes (`processor/scope.rs`): expressions see the element's scope chain; job, message and script results go to the nearest scope that has them, else the process.
+- Tests: the three `#[ignore]`d Postgres tests (timer boundary, event-based gateway, parallel multi-instance) now pass; 15 new in-memory tests; full `cargo test --workspace` with Postgres: 321 passed. All 59 template scenarios still pass on both runners.
+- Docs: conformance Reebe paragraph and `apps/reebe/README.md` updated (the README no longer claims timer start events).
+- Also fixed: every job was created with `variables: {}`, so a worker running against Reebe received no process variables. A job now carries the variables visible from its element (process, enclosing scopes, its input mappings; inner scopes win), including each multi-instance item. 2 new tests.
+
+## 2026-09-24 — Editor UI in ten languages
+
+- `@bpmnkit/editor` ships German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable entry points (`@bpmnkit/editor/locales/<code>`); English stays built in. `createTranslate(locale)` builds the existing `Translate` hook, with `Intl.PluralRules` plurals (Polish has `one`/`few`/`many`/`other`); `AVAILABLE_LOCALES` and `matchLocale()` support a language picker. Translations are machine-assisted, use Camunda Modeler's BPMN terms, and ask for review (CONTRIBUTING.md, "Improving a translation").
+- Coverage audit: every user-visible string in the editor (HUD, context pad, menus, dialogs, dock, announcements) and in the plugins shown in the editor (properties panel incl. schema labels/hints/placeholders/options, palette, main menu, play mode, start page, history, file switcher) now goes through `translate` — 443 keys, up from 58. Left English on purpose: connector template names, FEEL/JSON placeholders, other plugins (AI, deploy, docs, DMN/form editors) and app-owned strings.
+- Guards: a plugins harvest catalogue beside the editor's; key/placeholder/plural coverage per locale; per-locale render tests; a pseudo-locale leak test; and a source scan that fails on hard-coded English in covered modules.
+- Layout: a wheel scrolls the dock tab strip when German or Polish overflow it; the element-group picker measures its real width; `@bpmnkit/ui` adds `:lang(ja)`/`:lang(zh)` CJK font fallbacks. Checked in Chromium at 1280px in German, Polish and Japanese.
+- Language picker in the landing editor (main-menu Language section) and in Drop's edit mode: browser language by default, choice saved in localStorage.
+- Integration: the ten "Export documentation" strings from the doc-export work are translated in all nine locales.
+
+## 2026-09-24 — Process documentation export (HTML/PDF, Markdown, Word)
+
+- `@bpmnkit/core`: `renderDocumentationHtml`, `renderDocumentationMarkdown`, `renderDocumentationDocx`, plus `buildProcessDocumentation` and `documentationTo{Html,Markdown,Docx}`. They are pure, dependency-free and deterministic, and escape all model text. The document has the diagram, then per pool or process its lanes, a steps table and a detail block for every element in flow order (type, documentation, lane, job type, headers, mappings, called decision, process and form, assignment, timers, messages, errors, and conditions on outgoing flows). Linked DMN decision tables and form fields follow.
+- The HTML is self-contained and print-ready: inline SVG, a table of contents, and print CSS with page breaks and a landscape diagram page. Print → Save as PDF gives a clean A4 or Letter PDF. No PDF library.
+- Word export is a hand-written OOXML package (built-in heading styles, A4 or Letter, diagram as SVG on a landscape page) with a small in-module zip writer. It was checked in LibreOffice only, not in Microsoft Word, and has no PNG fallback.
+- Editor: More → "Export documentation…" offers a print view, HTML, Markdown and Word. The new `HudOptions.getDocumentationContext` supplies the linked DMN and forms; the hosted editor passes its open DMN and form tabs.
+- Drop: a "Docs" button and dialog on the share page, available to read-only readers. It documents the BPMN file with every DMN and form file in the drop.
+- CLI: `casen doc export <file.bpmn> [.dmn/.form…] --format html|md|docx [--out] [--title] [--paper]`.
+- New guide at `guides/process-documentation`, README entries for core and editor. Visual check: Chromium-printed PDFs of the order-to-cash, four-eyes-review and invoice-capture templates, and the docx rendered through LibreOffice.
+
+## 2026-09-24 — Reebe: Postgres test suites run in CI
+
+- New `.github/workflows/reebe.yml`: `cargo test --workspace` for Reebe against a `postgres:16-alpine` service, path-filtered to `apps/reebe/**` plus a weekly run, and a compile check of the embedded (SQLite) build. `ci.yml` already ran the workspace tests through `apps/reebe`'s `test` script, but with no database, so the Postgres suites always skipped.
+- `REEBE_REQUIRE_DB=1` (set in CI) makes the Postgres tests fail, not skip, when `REEBE_DATABASE__URL` is missing; a set URL that cannot connect or migrate now fails instead of skipping silently.
+- Fixed rotted suites: each test gets its own database (the engine replays every partition command at startup, so shared databases re-executed earlier runs), the test engine now starts the `Scheduler` so timers fire, message tests use `messageName`, and `benches/throughput.rs` compiles against the three-argument `Engine::new`.
+- Result: 12 Postgres tests pass; 4 are `#[ignore]`d with the reason: timer boundary events never arm, the event-based gateway does not cancel the losing branch, multi-instance works on sub-processes only, and a wall-clock throughput benchmark.
+- `cargo fmt --check` (about 60 files) and `cargo clippy -D warnings` (about 46 warnings) are not yet clean, so CI does not run them.
+- README and CONTRIBUTING document running the database tests locally.
+
+## 2026-09-24 — worker-client, profiles and api: follow-ups from the test pass
+
+- **worker-client:** `job.fail(message)` defaults `retries` to `job.retries - 1` (never below 0) instead of `0`, so one failure no longer raises an incident. `poll()` ends by throwing on errors retrying cannot fix (rejected credentials, 4xx from the engine) instead of retrying silently forever; transient errors (network, 408, 429, 5xx, a failing token endpoint) go to a new `onError` option (default: a warning on stderr) and are retried. Activation long-polls with `requestTimeout` (default 20 s); idle polls still start at least 5 s apart. Docs and README updated; 6 new tests.
+- **profiles:** a corrupt or non-object `config.json` raises an error naming the file and is left untouched; it used to read as empty, so the next save overwrote every profile. A store with missing keys reads them as empty instead of throwing a `TypeError`. 3 new tests.
+- **api:** the OAuth token cache is written 0600 in a 0700 directory, and an older cache is tightened on its next write. 2 new tests.
+
+## 2026-09-24 — Test suites for profiles, worker-client, user-tasks, cli-sdk, ui and create-casen-plugin
+
+- Roadmap P4 item 30: the six published packages that had no tests (or one) now have Vitest suites — 168 tests — wired into each package's `test` script so `pnpm test` and CI run them, with a `tsconfig.test.json` that `typecheck` checks.
+- `@bpmnkit/profiles` (47): per-platform storage paths (the stability contract), the on-disk format and reading older stores, profile CRUD, settings, audit log, Camunda Modeler import, `getAuthHeader` and the client factories — all against a temp home.
+- `@bpmnkit/worker-client` (21): activation, job mapping, idle and error retries, complete/fail/throwError bodies, OAuth2, and the typed `JobTypes` generics, with fetch mocked.
+- `@bpmnkit/user-tasks` (28): header, Camunda form JSON as a schema object, JSON string or bare definition, claim/unclaim/complete/reject, errors and lifecycle.
+- `@bpmnkit/cli-sdk` (17): the `CasenPlugin` contract and the `createWorkerCommand` loop.
+- `@bpmnkit/ui` (40): a test proving `tokens.css` and `UI_TOKENS_CSS` declare identical rules, the documented palette, `injectUiStyles()`, themes and components.
+- `@bpmnkit/create-casen-plugin` (15): scaffolds into temp dirs, checks the generated files, type-checks and builds the project against the SDK, and loads its default export the way casen does.
+- Fixed: the profile store (which holds client secrets) is now written 0600; deleting a profile drops its metadata; OAuth2 tokens are cached per token URL, client, audience and scope.
+- Fixed: worker-client `complete`/`fail`/`throwError` reject when the engine refuses the call instead of resolving.
+- Fixed: user-tasks re-enables Claim/Unclaim after a failure and draws the form in the resolved `auto` theme; the ui theme switcher closes on a second button click and no longer leaks its outside-click handler.
+- Fixed: create-casen-plugin validates `--name`, refuses a non-empty target directory, escapes quotes in generated source and lower-cases the author before deriving the id; the cli-sdk worker example now type-checks.
+- Docs: the worker-client page explains the new rejections.
+
+## 2026-09-24 — Product tiers and Reebe positioning (roadmap P4 #28, #29)
+
+- Every product is now tiered publicly: **Core** (the 12 packages at 1.0), **Tools** (maintained, 0.x: proxy/MCP server, markdown, camunda-docspack, patterns, worker-client, cli-sdk, create-casen-plugin, casen plugins, ui, profiles, astro-shared, VS Code extension, Drop) and **Experimental** (operate, user-tasks, reebe-wasm, Reebe, Studio, desktop, proxy-rs).
+- One source of truth: `TIERS`, `TIER` and `APPS` in `scripts/published-packages.mjs`. `check-packages.mjs` fails if a published package has no tier, if Core differs from `STABLE`, or if an Experimental product reaches 1.0.
+- `generate-ecosystem.mjs` writes each product's tier and docs page; the homepage package list and every product doc page show a mono tier label with its one-line promise.
+- READMEs carry a tier badge and line; the root README gets a generated tier table. `stability.md` gains a "Product tiers" section, checked against the data by a landing test.
+- Reebe is described everywhere as a dev/test engine, not for production: a clean-room implementation of the Zeebe API from public documentation, not affiliated with Camunda, with a trademark notice. Dropped the unbacked "near-native performance" claim from reebe-wasm.
+- Studio is labelled Experimental and left in place; Operate stays Experimental after its quality pass.
+- Trademark review: no renames. Flagged `@bpmnkit/camunda-docspack`, the `Operate` name and "Reebe" for the maintainer to decide.
+
+## 2026-09-24 — Contributor onboarding
+
+- CONTRIBUTING: a "Where to start" table of seven real, scoped starter tasks (label-style fonts in the renderer, sub-process scope in the approximate bpmnlint rules, self-closing elements in the Reebe parser, terminate inside a sub-process in the simulator, duplicate SVG ids in `@bpmnkit/markdown`, URL encoding in Operate, type errors in `apps/examples`), and a "Who maintains what" section naming the maintainer of record and how to become a co-maintainer.
+- GitHub issue forms: bug report (package and version, reproduction), feature request (problem first), and contact links to SECURITY.md and the docs.
+
+## 2026-09-24 — Template scenarios pass on Reebe (`casen test`)
+
+- Reebe: an error end event throws its error code. Errors and escalations (end events, intermediate throw events, job workers) share one propagation path in `processor/throw_event.rs`: a boundary on the element, then an event sub-process of its scope, then a boundary on the scope, and on through call activities into the calling process. An interrupting catch terminates the scope and cancels its jobs. An uncaught error raises `UNHANDLED_ERROR_EVENT`. An uncaught escalation is not an incident.
+- Reebe: `errorRef`/`escalationRef` resolve to the root `errorCode`/`escalationCode`. A completed event sub-process ends its scope. A terminated element ignores late jobs, messages and task creation (new `cancel_jobs_by_element_instance`).
+- Reebe: an ad-hoc sub-process with a job worker implementation (AI Agent Sub-process) runs as its job. Without one, it raises an incident. Inner elements are not activated.
+- Reebe: a single-output decision table returns the value, a missing FEEL variable is `null`, and `INCIDENT.CREATE` is recorded, so failed I/O mappings no longer hang silently.
+- reebe-wasm: `complete_user_task`; `snapshot()` also returns `userTasks` and `messageSubscriptions`.
+- `runScenarioWasm`: completes native user tasks with the `userTask` mock, delivers the message a waiting receive task expects (as the simulator passes receive tasks), and compares expected variables structurally. Scenario format unchanged.
+- Behaviour change: a `casen test` scenario ending in an error end event nothing catches now fails with the `UNHANDLED_ERROR_EVENT` incident, as on Camunda 8; Studio's scenario tests were updated to expect it.
+- Template gallery: 59/59 scenarios pass on Reebe (19/59 before). `templates.test.ts` runs every scenario on both `runScenario` and `runScenarioWasm`. Templates guide and conformance page updated.
+
+## 2026-09-24 — Agentic BPMN testing: deterministic AI agent mocks, cassettes and tool coverage
+
+- `@bpmnkit/engine` runs an ad-hoc sub-process that has a job worker (the AI Agent Sub-process connector) with Zeebe semantics: the job carries `adHocSubProcessElements` with `fromAi()` parameters, the worker completes it with an `adHocSubProcess` job result (`activateElements`, `isCompletionConditionFulfilled`, `isCancelRemainingInstances`), each tool runs in an isolated scope, and `outputElement` results collect into `outputCollection` (`toolCallResults`) before the worker is asked again. A completion without a job result still completes the sub-process, so existing mocks are unchanged. New types `JobResult`, `AdHocSubProcessJobResult`, `AdHocActivateElement`, `AdHocSubProcessElement`, `AdHocToolParameter`; `job:created` carries `elementId`.
+- `@bpmnkit/engine/testing`: `mockAiAgent(elementId, turns | cassette | handler)` plays the connector turn by turn (`{ toolCalls }` or `{ responseText, responseJson }`), with a `toolCall` variable for `fromAi()` mappings and an `agent` response at the end. Unknown tools, arguments that do not match `fromAi()` parameters, an exhausted script and `maxModelCalls` fail the run with a clear message. New matcher `toHaveCalledTools`.
+- Record and replay: `AgentCassette` (versioned JSON) with `parseAgentCassette` / `readAgentCassette` / `writeAgentCassette`; `handle.cassette()` records what a user-supplied handler decided. No model or network calls.
+- `coverage().tools` and `formatCoverage` report which AI agent tools the tests called.
+- Tests: `packages/engine/tests/ai-agent.test.ts` (23) and end-to-end tests over the `ai-agent-tool-loop` and `ai-orchestrator-workers` templates in `packages/patterns/tests/ai-agent-testing.test.ts`.
+- Docs: new guide `guides/testing-ai-agents.md`; updated testing-processes, engine package page, conformance and the engine README.
+- Not covered yet: the AI Agent *Task* variant with a separate native ad-hoc sub-process (`activeElementsCollection`), and the connector's `errorExpression`. The `agent.context` shape is a best guess and needs checking against a real Camunda run.
+
+## 2026-09-24 — @bpmnkit/operate: quality pass towards 1.0
+
+- Fixed "Retry Job": it called a non-existent `PATCH /jobs/{key}/retries`; it now sends `PATCH /jobs/{key}` with `{ changeset: { retries: 3 } }`.
+- Poll failures now show their reason (e.g. `HTTP 401: No active profile`) in an alert above the view and clear on the next good poll; before, they looked like an empty table.
+- `pollInterval: 0` now loads once (it still polled every 30 s); `proxyUrl` may be relative; polls no longer overlap on a slow cluster.
+- Tables keep their page across polls; switching profile rebuilds the current view (detail pages, state filter); `setTheme()` re-themes an open diagram.
+- Deep links: `/definitions/:key` now connects its store; a deep-linked instance keeps its header; failed diagram/incident requests are no longer rendered as data.
+- Detail views and stores exported for Studio are marked `@internal`.
+- Added a Vitest + happy-dom suite (78 tests: stream, stores, router, filter table, views, createOperate, detail views).
+- New docs page `docs/packages/operate` (C8 Run and SaaS quick start, CORS/proxy notes, comparison with Camunda Operate); README entry rewritten to remove wrong claims (SSE, zero dependencies).
+- Not yet 1.0: detail pages do not refresh after actions, variables and element instances load only their first page, route keys are not URL-encoded, and nothing has been smoke-tested against a real Camunda 8 Run.
+
+## 2026-09-24 — Round-trip and editor follow-ups
+
+- **`<documentation>` attributes are kept.** `id` and `textFormat` now travel in an optional `documentationAttributes` next to `documentation` on every element, flow, process and the definitions. This was the last content loss on the 22 OMG MIWG reference models; their `ALLOWED` entries are gone and the Conformance page says 22 / 22 with no exceptions. The two affected golden hashes moved, because that data used to be dropped.
+- **Foreign attributes on event definitions and multi-instance loops are kept** (`camunda:collection`, `camunda:errorCodeVariable`, `camunda:type`, …), in an optional `unknownAttributes`. The Camunda 7 converter now reads them from the model instead of re-parsing the source XML.
+- **Editor:** deleting a gateway's or an activity's default flow clears its `default`, so the export no longer references a missing flow.
+- **CLI:** `casen dev --help` no longer prints "casen dev dev".
+- **FEEL:** a boolean literal in a unary test compares with a boolean input, as Camunda documents: the input entry `true` no longer matches `false`, and `false` now matches `false`. A variable named like a built-in (`count`, `sum`) resolves to the variable; `count(xs)` still reaches the built-in. Both were found while building the template gallery and the engine semantics.
+
+## 2026-09-24 — Camunda 7 → 8 migration assistant
+
+- `@bpmnkit/core`: `convertCamunda7(definitions, { sourceXml?, executionPlatformVersion? })`, `analyzeCamunda7` and `translateJuelToFeel`, pure and dependency-free. Each Camunda 7 construct is reported as `convertible`, `manual` or `unsupported`, with a Camunda 8 suggestion and an `applied` flag. Mechanical conversions: external tasks → `zeebe:taskDefinition`; `camunda:inputOutput` (including list/map) → `zeebe:ioMapping`; JUEL conditions, timers and completion conditions → FEEL; user-task assignment, schedule, priority and forms; `decisionRef` → `zeebe:calledDecision`; call-activity `calledElement` and `camunda:in/out` → `zeebe:calledElement` with pinned propagation flags; multi-instance collections; FEEL/JUEL script tasks; version tag and properties; retry counts. Java delegates get a job type by a documented naming rule, with the original kept as a task header. Async continuations are dropped with an explanation. Listeners, Groovy/JS scripts, correlation keys and retry back-offs are reported as manual; history TTL, starter groups, initiator, take/timeout listeners and standard loops as unsupported. Converted output is marked `Camunda Cloud 8.8.0`, deploy-lints clean for its convertible parts, and round-trips.
+- JUEL → FEEL only where provable (paths, literals, comparisons, and/or/not, `+ - * /`). Method calls, `empty`, ternary, indexing, `%`, engine objects and templated text are refused with a reason.
+- The parser used to drop foreign attributes on multi-instance loops and event definitions; that is now fixed in core (see the follow-ups entry above).
+- `casen migrate c7 <files...> [--out dir] [--check] [--format text|json] [--force]`: writes `<name>.c8.bpmn` (formatting preserved) or into `--out`, never overwrites without `--force`, prints the report grouped by severity, and `--check` exits 1 while manual or unsupported work remains.
+- Docs: new guide "Migrate from Camunda 7", `cli/migrate.md`, Conformance Camunda 7 paragraph, CLI README section. Three written-for-repo Camunda 7 fixtures with provenance; 138 new tests.
+- Follow-up after the parser started keeping `unknownAttributes` on loops and event definitions: `convertCamunda7` reads `camunda:collection` / `camunda:elementVariable`, the message-throw implementation and error/conditional variables from the model, removes each converted attribute and keeps the unconverted ones. The source-XML recovery is removed; `sourceXml` is still accepted and ignored. Regression test: same result with and without `sourceXml`, and no converted `camunda:` attribute left in the export.
+
+## 2026-09-24 — Auto-layout routing at parity with bpmn-auto-layout 2.0
+
+Closed the routing gap in [the bpmn-auto-layout evaluation](bpmn-auto-layout-evaluation.md#routing-parity-pass-2026-09-24). On upstream's 160 fixtures: **connections through other shapes 41 → 0** (upstream 10), **connections cutting across their own endpoint 83 → 0** (a new metric; upstream 0), **crossings 234 → 184** (upstream 200). Diagram area is 140.3 Mpx and edge length 420k, against upstream's 140.8 Mpx and 428k. Median runtime is 0.35 ms, against upstream's 4.4 ms, measured back to back.
+
+- **Pool ordering weighs where each message leaves its pool** (`layout/collaboration/ordering.ts`). A partner pool goes on the side its messages already leave from, so the stems stop crossing the whole process. Message × sequence crossings 107 → 65.
+- **Obstacle-aware routing** (`layout/orthogonal.ts`): an A* search over an orthogonal visibility grid, with bends and crossings charged as extra length. It is the sequence router's last resort and drives a final per-plane repair pass (`layout/repair.ts`) that re-routes any sequence flow, message flow or association that passes through, or runs along, an unrelated shape or cuts across its own endpoint.
+- **Detours dock on the side that faces their corridor** (`semantic/route.ts`). A detour used to dock on the far side of one end and cut across that shape — 83 times in the fixtures and 22 times in the round-trip corpus.
+- **Pools with lanes are framed by the extent of their lanes** (`bpmn/auto-layout.ts`). The frame took the first lane's y and the sum of all lane heights, counting nested lanes twice, so some pools (`healthcare-priorauth`) were drawn beside their own content.
+- **Annotations are packed clear of routed connections.**
+
+The metric code is committed as `packages/core/scripts/layout-quality.mjs` and reproduces the previously published figures exactly. The `/auto-layout` page has a comparison table that says where we are still behind: bends (815 vs 703), message × sequence crossings (63 vs 54), and distance from the hand-made layouts (264 vs 234 px). New tests in `layout-routing.test.ts` and `grid-layout.test.ts`.
+
+## 2026-09-24 — Drop: review comments with @mentions; co-editing decision
+
+- **Comments** on a whole file or a BPMN element (anchored by element id), with replies, resolve/reopen, and edit/delete of your own comments. There are no accounts: a per-drop author token (the server stores only its hash) is issued on the first comment, after one Turnstile challenge where configured.
+- Stored in D1 (migration `0006_comments.sql`: `comments`, `comment_authors`, `comment_writes`) and sent live to everyone viewing through the drop's room. Comments are deleted with their drop (expiry, operator delete or ban).
+- Abuse rules: the demo and pinned drops are read-only for comments; banned content takes no new comments; 60 writes per IP hash per hour; 500 comments per drop; 2,000 characters per comment.
+- Numbered markers on the canvas (`@bpmnkit/canvas` overlays) and a comments panel. A comment whose element was removed stays listed as "on a removed element".
+- Viewers now have display names in presence. **@mention** suggestions come from people viewing now and people who have commented, and mentions are highlighted. A mentioned viewer who has the drop open gets an in-page notice. There is no email (documented).
+- Phone topbar: the tools get their own row that scrolls sideways. Privacy policy updated and `TOS_VERSION` bumped to 2026-09-24.
+- Decision record in `doc/drop-collaborative-editing-analysis.md`: no CRDT; any future multi-writer work extends the existing room and rejects stale edits; the first safe step is one baton per BPMN file.
+- Tests: 54 new (routes and D1, room fan-out and names, client rendering). The Drop guide has a new section on comments and mentions.
+
+## 2026-09-24 — @bpmnkit/markdown: BPMN diagrams in Markdown
+
+- New published package `@bpmnkit/markdown` (0.x). It renders ```` ```bpmn ```` (BPMN XML, auto-laid-out when it has no DI) and ```` ```bpmn-compact ```` / ```` ```bpmn-json ```` (compact JSON) fenced blocks to inline SVG at build time, via one core `renderBpmnBlock()`.
+- Adapters: `remarkBpmn` (Astro/Docusaurus/Next MDX; emits hast, so MDX works), `markdownItBpmn` (VitePress), `renderBpmnInHtml` (plain HTML), and the `bpmnkit-md` CLI, which pre-renders README blocks to committed SVGs between markers (idempotent, `--check` for CI).
+- Theme `auto`/`light`/`dark`: `--bpmnkit-*` tokens with `light-dark()` fallbacks, no `<style>` element. Output has `role="img"` + `<title>`/`<desc>`, is deterministic, has an optional editor link, and shows an error box or throws (`onError`).
+- Landing: `remarkBpmn` wired into `apps/landing/astro.config.mjs`. New guide `docs/guides/bpmn-in-markdown` renders its own example diagram.
+- Root devDependencies (tests only): `@types/mdast`, `@types/hast`, `@types/markdown-it`, `markdown-it`, `unified`, `remark-parse`, `remark-rehype`, `rehype-stringify`, `@mdx-js/mdx`.
+
+## 2026-09-24 — Reebe: messages correlate, job results reach the process
+
+The testing-helpers and `casen dev` work found that scenarios run on Reebe WASM dropped job outputs and never correlated a message. Five engine bugs, all fixed with tests (`reebe-bpmn` parser test, two in-memory engine tests, a `runScenarioWasm` test):
+
+- A completed job's variables were discarded when the task had no output mappings. Zeebe merges them into the process; Reebe now does too. The same code path serves the Reebe server.
+- The WASM `publish_message` sent `name`; the engine reads `messageName`, so every message was published without a name.
+- A `zeebe:subscription` correlation key was stored as its raw expression (`=orderId`). It is now evaluated with FEEL against the instance variables when the subscription opens.
+- The parser dropped an event's subscription when `extensionElements` came before the `messageEventDefinition` (the order BPMN Kit and Camunda Modeler write), and ignored a subscription on the root `<message>`. Receive tasks used the message id as its name and never had a key.
+- A correlated message's variables were not passed on to the completing element.
+
+## 2026-09-24 — Template gallery: runnable process templates
+
+- `@bpmnkit/patterns/templates`: 25 Camunda 8 templates — order to cash, approvals, onboarding,
+  incident & escalation, document processing, SLA & timers, sagas, human-in-the-loop, and seven
+  AI agent patterns (prompt chaining, routing, parallelization, orchestrator–workers,
+  evaluator–optimizer, human approval gate, AI Agent Sub-process tool loop). Built with the core
+  builder, with DMN/forms where used and `.bpmn.tests.json` scenarios (happy + alternative
+  paths). The gallery test builds, lints (no error findings), round-trips and runs every scenario
+  on `@bpmnkit/engine`'s `runScenario`.
+- `casen template list [--category]` / `casen template use <id> [dir] [--force]`.
+- Landing: `/templates` gallery with category filter, `/templates/<id>` pages (diagram,
+  scenarios, job types, files, Open in editor, Download .bpmn, copyable casen command),
+  `/editor?template=<id>` hand-off, nav/footer/llms.txt entries; `guides/templates.md`.
+- Core: `receiveTask` now writes `zeebe:subscription` for `correlationKey`.
+- Found: `casen test` (Reebe runner) does not mock native user tasks, cannot publish messages
+  to receive tasks, does not catch error end events from embedded sub-processes, and has no
+  ad-hoc support. The TS engine does not synchronise inclusive joins. `@bpmnkit/feel` treats
+  boolean literals in DMN unary tests as constants.
+
+## 2026-09-24 — The TypeScript simulator runs the BPMN it used to skip
+
+`@bpmnkit/engine` no longer completes call activities, event sub-processes and event-based
+gateways without their semantics, and models the events it used to ignore. Each item has a
+test in `packages/engine/tests/semantics.test.ts`:
+
+- **Boundary events.** A non-interrupting boundary event used to end its activity and never
+  start its own path. Now the activity keeps running, the path starts, and a timer cycle
+  fires once per repetition. Message and signal boundary events are new. A job's
+  `throwError` is caught by an error boundary event or error event sub-process.
+- **Event-based gateway**: the first message, timer or signal to arrive wins; the others are
+  cancelled.
+- **Call activities** run a process deployed in the same engine as a child instance, with
+  Zeebe's variable propagation and mappings. Errors and escalations the child does not catch
+  reach the call activity. A process that is not deployed raises an `element:warning`.
+- **Event sub-processes** (message, timer, signal, error, escalation; interrupting or not),
+  **signals** broadcast across the engine (`engine.broadcastSignal`), **escalations**
+  propagating like errors, **multi-instance** (parallel and sequential, collections,
+  cardinality, completion condition), **link** events, **compensation** in reverse
+  completion order, and a complex gateway that splits like an inclusive one.
+- **Messages** match by name, carry variables, honour `zeebe:subscription` correlation keys,
+  and reach call-activity children: `deliverMessage(name, variables?, correlationKey?)`.
+- **Variables follow Zeebe's propagation.** Input mappings are local to their element. A
+  result updates the nearest scope that defines the variable, or the process scope. With
+  output mappings, only the mapped variables leave the element.
+- **Two older bugs fixed.** A split whose first branch ended at once finished the scope
+  early. A job result that arrived after an interrupting event moved the token on.
+
+The engine page, the package README and the Conformance page's simulator column now say
+what runs. Still not modelled: conditional events, top-level message start events,
+transaction cancel, compensation event sub-processes, and waiting inclusive or complex joins.
+
+## 2026-09-24 — `casen dev`: one-command local development loop
+
+- **The command.** `casen dev [dir]` (`apps/cli/src/commands/dev.ts`, `apps/cli/src/dev/`) finds the `.bpmn`, `.dmn` and `.form` files and serves a local web UI on 127.0.0.1. It uses port 4747 or the next free one; `--port` and `--no-open` are available.
+- **The UI.** It opens each file in the BPMN Kit editor with in-browser simulation, a Tests tab bound to the `.bpmn.tests.json` sidecar, and the DMN and form editors.
+- **Saving.** Saves keep the file's formatting and are verified. The result is kept only if it reads back as the same model. Writes use a temp file and rename, are read back, and use etags to detect conflicts: a 409 shows a reload/overwrite banner.
+- **Live reload.** Changes arrive over SSE, with one `fs.watch` per directory. Node 22's recursive watcher on Linux stops reporting a file once it has been replaced by a rename, which is how editors save.
+- **Checks on every change.** Lint runs through `lintBpmn()`, shared with `casen lint` and including `.bpmnlintrc`. The scenarios run on the TS engine, or on Reebe WASM with `--engine wasm`. A DMN change re-runs the processes next to it. Results show in the browser's Checks panel and in a compact terminal list.
+- **Security.**
+  - Loopback only, with a Host-header check against DNS rebinding.
+  - A per-session API token.
+  - Paths confined to the project: no traversal, no hidden paths, no symlinks that escape.
+  - Only editable file kinds are accepted.
+- **Packaging.** esbuild bundles the UI at build time. It adds no runtime dependencies.
+- **Fix.** `openBrowser` no longer crashes when no opener is installed.
+- **Docs.** New page `docs/cli/dev`, a Quick Start mention, and the CLI README.
+
+## 2026-09-24 — `@bpmnkit/engine/testing`: Docker-free process tests for Vitest and Jest
+
+- **New entry point.** `@bpmnkit/engine/testing` provides `createProcessTest({ bpmn, dmn?, forms?, startTime? })`. It deploys models into the in-process simulator; each model can be parsed definitions, XML, a path or a `file:` URL.
+- **Jobs.** `mockJob` mocks a job type with a result, a failure, a thrown error or a handler, and offers `calls` and `restore()`. Job types with no mock wait for `run.completeJob`, `failJob` or `throwError(elementIdOrType)`. Camunda user tasks work the same way.
+- **Connectors.** `mockConnector(type, { response })` maps a fake response through `resultVariable` / `resultExpression`. `mapConnectorResponse` is exported.
+- **Messages.** `run.publishMessage(name)` correlates by message name, and throws when nothing is waiting for that message.
+- **Virtual clock.** Engine timers go through a swappable `TimerClock` (internal `setTimerClock` in `timers.ts`). `advanceTime("P1D")` fires due timers in order without real waiting.
+- **Matchers.** `toHaveCompleted`, `toHaveFailed`, `toBeWaitingAt`, `toHavePassed`, `toHavePassedInOrder`, `toHaveNotPassed` and `toHaveVariables`. Importing `@bpmnkit/engine/testing/vitest` registers them and extends Vitest's `Assertion` type; Jest uses `expect.extend(bpmnMatchers)`. `vitest` is an optional peer dependency.
+- **Path coverage.** `coverage()` and `formatCoverage()` report, per process, which flow nodes were entered and which sequence flows were taken; the flows are inferred.
+- **Packaging check.** `check-package-consumable.mjs` now installs a package's peers, optional ones included, into the test consumer.
+- **Docs.** New guide `guides/testing-processes.md`, an engine README section, and an example test in `apps/examples/tests/incident-response.process.test.ts`.
+- **`mode: "wasm"` is deferred.** The Reebe WASM build opened no message subscriptions and dropped the variables passed on job completion.
+
+## 2026-09-24 — Typed code generation from BPMN, worker ↔ BPMN contract check
+
+- **`@bpmnkit/core`**: `generateProcessTypes(defs | defs[])` renders TypeScript source for every executable process:
+  - process ids;
+  - per job type:
+    - variables, from `zeebe:input` targets, else the in-scope variables from the variable-flow analysis;
+    - output, from `zeebe:output` sources, else unset variables read downstream;
+    - task headers as literal types;
+    - catchable error codes;
+  - message names with correlation keys;
+  - signal, error and escalation codes;
+  - a `JobTypes` map.
+
+  `extractProcessContract` returns the same contract as data. Values are `unknown`, keys are exact, and the output is sorted and deterministic.
+- **CLI**: `casen generate types` (alias `casen gen types`) accepts files, directories or globs, with `--out`.
+  - `--check` exits 1 when the file is stale, for CI.
+  - `--check-workers <glob>` is a heuristic scan for worker registrations. It reports job types with no worker, and workers with no BPMN job type. `--strict` exits 1 on a mismatch. `io.camunda*` connector types are left to the connector runtime.
+  - The scan recognises `createWorker`, `taskType:`, `.createJobWorker({ jobType|type })`, `registerJobWorker` and `.poll`. The `createJobWorker({ jobType })` shape was checked against the type definitions of `@camunda8/orchestration-cluster-api` 9.1.5.
+- **`@bpmnkit/worker-client`**: `createWorkerClient<JobTypes>()` types `job.variables`, `complete()`, `throwError()` and the new `job.customHeaders` per job type. Without a type argument it stays untyped. The package gains tests and a test typecheck.
+- **Docs**:
+  - a new guide, `guides/typed-workers`;
+  - a "Typed code generation" section in `cli/generate`;
+  - the `cli/casen` command tree;
+  - README generator entries for core, cli and worker-client.
+
+## 2026-09-24 — P1 integrated: the four streams checked against each other
+
+The FEEL, inbound-template and bpmnlint branches were merged onto the MIWG work, and the
+whole workspace was rebuilt: every typecheck and every test suite passes together. The API
+snapshot grows from 1,491 to 1,517 exports. Each branch surfaced something for another one,
+and those items are now fixed:
+
+- **A correlation key on the message now counts.** `deploy/message-catch-no-correlation`
+  flagged every catch whose `zeebe:subscription` sits on the referenced `bpmn:message`.
+  That is where Camunda reads it, and where Camunda Modeler and the new
+  `applyTemplateToElement` write it. `analyzeDeploy` now takes the document's messages
+  (an optional third parameter) and accepts either placement.
+- **Variable-flow analysis uses FEEL's own list of built-ins.** It kept a list of its own and
+  would have reported `is empty(...)` or `fromAi(...)` as an undefined variable. It now takes
+  the names from `builtinNames()` in `@bpmnkit/feel`.
+- **Two more bpmnlint rules are exact.** Now that the parser keeps an activity's `default`,
+  `no-implicit-split` and `superfluous-label` read it, which makes them exact. A
+  side-by-side run against bpmnlint 11.14 on a model with an activity default flow reports
+  the same elements. That makes 21 exact and 7 approximate.
+- **The Conformance page covers everything added today.** Inbound templates are now applied
+  and a linting section is new. It links the bpmnlint guide.
+
+## 2026-09-24 — The OMG MIWG reference models open, keep their diagrams and round-trip
+
+**All 22 reference models of the BPMN Model Interchange test suite are in the round-trip
+corpus.** They are copied unmodified with a `miwg-` prefix, CC BY 3.0, with provenance
+recorded. They come from Trisotech, Signavio, W4, BOC and others, so they carry what real
+files carry.
+
+**Running them found real defects, all fixed:**
+- **Seven models would not open.** BPMN DI makes `id` and `bpmnElement` optional on
+  diagrams, planes, shapes and edges, and the parser required them. An absent one now reads
+  as `""` and is written back absent.
+- **Invalid XML output.** A document with BPMN as its default namespace was exported as
+  `<:process>`. The prefix lookup now returns the default namespace, and the writer emits
+  unprefixed names for it.
+- **Content that was dropped:**
+  - `default` on an activity: it sat in the flow-node `KNOWN_ATTRS` list, but only gateways
+    model it;
+  - the `name` of `<definitions>` and of a collaboration;
+  - documentation and unknown children on sequence flows;
+  - documentation and extensions on data associations;
+  - the `id` of a multi-instance loop;
+  - empty timer parts and conditions, plus a condition's own attributes;
+  - label styles and vendor attributes on DI diagrams, planes, labels and waypoints.
+- **`reconcileCompact` was not a no-op** on these files. It compared an empty flow label or
+  condition with an absent one, then deleted and re-added the flow along with its
+  extensions.
+- **`exportPreserving` fell back to a full rewrite** on most of them. It now keeps a number's
+  spelling (`30.0`) and empty `<extensionElements/>` when re-reading proves the model
+  unchanged, through the new `equalNumbers` / `droppedEmptyElements` options of
+  `preserveFormatting`.
+
+**Checking method.** The corpus gate's signature is now keyed by namespace URI, so a prefix
+choice is not a change. A new per-fixture assertion checks that the export re-imports to the
+same `semanticHash`. `interchange-fidelity.test.ts` pins each fix at model level. What a plain
+export still changes is listed per file in `ALLOWED`: false defaults and empty extensions are
+normalised, and attributes on `<documentation>` are the one remaining loss.
+
+**Published results.** The Conformance page gains a MIWG section. The Concepts round-trip
+section and the 1.0 post are updated.
+
+**Not done.**
+- The renderer ignores `BPMNLabelStyle` fonts, so labels from tools with a 9 pt font wrap
+  inside their DI bounds and can overlap a small event.
+- Message flows have no start circle.
+- Deleting a flow in the editor still leaves a gateway's (or now an activity's) `default`
+  pointing at it.
+
+## 2026-09-24 — FEEL: measured against Camunda's documentation, and Camunda's built-ins
+
+**`@bpmnkit/feel` matches 375 of the 378 runnable examples in Camunda 8's FEEL docs.**
+Camunda's engine (feel-scala) adds built-ins and behaviour DMN does not define, and there is
+no test suite for that dialect. Its documentation is the next best thing: every function and
+operator page carries worked examples, `expression` then `// result`.
+- `packages/feel/tasks/extract-camunda-examples.mjs` reads them from the
+  `@bpmnkit/camunda-docspack` chunks. It handles multi-example blocks, `error` results,
+  results that depend on a variable (`// 4 - if x is 4` becomes a binding), the
+  "Evaluation context / Evaluation result" pairs, and three kinds of typographical slip in
+  the documented results, each recorded on the case. It skips 246 snippets (signatures, prose
+  results, clock-dependent examples); `--skipped` prints each one with its reason.
+- `packages/feel/tests/camunda-parity.test.ts` runs them. It follows `tck.test.ts`: a
+  `KNOWN_DIFFERENCES` map with reasons, and a guard that fails when a listed case starts
+  matching. A documented error matches `null`, since this package reports errors as `null`
+  the way DMN does.
+- Nothing extracted is committed. The docs are CC BY-SA 3.0, and a fixture copied into this
+  MIT package would carry the share-alike terms. The docspack is already in the repository,
+  so the test extracts at run time.
+
+**Starting point: 324 of 378.** The fixes:
+- New built-ins: `assert`, `is empty`, `partition`, `duplicate values`, `is blank`, `trim`,
+  `extract`, `uuid`, `to base64`, `from base64`, `to json`, `from json`, `fromAi`, and
+  `date and time(value, timezone)`. Base64 and UTF-8 are written out by hand so the package
+  still needs nothing beyond ES2022. `from json` keeps a `__proto__` key as an entry.
+- `last day of month` returned the day number; Camunda defines it as the date.
+- `time ± duration`, `time - time` and `duration / duration` returned `null`.
+- `time("T23:59:00")` (ISO's leading time designator) and Java's
+  `2018-04-29T09:30:00+02:00[Europe/Berlin]` form now parse.
+- `overlaps before` / `overlaps after` accepted ranges that only touch at an open end. They
+  now follow DMN's definition term by term. That also fixed two DMN TCK cases, so the TCK is
+  at **1,941 of 2,053** (from 1,939), and both came off `KNOWN_FAILURES`.
+
+**Left as known differences:**
+- `round up(5.5)` and `round up(-5.5)`: the page's own signature requires a scale.
+- `date and time(@"2020-07-31T14:27:30", "Z")`: the result depends on the engine's default
+  zone.
+
+The FEEL docs page gains a Camunda parity section. The Conformance page's FEEL section and the
+package README carry both numbers, and the playground's function reference lists the new
+built-ins.
+
+## 2026-09-24 — Inbound connector templates apply to something
+
+**An inbound template used to validate, warn, and write nothing that mattered.** The bundled
+catalogue's inbound connectors bind to `bpmn:Message#property`, `bpmn:Message#zeebe:subscription#property`
+and — for RPA — `zeebe:linkedResource`: 98 properties the applier skipped. A Webhook
+intermediate event came out with its `zeebe:properties` and no message, which is an event
+Camunda correlates nothing to.
+
+**`applyTemplateToElement` writes onto a parsed model rather than into builder options,**
+because that is where these bindings live. The message name and correlation key belong to a
+root `bpmn:message` — Camunda reads `zeebe:subscription` from the message, not the event — and
+no builder option reaches it. So `@bpmnkit/connectors` gains
+`applyTemplateToElement(definitions, elementId, template, values)`: it converts the element to
+the template's `elementType`, makes it a message event when `eventDefinition` says so, resolves
+the message (reuse by name, rename the element's own when unshared, else create), writes the
+subscription onto it, replaces each extension kind the template declares, and stamps
+`zeebe:modelerTemplate*`. Covered for Webhook start / message start / intermediate / boundary,
+RabbitMQ receive task, Kafka intermediate and RPA, each through a serialize → parse →
+serialize round trip.
+
+**A generated value is derived, not generated.** Camunda gives an inbound message a random UUID
+name. That would break the package's promise that the same inputs give the same XML, so the
+name keeps the one the element's message already has, or is a UUID-shaped SHA-256 of the
+template and element ids. Applying twice is tested to give the model applying once does, and
+switching a dropdown off removes what it wrote, because ownership follows the bindings a
+template *declares* rather than the ones active this time.
+
+**The builder path stays, and says what it cannot do.** `applyElementTemplate` now returns
+`messageName` and `correlationKey` on inbound intermediate and boundary results, and reports a
+start event's correlation key, linked resources and an ungenerated message name as problems
+instead of dropping them. None of those are `missing-required`, so the deploy lint's connector
+rule does not start flagging them.
+
+**Also:** these properties get input keys (`message.name`, `message.correlationKey`,
+`linkedResource.<linkName>.<property>`) — before, they keyed to `""`; and a condition comparing a
+Boolean property to `true` never matched, so the RPA template's pre- and post-run scripts could
+not be switched on.
+
+**Found, not fixed.** `@bpmnkit/core`'s builder writes `zeebe:subscription` onto the catch event
+and the `deploy/message-catch-no-correlation` lint only looks there, so a model whose key sits on
+the message — Camunda's placement, and this applier's — is flagged. The builder's intermediate,
+boundary and receive-task options also have no `zeebeProperties` or `modelerTemplate`. And the
+`connector/missing-required` rule rebuilds values from an element's own inputs, headers and
+properties only, so an inbound element's correlation key or an RPA script id reads as missing —
+it did before too, under the key `""`; now it is at least named.
+
+## 2026-09-24 — `casen lint` and VS Code honour a `.bpmnlintrc`
+
+**A team's bpmnlint configuration now governs BPMN Kit's findings.** `casen lint` and the
+VS Code Problems panel look for `.bpmnlintrc` in the diagram's folder and each folder above
+it. The file is parsed in `@bpmnkit/core` (`parseBpmnlintConfig`, `resolveBpmnlintConfig`).
+This code is pure, so a browser host can use it too. It accepts both `extends` forms, the
+three built-in presets, levels written as names or as `0`–`3`, and `[level, options]`.
+
+**Every bpmnlint built-in rule has a BPMN Kit equivalent.** `BPMNLINT_RULE_MAP` maps each of
+the 28 rules to the findings that report the same problem. `applyBpmnlintConfig` gives those
+findings the level the config sets, or drops them when the rule is `off`. For 19 rules BPMN
+Kit had no finding, so they are now implemented natively in
+`optimize/bpmnlint-rules.ts`. These rules run only when a config enables them, so the default
+report stays the same. A rule the config does not mention keeps BPMN Kit's default. Plugin
+rules, unknown rules and `plugin:` configs are reported as not applied. They are never
+dropped silently. The guide's table marks each rule as exact or approximate. For the
+approximate rules the difference is mostly that BPMN Kit's existing flow and naming rules
+look only at the top-level scope.
+
+**With bpmnlint installed, bpmnlint runs.** `prepareBpmnlint` in `@bpmnkit/core/node`
+resolves `bpmnlint` and `bpmn-moddle` from the `.bpmnlintrc`'s folder and loads them with
+a dynamic `import()`. It runs the configuration through bpmnlint's `Linter` and
+`NodeResolver`. As a result, `bpmnlint-plugin-*` rules and `plugin:` configs work, and so do
+`moddleExtensions`. BPMN Kit then drops its own findings for every rule bpmnlint ran, so no
+problem is reported twice. bpmnlint is not a dependency of any published package. It is a
+root devDependency for the tests only. The three imports run one after another, not
+concurrently. bpmnlint is CommonJS that `require()`s ESM it shares with bpmn-moddle, and
+Node rejects that `require()` while a concurrent `import()` of the same module is still
+loading. The CLI test found this problem. The in-process test did not.
+
+**Parity was measured.** We ran both linters under `bpmnlint:all` against every `.bpmn`
+file in the repository (16 files). Each rule marked exact reports the same elements as
+bpmnlint. Each approximate rule differs only in the ways the table describes.
+
+- `casen lint`: `--no-bpmnlintrc` ignores the file. Each governed finding prints its rule
+  name, and real bpmnlint's findings appear as `[bpmnlint]`. `--format json` still prints a
+  JSON array, and each governed finding has a `bpmnlintRule` field. Exit codes follow the
+  levels in the config.
+- VS Code: `bpmnkit.lint.bpmnlintrc` (on by default). bpmnlint's findings show source
+  `bpmnlint` with the rule as the code. A broken config, or rules that could not be applied,
+  show as a problem at the top of the file. Editing a `.bpmnlintrc` re-lints the open
+  diagrams.
+- `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and
+  `LintReport` gains an optional `bpmnlintUnsupported` field. `lintDiagram` accepts
+  `bpmnlint` and `bpmnlintDelegated`.
+
+## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
+
+**Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at
+its source.**
+- README and homepage no longer say every package is 0.x or pre-1.0. They name the twelve 1.0
+  packages, generated from `STABLE`.
+- The plugin count is 34 everywhere; the plugins README documents the seven it left out.
+- FEEL is "94% DMN TCK", not "complete". The TCK was re-run locally: 1,939 of 2,053.
+- The round-trip card links to what is and is not preserved instead of promising no data loss.
+- The engine README and docs list what the simulator executes and what it completes
+  without semantics.
+- The Reebe README drops the pre-monorepo clone URL and the "no gRPC" row: the gateway
+  serves 22 RPCs on 26500. It gains an experimental, development-only status and a
+  LICENSE file.
+- The MCP docs name the real command, `casen proxy mcp`, and its real tool list.
+- The analyses that described work as unbuilt get status banners.
+
+`CLAUDE.md`'s React + Carbon stack section still does not match Studio (Preact, Radix,
+Tailwind). That section is the owner's policy, so it is left for them.
+
+**New pages.**
+- `docs/getting-started/conformance`: TCK figures, descriptor coverage (109 modelled,
+  34 preserved, 6 dropped), an element-by-component matrix and a single list of known
+  gaps.
+- A 1.0 launch post.
+- `/compare/bpmn-js`:
+  - opens with the licence row and quotes the bpmn.io watermark clause verbatim from the
+    bpmn-js LICENSE;
+  - stops claiming bpmn-js has no auto-layout or simulation — both exist as add-ons.
+- The homepage:
+  - adds "MIT, no watermark" to the proof points;
+  - adds a third start-here card for the MCP server.
+
+**Distribution.**
+- `release-vscode.yml` packages the extension whenever its version moves. It publishes to
+  the Marketplace and Open VSX when `VSCE_PAT` / `OVSX_PAT` are set, then tags a GitHub
+  Release with the `.vsix`.
+- `release-desktop.yml` builds Linux, Windows and both macOS installers into a draft
+  release, then publishes it. The builds are not code-signed.
+- The desktop build had been broken since the rename: `apps/proxy-rs/build.rs` filtered on
+  `@bpmn-sdk/proxy`, matched nothing, and failed to copy the bridge bundle.
+- The desktop app itself:
+  - is renamed BPMN Kit;
+  - has a full icon set generated from the favicon;
+  - resolves `ai-server.exe` on Windows (`tauri.windows.conf.json` plus `EXE_SUFFIX`).
+- Verified locally: the `.deb` builds (4.5 MB, both sidecars bundled) and the `.vsix` packages.
+- `publish-mcp.yml` lists `@bpmnkit/cli`'s MCP server in the MCP Registry as
+  `io.github.bpmnkit/bpmnkit`, using GitHub OIDC and `mcpName`.
+
+**Analytics.** `Seo.astro` loads the Cloudflare Web Analytics beacon (cookieless) only when
+`PUBLIC_CF_WEB_ANALYTICS_TOKEN` is set at build. `deploy-pages.yml` passes the
+`CF_WEB_ANALYTICS_TOKEN` repository variable. `apps/landing/turbo.json` declares the
+variable, so Turbo's strict env mode lets it through.
+
+**Needs the owner.**
+- Create the `bpmnkit` Marketplace publisher and Open VSX namespace, and add
+  `VSCE_PAT` / `OVSX_PAT`.
+- Add the `CF_WEB_ANALYTICS_TOKEN` variable.
+- Enable GitHub Discussions.
+- The VS Code guide calls the Marketplace and Open VSX listings "being set up" until the
+  tokens exist. Link them there once the first publish succeeds.
+
+## 2026-09-23 — Market & competitive analysis
+
+**`doc/market-analysis.md` maps BPMN Kit against the market.** It covers BPMN/DMN modelers and
+SDKs (the bpmn.io family, Camunda Desktop/Web Modeler/Hub, Miragon, Flowable Design, Signavio,
+Trisotech, Apache KIE, canvas SDKs), BPMN engines (Camunda 8.8–8.10, the Camunda 7 forks,
+Flowable, the JS engines), code-first durable execution (Temporal, Vercel Workflow, Inngest,
+Trigger.dev, Kestra), low-code/iPaaS (n8n and others), and AI agents/MCP, including the
+research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a presentation audit
+against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
+positioning recommendation. It is a research document only; no code changed.
+
 ## 2026-09-23 — The FEEL share link gets the same bar as the upload link
 
 The link row under **Get a share link** rendered as browser defaults — a sunken input and

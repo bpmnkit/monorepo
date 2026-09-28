@@ -163,7 +163,7 @@ export function createInstancesView(
 	let mainProcessFilter = ""
 	procSelect.addEventListener("change", () => {
 		mainProcessFilter = procSelect.value
-		render()
+		render(false)
 	})
 
 	// ── Table ───────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ export function createInstancesView(
 		}
 	}
 
-	function render(): void {
+	function render(keepPage = true): void {
 		const items = store.state.data?.items ?? []
 		instMap = buildInstMap(items)
 		updateProcFilter(items)
@@ -258,10 +258,10 @@ export function createInstancesView(
 		if (mainProcessFilter) {
 			rows = rows.filter((inst) => getRootDefId(inst, instMap) === mainProcessFilter)
 		}
-		setRows(rows)
+		setRows(rows, keepPage)
 	}
 
-	const unsub = store.subscribe(render)
+	const unsub = store.subscribe(() => render())
 	render()
 
 	return { el, destroy: unsub }

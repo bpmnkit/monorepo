@@ -7,3 +7,11 @@
  */
 export { writeBpmn } from "./write.js"
 export type { WriteBpmnOptions, WriteBpmnResult } from "./write.js"
+export {
+	BPMNLINTRC,
+	findBpmnlintrc,
+	prepareBpmnlint,
+	readBpmnlintrc,
+	runBpmnlint,
+} from "./bpmnlint.js"
+export type { BpmnlintReport, BpmnlintSetup, RunBpmnlintResult } from "./bpmnlint.js"

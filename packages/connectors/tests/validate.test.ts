@@ -144,14 +144,33 @@ describe("validateElementTemplate", () => {
 		expect(validateElementTemplate(value).valid).toBe(true)
 	})
 
-	it("warns about a valid binding this toolkit does not apply", () => {
+	it("warns about a valid event definition this toolkit does not apply", () => {
 		const value = template({
-			properties: [{ binding: { type: "bpmn:Message#property", name: "name" } }],
+			elementType: { value: "bpmn:StartEvent", eventDefinition: "bpmn:SignalEventDefinition" },
 		})
 		const result = validateElementTemplate(value)
 		expect(result.valid).toBe(true)
-		expect(result.warnings[0]?.path).toBe("properties[0].binding.type")
+		expect(result.warnings[0]?.path).toBe("elementType.eventDefinition")
 		expect(result.warnings[0]?.message).toContain("not applied by this toolkit yet")
+	})
+
+	it("no longer warns about the inbound-message and linked-resource bindings", () => {
+		const value = template({
+			elementType: { value: "bpmn:StartEvent", eventDefinition: "bpmn:MessageEventDefinition" },
+			properties: [
+				{ binding: { type: "bpmn:Message#property", name: "name" } },
+				{ binding: { type: "bpmn:Message#zeebe:subscription#property", name: "correlationKey" } },
+				{ binding: { type: "zeebe:linkedResource", linkName: "Script", property: "resourceId" } },
+			],
+		})
+		expect(validateElementTemplate(value).warnings).toEqual([])
+	})
+
+	it("warns about nothing in the bundled catalogue", () => {
+		const warned = CAMUNDA_CONNECTOR_TEMPLATES.filter(
+			(t) => validateElementTemplate(t).warnings.length > 0,
+		).map((t) => t.id)
+		expect(warned).toEqual([])
 	})
 
 	it("does not warn about a binding it does apply", () => {

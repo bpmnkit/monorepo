@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_contents" targetNamespace="http://bpmn.io/schema/bpmn" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.10.0">
+  <bpmn:message id="Msg_secret" name="secret">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="secrets.KEY" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="Msg_webhook" name="webhook" />
+  <bpmn:process id="contents" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:executionListeners>
+        <zeebe:executionListener eventType="start" type="audit">
+          <zeebe:taskHeaders>
+            <zeebe:header key="channel" value="ops" />
+            <zeebe:header key="channel" value="dev" />
+            <zeebe:header key="level" value="1" />
+          </zeebe:taskHeaders>
+        </zeebe:executionListener>
+      </zeebe:executionListeners>
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="start">
+      <bpmn:outgoing>toLoopA</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="webhookStart">
+      <bpmn:extensionElements>
+        <zeebe:properties>
+          <zeebe:property name="inbound.type" value="io.camunda:webhook:1" />
+          <zeebe:property name="messageTtl" value="PT1H" />
+          <zeebe:property name="consumeUnmatchedEvents" value="true" />
+          <zeebe:property name="deduplicationModeManualFlag" value="true" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+      <bpmn:messageEventDefinition id="webhookDef" messageRef="Msg_webhook" />
+    </bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="pollingCatch">
+      <bpmn:extensionElements>
+        <zeebe:properties>
+          <zeebe:property name="inbound.type" value="io.camunda:http-polling:1" />
+          <zeebe:property name="deduplicationModeManualFlag" value="true" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+      <bpmn:messageEventDefinition id="pollingDef" messageRef="Msg_webhook" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:manualTask id="loopA">
+      <bpmn:incoming>toLoopA</bpmn:incoming>
+      <bpmn:incoming>backToA</bpmn:incoming>
+      <bpmn:outgoing>toLoopGateway</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:exclusiveGateway id="loopGateway" default="toEnd">
+      <bpmn:incoming>toLoopGateway</bpmn:incoming>
+      <bpmn:outgoing>toLoopB</bpmn:outgoing>
+      <bpmn:outgoing>toEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="loopB">
+      <bpmn:incoming>toLoopB</bpmn:incoming>
+      <bpmn:outgoing>backToA</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="end">
+      <bpmn:incoming>toEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="toLoopA" sourceRef="start" targetRef="loopA" />
+    <bpmn:sequenceFlow id="toLoopGateway" sourceRef="loopA" targetRef="loopGateway" />
+    <bpmn:sequenceFlow id="toLoopB" sourceRef="loopGateway" targetRef="loopB">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=is blank(reason)</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="toEnd" sourceRef="loopGateway" targetRef="end" />
+    <bpmn:sequenceFlow id="backToA" sourceRef="loopB" targetRef="loopA" />
+    <bpmn:serviceTask id="feelNew">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="=&#34;job-&#34; + string(random number())" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=uuid()" target="id" />
+          <zeebe:input source="=from json(payload)" target="data" />
+          <zeebe:input source="=trim(name) + to base64(name)" target="label" />
+          <zeebe:output source="=partition(items, 10)" target="pages" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="feelShadowed">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="={uuid: function() 1, id: uuid()}" target="a" />
+          <zeebe:input source="=for trim in [1] return trim(1)" target="b" />
+          <zeebe:input source="=uuid(" target="c" />
+          <zeebe:input source="uuid()" target="d" />
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="k" value="=uuid()" />
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:intermediateCatchEvent id="feelTimer">
+      <bpmn:timerEventDefinition id="feelTimerDef">
+        <bpmn:timeDate xsi:type="bpmn:tFormalExpression">=last day of month(today())</bpmn:timeDate>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="badVars">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=1" target="1st" />
+          <zeebe:output source="=2" target="my variable name" />
+          <zeebe:output source="=3" target="a.b_c" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:multiInstanceLoopCharacteristics>
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=items" inputElement="item-x" outputCollection="results" outputElement="=item" />
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:serviceTask>
+    <bpmn:scriptTask id="badResult">
+      <bpmn:extensionElements>
+        <zeebe:script expression="=1" resultVariable="a-b" />
+      </bpmn:extensionElements>
+    </bpmn:scriptTask>
+    <bpmn:businessRuleTask id="badDecisionResult">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="d" resultVariable="2x" />
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    <bpmn:adHocSubProcess id="badOutputCollection">
+      <bpmn:extensionElements>
+        <zeebe:adHoc outputCollection="all results" outputElement="=r" />
+      </bpmn:extensionElements>
+      <bpmn:task id="adHocInner" />
+    </bpmn:adHocSubProcess>
+    <bpmn:serviceTask id="secretsTask">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="secrets.API_KEY" target="apiKey" />
+          <zeebe:input source="{{secrets.TOKEN}}" target="token" />
+          <zeebe:input source="=camunda.secrets.OK" target="ok" />
+        </zeebe:ioMapping>
+        <zeebe:properties>
+          <zeebe:property name="auth" value="Bearer {{secrets.AUTH}}" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="secretReceive" messageRef="Msg_secret" />
+    <bpmn:serviceTask id="secretLiteral">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="camunda.secrets.PLAIN" target="a" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="secretQuoted">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=&#34;Bearer camunda.secrets.QUOTED&#34;" target="a" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="secretProperty">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:properties>
+          <zeebe:property name="p" value="camunda.secrets.PROP" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="secretList">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="={keys: [camunda.secrets.A, camunda.secrets.B]}" target="a" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="secretIfContext">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=if prod then {key: camunda.secrets.PROD} else null" target="a" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="secretFine">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="={auth: {key: camunda.secrets.A}}" target="a" />
+          <zeebe:input source="=([camunda.secrets.B])" target="b" />
+          <zeebe:input source="=camunda.secrets.C.value" target="c" />
+          <zeebe:input source="=if prod then camunda.secrets.D else null" target="d" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:intermediateThrowEvent id="linkNoName">
+      <bpmn:linkEventDefinition id="linkNoNameDef" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="linkCatch1">
+      <bpmn:linkEventDefinition id="linkCatch1Def" name="L" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:subProcess id="linkScope">
+      <bpmn:intermediateCatchEvent id="linkCatch2">
+        <bpmn:linkEventDefinition id="linkCatch2Def" name="L" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:intermediateCatchEvent id="linkCatchBlank">
+        <bpmn:linkEventDefinition id="linkCatchBlankDef" name=" " />
+      </bpmn:intermediateCatchEvent>
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmn:process id="waits" isExecutable="true">
+    <bpmn:startEvent id="waitsStart">
+      <bpmn:outgoing>waitsToTask</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="waitsTask">
+      <bpmn:incoming>waitsToTask</bpmn:incoming>
+      <bpmn:incoming>waitsBack</bpmn:incoming>
+      <bpmn:outgoing>waitsToService</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="waitsService">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>waitsToService</bpmn:incoming>
+      <bpmn:outgoing>waitsBack</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="waitsToTask" sourceRef="waitsStart" targetRef="waitsTask" />
+    <bpmn:sequenceFlow id="waitsToService" sourceRef="waitsTask" targetRef="waitsService" />
+    <bpmn:sequenceFlow id="waitsBack" sourceRef="waitsService" targetRef="waitsTask" />
+  </bpmn:process>
+  <bpmn:process id="recursive" isExecutable="true">
+    <bpmn:startEvent id="recursiveStart">
+      <bpmn:outgoing>recursiveToSub</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="recursiveSub">
+      <bpmn:incoming>recursiveToSub</bpmn:incoming>
+      <bpmn:startEvent id="recursiveSubStart">
+        <bpmn:outgoing>recursiveToCall</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:callActivity id="recursiveCall">
+        <bpmn:extensionElements>
+          <zeebe:calledElement processId="recursive" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>recursiveToCall</bpmn:incoming>
+      </bpmn:callActivity>
+      <bpmn:sequenceFlow id="recursiveToCall" sourceRef="recursiveSubStart" targetRef="recursiveCall" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="recursiveToSub" sourceRef="recursiveStart" targetRef="recursiveSub" />
+  </bpmn:process>
+</bpmn:definitions>

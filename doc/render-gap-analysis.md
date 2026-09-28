@@ -1,5 +1,12 @@
 # Render Library Gap Analysis — @bpmnkit/canvas vs. bpmn.io (bpmn-js / diagram-js)
 
+> **Status (2026-09-23): historical.** Written before any of it was built; most of the backlog
+> (P0 multi-plane drilldown and data elements, P1 registry/overlays/text measurement, P2 copy/paste,
+> rules, align, segment move, search, labelled undo, P3 i18n, touch and a11y) has since been
+> implemented — each item's entry in `doc/progress.md` starts "Implemented Px-y from
+> `doc/render-gap-analysis.md`". Read the sections below as the original gap list, not the
+> current state.
+
 **Date:** 2026-07-05
 **Benchmark versions:** bpmn-js **18.19.0**, diagram-js **15.18.1** (verified against source + changelogs)
 **Scope:** `packages/canvas` (viewer) and the rendering-relevant parts of `packages/editor`, `packages/core`, `packages/plugins`, compared against the bpmn.io stack. This is an analysis and implementation spec only — nothing here is implemented yet. Each backlog item is written so it can be picked up and implemented independently.

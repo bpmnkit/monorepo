@@ -2,18 +2,21 @@ import type {
 	BpmnAssociation,
 	BpmnDefinitions,
 	BpmnDiEdge,
+	BpmnDiLabel,
 	BpmnDiPlane,
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnGroup,
+	BpmnLabelFont,
 	BpmnLane,
 	BpmnMessageFlow,
 	BpmnParticipant,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
+	LabelFontCss,
 } from "@bpmnkit/core"
-import { readDiColor } from "@bpmnkit/core"
-import { wrapText } from "./measure.js"
+import { collectLabelStyles, labelFontCss, readDiColor, resolveLabelFont } from "@bpmnkit/core"
+import { LABEL_FONT_FAMILY, LABEL_FONT_SIZE, wrapText } from "./measure.js"
 import type { RenderedEdge, RenderedShape } from "./types.js"
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -30,6 +33,22 @@ function attr(el: Element, attrs: Record<string, string | number>): void {
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
 
+/** Line height at the default 11px label font; scaled for other sizes. */
+const LINE_H = 14
+
+/**
+ * Sets a label's DI font as an inline style, which outranks the
+ * `.bpmnkit-label` class rule. Unstyled labels are left to the class.
+ */
+function applyLabelFont(t: SVGTextElement, font: LabelFontCss | undefined): void {
+	if (!font) return
+	const parts = [`font-family: ${font.fontFamily}`, `font-size: ${font.fontSize}px`]
+	if (font.fontWeight !== "normal") parts.push(`font-weight: ${font.fontWeight}`)
+	if (font.fontStyle !== "normal") parts.push(`font-style: ${font.fontStyle}`)
+	if (font.textDecoration !== "none") parts.push(`text-decoration: ${font.textDecoration}`)
+	t.setAttribute("style", parts.join("; "))
+}
+
 /**
  * Creates a `<text>` element (or multi-line group) centred at (`cx`, `cy`).
  * When `topAlign` is true, multi-line text flows downward from `cy` rather
@@ -43,12 +62,14 @@ function makeLabel(
 	maxWidth: number,
 	cls = "bpmnkit-label",
 	topAlign = false,
+	font?: LabelFontCss,
 ): SVGElement {
-	const lines = wrapText(text, maxWidth)
-	const lineH = 14
+	const lines = wrapText(text, maxWidth, font)
+	const lineH = font ? (font.fontSize * LINE_H) / LABEL_FONT_SIZE : LINE_H
 	if (lines.length === 1) {
 		const t = svgEl("text")
 		attr(t, { class: cls, x: cx, y: cy })
+		applyLabelFont(t, font)
 		t.textContent = lines[0] ?? text
 		return t
 	}
@@ -58,6 +79,7 @@ function makeLabel(
 	for (let i = 0; i < lines.length; i++) {
 		const t = svgEl("text")
 		attr(t, { class: cls, x: cx, y: startY + i * lineH })
+		applyLabelFont(t, font)
 		t.textContent = lines[i] ?? ""
 		g.appendChild(t)
 	}
@@ -565,6 +587,7 @@ function renderTask(
 	el: BpmnFlowElement | undefined,
 	instanceId: string,
 	drillable = false,
+	font?: LabelFontCss,
 ): SVGGElement {
 	const { width, height } = shape.bounds
 
@@ -617,7 +640,15 @@ function renderTask(
 	// Label — centred in shape
 	if (el?.name) {
 		const labelMaxW = width - 16
-		const labelEl = makeLabel(el.name, width / 2, height / 2, labelMaxW)
+		const labelEl = makeLabel(
+			el.name,
+			width / 2,
+			height / 2,
+			labelMaxW,
+			"bpmnkit-label",
+			false,
+			font,
+		)
 		g.appendChild(labelEl)
 	}
 
@@ -733,6 +764,7 @@ function renderSwimlane(
 	name: string | undefined,
 	kind: "pool" | "lane",
 	instanceId: string,
+	font: LabelFontCss | undefined,
 ): SVGGElement {
 	const { width, height } = shape.bounds
 	const vertical = shape.isHorizontal === false
@@ -762,6 +794,7 @@ function renderSwimlane(
 						transform: `translate(${TITLE_BAR / 2} ${height / 2}) rotate(-90)`,
 					},
 		)
+		applyLabelFont(text, font)
 		text.textContent = name
 		g.appendChild(text)
 	}
@@ -781,22 +814,25 @@ function renderPool(
 	shape: BpmnDiShape,
 	participant: BpmnParticipant | undefined,
 	instanceId: string,
+	font: LabelFontCss | undefined,
 ): SVGGElement {
-	return renderSwimlane(shape, participant?.name, "pool", instanceId)
+	return renderSwimlane(shape, participant?.name, "pool", instanceId, font)
 }
 
 function renderLane(
 	shape: BpmnDiShape,
 	lane: BpmnLane | undefined,
 	instanceId: string,
+	font: LabelFontCss | undefined,
 ): SVGGElement {
-	return renderSwimlane(shape, lane?.name, "lane", instanceId)
+	return renderSwimlane(shape, lane?.name, "lane", instanceId, font)
 }
 
 function renderAnnotation(
 	shape: BpmnDiShape,
 	text: string | undefined,
 	instanceId: string,
+	font: LabelFontCss | undefined,
 ): SVGGElement {
 	const { width, height } = shape.bounds
 	const g = svgEl("g")
@@ -816,7 +852,7 @@ function renderAnnotation(
 
 	// Annotation text centred in the full shape area
 	if (text) {
-		const labelEl = makeLabel(text, width / 2, height / 2, width - 8)
+		const labelEl = makeLabel(text, width / 2, height / 2, width - 8, "bpmnkit-label", false, font)
 		g.appendChild(labelEl)
 	}
 
@@ -955,10 +991,19 @@ function renderExternalLabel(
 	labelH: number,
 	text: string,
 	topAlign = false,
+	font?: LabelFontCss,
 ): SVGGElement {
 	const g = svgEl("g")
 	attr(g, { transform: `translate(${absX} ${absY})` })
-	const labelEl = makeLabel(text, labelW / 2, labelH / 2, labelW - 4, "bpmnkit-label", topAlign)
+	const labelEl = makeLabel(
+		text,
+		labelW / 2,
+		labelH / 2,
+		labelW - 4,
+		"bpmnkit-label",
+		topAlign,
+		font,
+	)
 	g.appendChild(labelEl)
 	return g
 }
@@ -972,6 +1017,7 @@ function renderEdge(
 	isDefault: boolean,
 	isConditional: boolean,
 	waypoints: ReadonlyArray<Point>,
+	font: LabelFontCss | undefined,
 ): SVGGElement {
 	const ids = markerIds(instanceId)
 	const g = svgEl("g")
@@ -1037,7 +1083,7 @@ function renderEdge(
 	// Edge label
 	if (flow?.name && edge.label?.bounds) {
 		const { x, y, width, height } = edge.label.bounds
-		const labelEl = renderExternalLabel(x, y, width, height, flow.name)
+		const labelEl = renderExternalLabel(x, y, width, height, flow.name, false, font)
 		g.appendChild(labelEl)
 	}
 
@@ -1183,6 +1229,18 @@ export interface RenderContext {
 	geomById: Map<string, ShapeGeom>
 	drillableIds: ReadonlySet<string>
 	instanceId: string
+	/**
+	 * The document's `BPMNLabelStyle` fonts by id. Labels render in the default
+	 * font when absent.
+	 */
+	labelStyles?: ReadonlyMap<string, BpmnLabelFont>
+}
+
+/** The resolved CSS font for a DI label, or `undefined` for the default font. */
+function labelFont(label: BpmnDiLabel | undefined, ctx: RenderContext): LabelFontCss | undefined {
+	if (!ctx.labelStyles) return undefined
+	const font = resolveLabelFont(label, ctx.labelStyles)
+	return font ? labelFontCss(font, LABEL_FONT_FAMILY, LABEL_FONT_SIZE) : undefined
 }
 
 /** Builds a {@link RenderContext} for a plane (index + docking geometry). */
@@ -1204,7 +1262,7 @@ export function buildRenderContext(
 			kind: geomKind(index.elements.get(shape.bpmnElement)?.type),
 		})
 	}
-	return { index, geomById, drillableIds, instanceId }
+	return { index, geomById, drillableIds, instanceId, labelStyles: collectLabelStyles(defs) }
 }
 
 /** Renders a single edge's `<g>` (no DOM insertion). */
@@ -1224,7 +1282,15 @@ export function renderEdgeGroup(edge: BpmnDiEdge, ctx: RenderContext): SVGGEleme
 			geomById.get(flow.sourceRef),
 			geomById.get(flow.targetRef),
 		)
-		return renderEdge(edge, flow, instanceId, isDefault, isConditional, wps)
+		return renderEdge(
+			edge,
+			flow,
+			instanceId,
+			isDefault,
+			isConditional,
+			wps,
+			labelFont(edge.label, ctx),
+		)
 	}
 
 	if (index.messageFlows.has(edge.bpmnElement)) {
@@ -1279,6 +1345,7 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 	const el = index.elements.get(shape.bpmnElement)
 	const { x, y } = shape.bounds
 	const type = el?.type ?? ""
+	const font = labelFont(shape.label, ctx)
 
 	const place = (
 		group: SVGGElement,
@@ -1301,7 +1368,7 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 		type === "intermediateThrowEvent" ||
 		type === "boundaryEvent"
 	) {
-		return withExternalLabel(place(renderEvent(shape, el, instanceId), "shapes"), shape, el)
+		return withExternalLabel(place(renderEvent(shape, el, instanceId), "shapes"), shape, el, font)
 	}
 	if (
 		type === "exclusiveGateway" ||
@@ -1310,13 +1377,14 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 		type === "eventBasedGateway" ||
 		type === "complexGateway"
 	) {
-		return withExternalLabel(place(renderGateway(shape, el, instanceId), "shapes"), shape, el)
+		return withExternalLabel(place(renderGateway(shape, el, instanceId), "shapes"), shape, el, font)
 	}
 	if (type === "dataObjectReference") {
 		return withExternalLabel(
 			place(renderDataObjectReference(shape, el, instanceId), "shapes"),
 			shape,
 			el,
+			font,
 		)
 	}
 	if (type === "dataStoreReference") {
@@ -1324,6 +1392,7 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 			place(renderDataStoreReference(shape, el, instanceId), "shapes"),
 			shape,
 			el,
+			font,
 		)
 	}
 	if (type === "" && !el) {
@@ -1331,16 +1400,19 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 			return place(renderGroup(shape, instanceId), "containers")
 		const annotation = index.annotations.get(shape.bpmnElement)
 		if (annotation !== undefined) {
-			return place(renderAnnotation(shape, annotation.text, instanceId), "shapes", annotation)
+			return place(renderAnnotation(shape, annotation.text, instanceId, font), "shapes", annotation)
 		}
 		if (index.participants.has(shape.bpmnElement)) {
 			return place(
-				renderPool(shape, index.participants.get(shape.bpmnElement), instanceId),
+				renderPool(shape, index.participants.get(shape.bpmnElement), instanceId, font),
 				"containers",
 			)
 		}
 		if (index.lanes.has(shape.bpmnElement)) {
-			return place(renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId), "containers")
+			return place(
+				renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId, font),
+				"containers",
+			)
 		}
 		// Unknown shape — invisible placeholder
 		const g = svgEl("g")
@@ -1349,9 +1421,10 @@ export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): Render
 	}
 
 	return withExternalLabel(
-		place(renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement)), "shapes"),
+		place(renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement), font), "shapes"),
 		shape,
 		el,
+		font,
 	)
 }
 
@@ -1375,6 +1448,7 @@ function withExternalLabel(
 	result: RenderedShapeGroup,
 	shape: BpmnDiShape,
 	el: BpmnFlowElement | undefined,
+	font: LabelFontCss | undefined,
 ): RenderedShapeGroup {
 	if (el?.name && EXTERNAL_LABEL_TYPES.has(el.type)) {
 		const lb = shape.label?.bounds ?? {
@@ -1385,7 +1459,7 @@ function withExternalLabel(
 		}
 		// topAlign=true: multi-line text flows downward from the top of the label
 		// bounds, so long labels never extend upward into the shape.
-		result.label = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true)
+		result.label = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true, font)
 	}
 	return result
 }

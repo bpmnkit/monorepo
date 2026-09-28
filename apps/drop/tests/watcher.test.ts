@@ -193,7 +193,7 @@ describe("keeping up", () => {
 		const w = attach(ben)
 		// A room with viewers and no writer: the page's own copy is current, and
 		// waking the room per viewer is the cost it was built to avoid.
-		w.watcher.handle({ type: "presence", viewers: 3, holder: null, file: null })
+		w.watcher.handle({ type: "presence", viewers: 3, holder: null, file: null, names: [] })
 		await w.pump()
 		expect(w.resyncs()).toEqual([])
 	})

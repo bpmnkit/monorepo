@@ -26,7 +26,21 @@ export {
 export type { ElementGroup } from "./element-groups.js"
 export { initEditorHud } from "./hud.js"
 export type { HudOptions } from "./hud.js"
-export { createTranslationRecorder, defaultTranslate, interpolate } from "./i18n.js"
-export type { Translate, TranslationRecorder, TranslateVars } from "./i18n.js"
+export {
+	AVAILABLE_LOCALES,
+	createTranslate,
+	createTranslationRecorder,
+	defaultTranslate,
+	interpolate,
+	matchLocale,
+} from "./i18n.js"
+export type {
+	Locale,
+	LocaleMessage,
+	PluralMessage,
+	Translate,
+	TranslationRecorder,
+	TranslateVars,
+} from "./i18n.js"
 export { createSideDock } from "./dock.js"
-export type { SideDock } from "./dock.js"
+export type { SideDock, SideDockOptions } from "./dock.js"

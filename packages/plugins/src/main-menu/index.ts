@@ -10,6 +10,7 @@
  */
 
 import type { CanvasPlugin, Theme } from "@bpmnkit/canvas"
+import { type Translate, defaultTranslate } from "@bpmnkit/editor"
 import { injectMainMenuStyles } from "./css.js"
 
 export { MAIN_MENU_CSS, MAIN_MENU_STYLE_ID, injectMainMenuStyles } from "./css.js"
@@ -18,6 +19,8 @@ export { MAIN_MENU_CSS, MAIN_MENU_STYLE_ID, injectMainMenuStyles } from "./css.j
 export interface MenuAction {
 	label: string
 	icon?: string
+	/** Marks the current choice in a drill level with a check. */
+	checked?: boolean
 	onClick: () => void
 }
 
@@ -49,6 +52,27 @@ export interface MainMenuOptions {
 	title?: string
 	/** Extra items rendered above the Theme section in the dropdown. */
 	menuItems?: MenuItem[]
+	/**
+	 * Translation hook for the menu's own entries (the theme section and the
+	 * menu button) — pass the editor's. Items supplied by the host are shown as
+	 * given, so the host localises its own.
+	 */
+	translate?: Translate
+	/**
+	 * Adds a Language section beside Theme. The menu lists the options and
+	 * reports a pick; applying it — typically storing the choice and reloading,
+	 * since the editor's strings are fixed when it is built — is the host's.
+	 */
+	language?: MainMenuLanguage
+}
+
+/** The Language section of the main menu. */
+export interface MainMenuLanguage {
+	/** Code of the language in use, e.g. `"de"`. */
+	current: string
+	/** Languages to offer, each named in its own language — `AVAILABLE_LOCALES` fits. */
+	options: ReadonlyArray<{ code: string; name: string }>
+	onSelect(code: string): void
 }
 
 /** Programmatic API returned alongside the plugin. */
@@ -100,6 +124,7 @@ type Level = { title?: string; items: MenuItem[] }
 export function createMainMenuPlugin(
 	options: MainMenuOptions = {},
 ): CanvasPlugin & { api: MainMenuApi } {
+	const tr = options.translate ?? defaultTranslate
 	let dropdownEl: HTMLDivElement | null = null
 	let panelEl: HTMLDivElement | null = null
 	let titleEl: HTMLSpanElement | null = null
@@ -127,10 +152,10 @@ export function createMainMenuPlugin(
 			{ type: "separator" },
 			{
 				type: "drill",
-				label: "Theme",
+				label: tr("Theme"),
 				items: () =>
 					THEMES.map((t) => ({
-						label: t.label,
+						label: tr(t.label),
 						icon: t.icon,
 						onClick: () => {
 							currentTheme = t.value
@@ -140,6 +165,22 @@ export function createMainMenuPlugin(
 					})),
 			},
 		]
+		const language = options.language
+		if (language) {
+			themeSection.push({
+				type: "drill",
+				label: tr("Language"),
+				items: () =>
+					language.options.map((option) => ({
+						label: option.name,
+						checked: option.code === language.current,
+						onClick: () => {
+							closeDropdown()
+							language.onSelect(option.code)
+						},
+					})),
+			})
+		}
 
 		const beforeTheme: MenuItem[] = [...dynamic, ...staticItems]
 		return [...beforeTheme, ...themeSection]
@@ -300,8 +341,8 @@ export function createMainMenuPlugin(
 		const checkSpan = document.createElement("span")
 		checkSpan.className = "bpmnkit-menu-item-check"
 		// Show check mark for active theme when inside a drill level
-		const themeMatch = THEMES.find((t) => t.label === action.label)
-		if (themeMatch && themeMatch.value === currentTheme) {
+		const themeMatch = THEMES.find((t) => tr(t.label) === action.label)
+		if (action.checked || (themeMatch && themeMatch.value === currentTheme)) {
 			checkSpan.innerHTML = CHECK_ICON
 		}
 		btn.appendChild(checkSpan)
@@ -352,8 +393,8 @@ export function createMainMenuPlugin(
 			const menuBtn = document.createElement("button")
 			menuBtn.className = "bpmnkit-menu-btn"
 			menuBtn.type = "button"
-			menuBtn.setAttribute("aria-label", "Main menu")
-			menuBtn.title = "Main menu"
+			menuBtn.setAttribute("aria-label", tr("Main menu"))
+			menuBtn.title = tr("Main menu")
 			menuBtn.innerHTML = DOTS_ICON
 			panel.appendChild(menuBtn)
 

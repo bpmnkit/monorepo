@@ -119,9 +119,11 @@ pub async fn complete_job(
     Path(key): Path<String>,
     Json(req): Json<CompleteJobRequest>,
 ) -> ApiResult<impl IntoResponse> {
+    // The `result` of an ad-hoc sub-process's job activates its inner elements.
     let payload = serde_json::json!({
         "jobKey": key,
         "variables": req.variables.unwrap_or_default(),
+        "result": req.result,
     });
 
     state

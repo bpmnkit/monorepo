@@ -295,6 +295,29 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.messageRef).toBe(rootMsg?.id)
 		})
 
+		it("receiveTask with correlationKey emits zeebe:subscription and deploys clean", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.receiveTask("rt", { name: "Await ping", messageName: "PingMsg", correlationKey: "=id" })
+				.subProcess("sub", (b) =>
+					b
+						.startEvent("ss")
+						.receiveTask("rt2", {
+							name: "Await pong",
+							messageName: "PongMsg",
+							correlationKey: "=id",
+						})
+						.endEvent("se"),
+				)
+				.endEvent("e")
+				.build()
+
+			const xml = Bpmn.export(defs)
+			expect(xml.match(/<zeebe:subscription correlationKey="=id"/g)).toHaveLength(2)
+			const findings = optimize(defs, { categories: ["deploy"] }).findings
+			expect(findings.filter((f) => f.id === "deploy/message-catch-no-correlation")).toEqual([])
+		})
+
 		it("sendTask with messageName emits root bpmn:message and sets messageRef on task", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")
@@ -3089,7 +3112,7 @@ describe("BpmnProcessBuilder", () => {
 			expect(priority?.attributes).toEqual({ priority: "80" })
 		})
 
-		it("emits zeebe:subscription correlationKey on a message intermediate catch event", () => {
+		it("puts the zeebe:subscription of a message intermediate catch event on its message", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")
 				.intermediateCatchEvent("wait", {
@@ -3100,12 +3123,15 @@ describe("BpmnProcessBuilder", () => {
 				.endEvent("e")
 				.build()
 
+			// Zeebe reads the key from the message, so the subscription goes there.
 			const el = defined(firstProcess(defs).flowElements.find((n) => n.id === "wait"))
-			const sub = el.extensionElements.find((e) => e.name === "zeebe:subscription")
+			expect(el.extensionElements.some((e) => e.name === "zeebe:subscription")).toBe(false)
+			const message = defined(defs.messages.find((m) => m.name === "payment-confirmed"))
+			const sub = message.extensionElements?.find((e) => e.name === "zeebe:subscription")
 			expect(sub?.attributes).toEqual({ correlationKey: "=orderId" })
 		})
 
-		it("emits zeebe:subscription correlationKey on a message boundary event", () => {
+		it("puts the zeebe:subscription of a message boundary event on its message", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")
 				.serviceTask("t", { name: "Ship", taskType: "shipping:1" })
@@ -3117,8 +3143,11 @@ describe("BpmnProcessBuilder", () => {
 				.endEvent("e")
 				.build()
 
+			// Zeebe reads the key from the message, so the subscription goes there.
 			const el = defined(firstProcess(defs).flowElements.find((n) => n.id === "cancelBoundary"))
-			const sub = el.extensionElements.find((e) => e.name === "zeebe:subscription")
+			expect(el.extensionElements.some((e) => e.name === "zeebe:subscription")).toBe(false)
+			const message = defined(defs.messages.find((m) => m.name === "cancel-order"))
+			const sub = message.extensionElements?.find((e) => e.name === "zeebe:subscription")
 			expect(sub?.attributes).toEqual({ correlationKey: "=orderId" })
 		})
 	})
@@ -4658,5 +4687,39 @@ describe("sub-process style methods mirrored across builder contexts", () => {
 		const evtsub = p.flowElements.find((n) => n.id === "evtsub")
 		if (evtsub?.type !== "subProcess") throw new Error("expected event subProcess")
 		expect(evtsub.triggeredByEvent).toBe(true)
+	})
+})
+
+describe("zeebe:subscription placement", () => {
+	it("moves a receive task's subscription onto its message", () => {
+		const defs = Bpmn.createProcess("p")
+			.startEvent("s")
+			.receiveTask("r", { name: "Wait", messageName: "paid", correlationKey: "=orderId" })
+			.endEvent("e")
+			.build()
+		const task = defs.processes[0]?.flowElements.find((n) => n.id === "r")
+		expect(task?.extensionElements.some((e) => e.name === "zeebe:subscription")).toBe(false)
+		const message = defs.messages.find((m) => m.name === "paid")
+		expect(
+			message?.extensionElements?.find((e) => e.name === "zeebe:subscription")?.attributes,
+		).toEqual({
+			correlationKey: "=orderId",
+		})
+	})
+
+	it("leaves conflicting keys for one message on their elements", () => {
+		const defs = Bpmn.createProcess("p")
+			.startEvent("s")
+			.intermediateCatchEvent("a", { messageName: "m", correlationKey: "=x" })
+			.intermediateCatchEvent("b", { messageName: "m", correlationKey: "=y" })
+			.endEvent("e")
+			.build()
+		const onElement = (id: string) =>
+			defs.processes[0]?.flowElements
+				.find((n) => n.id === id)
+				?.extensionElements.find((e) => e.name === "zeebe:subscription")?.attributes
+		expect(onElement("a")).toEqual({ correlationKey: "=x" })
+		expect(onElement("b")).toEqual({ correlationKey: "=y" })
+		expect(defs.messages.find((m) => m.name === "m")?.extensionElements ?? []).toEqual([])
 	})
 })

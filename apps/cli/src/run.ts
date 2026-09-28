@@ -151,6 +151,32 @@ export async function run(argv: string[]): Promise<void> {
 		return
 	}
 
+	// ── dev: `casen dev [dir]` — the one positional is a directory, not a subcommand ──
+	if (group.name === "dev") {
+		const cmd = group.commands[0]
+		if (wantHelp) {
+			if (cmd) printCommandHelp(group, cmd, colors)
+			return
+		}
+		const output = createOutputWriter(outputFormat, noColor)
+		const ctx: RunContext = {
+			positional: positional.slice(1),
+			flags,
+			output,
+			getClient,
+			getAdminClient,
+		}
+		if (cmd) {
+			try {
+				await cmd.run(ctx)
+			} catch (err) {
+				printError(err instanceof Error ? err.message : String(err), colors)
+				process.exitCode = 1
+			}
+		}
+		return
+	}
+
 	// ── worker: route `casen worker start [name]` or treat positional[1] as job type ──
 	if (group.name === "worker" && positional.length >= 2 && !wantHelp) {
 		const output = createOutputWriter(outputFormat, noColor)

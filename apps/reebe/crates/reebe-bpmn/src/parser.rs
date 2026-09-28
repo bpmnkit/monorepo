@@ -1,6 +1,7 @@
 use crate::model::*;
 use quick_xml::events::Event;
-use quick_xml::reader::Reader;
+use quick_xml::name::{Namespace, ResolveResult};
+use quick_xml::reader::{NsReader, Reader};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -31,22 +32,50 @@ impl From<quick_xml::events::attributes::AttrError> for BpmnParseError {
     }
 }
 
-/// Pre-scan XML for `<bpmn:message>` and `<bpmn:signal>` declarations so that
-/// forward references (event definitions appearing before the declaration) are resolved.
-fn prescan_refs(xml: &str) -> (HashMap<String, String>, HashMap<String, String>) {
-    let mut messages: HashMap<String, String> = HashMap::new();
-    let mut signals: HashMap<String, String> = HashMap::new();
+/// Root declarations that event definitions refer to by id.
+#[derive(Default)]
+struct PrescanRefs {
+    messages: HashMap<String, String>,         // message id -> name
+    signals: HashMap<String, String>,          // signal id -> name
+    message_keys: HashMap<String, String>,     // message id -> correlation key
+    error_codes: HashMap<String, String>,      // error id -> errorCode
+    escalation_codes: HashMap<String, String>, // escalation id -> escalationCode
+}
+
+/// Pre-scan XML for `<bpmn:message>`, `<bpmn:signal>`, `<bpmn:error>` and
+/// `<bpmn:escalation>` declarations so that forward references (event definitions
+/// appearing before the declaration) are resolved.
+///
+/// Also collects the `zeebe:subscription` correlation key a root `<bpmn:message>`
+/// carries — where Camunda Modeler and Web Modeler put it — keyed by message id.
+fn prescan_refs(xml: &str) -> PrescanRefs {
+    let mut refs = PrescanRefs::default();
+    let PrescanRefs { messages, signals, message_keys, error_codes, escalation_codes } = &mut refs;
+    let mut current_message: Option<String> = None;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+            Ok(ref event @ (Event::Start(ref e) | Event::Empty(ref e))) => {
                 let name = local_name_owned(e.name().as_ref());
                 match name.as_str() {
                     "message" => {
-                        if let (Some(id), Some(n)) = (get_attr(e, "id"), get_attr(e, "name")) {
+                        let id = get_attr(e, "id");
+                        if let (Some(id), Some(n)) = (id.clone(), get_attr(e, "name")) {
                             messages.insert(id, n);
+                        }
+                        // Only a `<message>` with children can hold a subscription; a
+                        // self-closing one has no end event to clear the marker with.
+                        if matches!(event, Event::Start(_)) {
+                            current_message = id;
+                        }
+                    }
+                    "subscription" => {
+                        if let (Some(id), Some(key)) =
+                            (current_message.as_ref(), get_attr(e, "correlationKey"))
+                        {
+                            message_keys.insert(id.clone(), key);
                         }
                     }
                     "signal" => {
@@ -54,7 +83,24 @@ fn prescan_refs(xml: &str) -> (HashMap<String, String>, HashMap<String, String>)
                             signals.insert(id, n);
                         }
                     }
+                    "error" => {
+                        if let (Some(id), Some(code)) = (get_attr(e, "id"), get_attr(e, "errorCode")) {
+                            error_codes.insert(id, code);
+                        }
+                    }
+                    "escalation" => {
+                        if let (Some(id), Some(code)) =
+                            (get_attr(e, "id"), get_attr(e, "escalationCode"))
+                        {
+                            escalation_codes.insert(id, code);
+                        }
+                    }
                     _ => {}
+                }
+            }
+            Ok(Event::End(ref e)) => {
+                if local_name_owned(e.name().as_ref()) == "message" {
+                    current_message = None;
                 }
             }
             Ok(Event::Eof) | Err(_) => break,
@@ -62,23 +108,28 @@ fn prescan_refs(xml: &str) -> (HashMap<String, String>, HashMap<String, String>)
         }
         buf.clear();
     }
-    (messages, signals)
+    refs
 }
 
 /// Parse a BPMN 2.0 XML string and return all process definitions.
 pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
-    let mut reader = Reader::from_str(xml);
+    // Namespaces are resolved only to tell an empty BPMN element from an extension
+    // element of the same local name, such as `<zeebe:userTask/>`.
+    let mut reader = NsReader::from_str(xml);
     reader.config_mut().trim_text(true);
 
     let mut processes: Vec<BpmnProcess> = Vec::new();
 
     // Pre-scan to resolve forward references for messages and signals
-    let (pre_messages, pre_signals) = prescan_refs(xml);
+    let refs = prescan_refs(xml);
 
     // We use a stateful parser with a stack
     let mut parser_state = ParserState::new();
-    parser_state.messages = pre_messages;
-    parser_state.signals = pre_signals;
+    parser_state.messages = refs.messages;
+    parser_state.signals = refs.signals;
+    parser_state.message_keys = refs.message_keys;
+    parser_state.error_codes = refs.error_codes;
+    parser_state.escalation_codes = refs.escalation_codes;
     let mut buf = Vec::new();
 
     loop {
@@ -87,16 +138,30 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
                 parser_state.handle_start(&name, e, &reader)?;
+                parser_state.xml_stack.push(name);
             }
             Ok(Event::Empty(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
-                parser_state.handle_empty(&name, e, &reader)?;
+                if has_context(&name) && !is_extension(&reader, e) {
+                    // An empty flow element is a start tag followed by its end tag.
+                    parser_state.handle_start(&name, e, &reader)?;
+                    parser_state.xml_stack.push(name.clone());
+                    let ended = parser_state.handle_end(&name)?;
+                    parser_state.xml_stack.pop();
+                    if let Some(process) = ended {
+                        processes.push(process);
+                    }
+                } else {
+                    parser_state.handle_empty(&name, e, &reader)?;
+                }
             }
             Ok(Event::End(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
-                if let Some(process) = parser_state.handle_end(&name)? {
+                let ended = parser_state.handle_end(&name)?;
+                parser_state.xml_stack.pop();
+                if let Some(process) = ended {
                     processes.push(process);
                 }
             }
@@ -167,6 +232,61 @@ fn get_required_attr(
     })
 }
 
+fn is_for_compensation(e: &quick_xml::events::BytesStart) -> bool {
+    get_attr(e, "isForCompensation").is_some_and(|v| v == "true")
+}
+
+fn compensate_definition(e: &quick_xml::events::BytesStart) -> EventDefinition {
+    EventDefinition::Compensation(CompensationEventDefinition {
+        activity_ref: get_attr(e, "activityRef").filter(|r| !r.is_empty()),
+    })
+}
+
+/// Mark the default flow of every exclusive and inclusive gateway, in the scope and
+/// in its sub-processes at every depth.
+fn mark_default_flows(elements: &mut HashMap<String, FlowElement>, flows: &mut [SequenceFlow]) {
+    let defaults: Vec<String> = elements
+        .values()
+        .filter_map(|el| match el {
+            FlowElement::ExclusiveGateway(gw) | FlowElement::InclusiveGateway(gw) => gw.default_flow.clone(),
+            _ => None,
+        })
+        .collect();
+    for flow in flows.iter_mut() {
+        if defaults.contains(&flow.id) {
+            flow.is_default = true;
+        }
+    }
+    for el in elements.values_mut() {
+        if let FlowElement::SubProcess(sp) = el {
+            mark_default_flows(&mut sp.elements, &mut sp.sequence_flows);
+        }
+    }
+}
+
+/// The flow elements the parser keeps a context for while they are open.
+const FLOW_NODE_TAGS: [&str; 20] = [
+    "serviceTask", "userTask", "receiveTask", "scriptTask", "sendTask", "businessRuleTask",
+    "task", "manualTask", "callActivity", "subProcess", "adHocSubProcess", "exclusiveGateway",
+    "parallelGateway", "inclusiveGateway", "eventBasedGateway", "startEvent", "endEvent",
+    "intermediateCatchEvent", "intermediateThrowEvent", "boundaryEvent",
+];
+
+/// Whether an element belongs to a namespace other than BPMN's, as extension elements do.
+fn is_extension(reader: &NsReader<&[u8]>, e: &quick_xml::events::BytesStart) -> bool {
+    match reader.resolve_element(e.name()).0 {
+        ResolveResult::Bound(Namespace(ns)) => ns != BPMN_NS.as_bytes(),
+        ResolveResult::Unbound | ResolveResult::Unknown(_) => false,
+    }
+}
+
+/// Whether an element is parsed as a start tag and an end tag, even when it is written
+/// as an empty tag (`<bpmn:userTask id="x"/>`): the flow elements, and the elements
+/// Zeebe rejects at deployment.
+fn has_context(name: &str) -> bool {
+    FLOW_NODE_TAGS.contains(&name) || name == "complexGateway"
+}
+
 #[derive(Debug)]
 enum ParseContext {
     Root,
@@ -177,6 +297,7 @@ enum ParseContext {
     ScriptTask(ScriptTask),
     SendTask(SendTask),
     BusinessRuleTask(BusinessRuleTask),
+    Task(Task),
     CallActivity(CallActivity),
     SubProcess(SubProcess),
     // For gateways, we store the type alongside the gateway
@@ -189,6 +310,8 @@ enum ParseContext {
     IntermediateCatchEvent(IntermediateCatchEvent),
     IntermediateThrowEvent(IntermediateThrowEvent),
     BoundaryEvent(BoundaryEvent),
+    // An element Zeebe does not execute; recorded so that deployment rejects it
+    Unsupported(UnsupportedElement),
     // Extension elements context
     ExtensionElements,
 }
@@ -199,10 +322,23 @@ struct ParserState {
     messages: HashMap<String, String>, // id -> name
     // Signals referenced in the process
     signals: HashMap<String, String>, // id -> name
+    // Correlation keys declared on root messages
+    message_keys: HashMap<String, String>, // message id -> correlation key
+    // Codes of root errors and escalations, so a definition's ref resolves to its code
+    error_codes: HashMap<String, String>,
+    escalation_codes: HashMap<String, String>,
+    // Event subscription key seen before the event's message definition
+    pending_correlation_key: Option<String>,
     // Current text content (for CDATA elements)
     current_text: String,
     // Pending event definition being built
     pending_event_def: Option<EventDefinition>,
+    // `isSequential` of the `<bpmn:multiInstanceLoopCharacteristics>` being parsed
+    pending_mi_sequential: Option<bool>,
+    // Names of the open XML elements, outermost first
+    xml_stack: Vec<String>,
+    // Documentation and properties of the flow elements parsed so far, by id
+    details: HashMap<String, ElementDetails>,
 }
 
 impl ParserState {
@@ -211,9 +347,60 @@ impl ParserState {
             stack: vec![ParseContext::Root],
             messages: HashMap::new(),
             signals: HashMap::new(),
+            message_keys: HashMap::new(),
+            error_codes: HashMap::new(),
+            escalation_codes: HashMap::new(),
+            pending_correlation_key: None,
             current_text: String::new(),
             pending_event_def: None,
+            pending_mi_sequential: None,
+            xml_stack: Vec::new(),
+            details: HashMap::new(),
         }
+    }
+
+    /// The id of the flow element whose child is the XML element `depth` levels below
+    /// the innermost open one (0: the innermost's parent), if it is one the parser
+    /// keeps a context for.
+    fn detail_owner(&self, depth: usize) -> Option<String> {
+        let owner_tag = self.xml_stack.iter().rev().nth(depth + 1)?;
+        if !FLOW_NODE_TAGS.contains(&owner_tag.as_str()) {
+            return None;
+        }
+        let context = self.stack.iter().rev().find(|c| !matches!(c, ParseContext::ExtensionElements))?;
+        let id = match context {
+            ParseContext::ServiceTask(e) => &e.id,
+            ParseContext::UserTask(e) => &e.id,
+            ParseContext::ReceiveTask(e) => &e.id,
+            ParseContext::ScriptTask(e) => &e.id,
+            ParseContext::SendTask(e) => &e.id,
+            ParseContext::BusinessRuleTask(e) => &e.id,
+            ParseContext::Task(e) => &e.id,
+            ParseContext::CallActivity(e) => &e.id,
+            ParseContext::SubProcess(e) => &e.id,
+            ParseContext::ExclusiveGateway(e)
+            | ParseContext::ParallelGateway(e)
+            | ParseContext::InclusiveGateway(e)
+            | ParseContext::EventBasedGateway(e) => &e.id,
+            ParseContext::StartEvent(e) => &e.id,
+            ParseContext::EndEvent(e) => &e.id,
+            ParseContext::IntermediateCatchEvent(e) => &e.id,
+            ParseContext::IntermediateThrowEvent(e) => &e.id,
+            ParseContext::BoundaryEvent(e) => &e.id,
+            _ => return None,
+        };
+        Some(id.clone())
+    }
+
+    /// The `errorCode` of the `<bpmn:error>` an `errorRef` names; the ref itself
+    /// when the error declares no code.
+    fn error_code(&self, error_ref: Option<String>) -> Option<String> {
+        error_ref.map(|r| self.error_codes.get(&r).cloned().unwrap_or(r))
+    }
+
+    /// The `escalationCode` of the `<bpmn:escalation>` an `escalationRef` names.
+    fn escalation_code(&self, escalation_ref: Option<String>) -> Option<String> {
+        escalation_ref.map(|r| self.escalation_codes.get(&r).cloned().unwrap_or(r))
     }
 
     fn current_process(&mut self) -> Option<&mut BpmnProcess> {
@@ -230,7 +417,11 @@ impl ParserState {
     fn add_element_to_scope(&mut self, id: String, element: FlowElement) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
-                ParseContext::SubProcess(sp) => { sp.elements.insert(id, element); return; }
+                ParseContext::SubProcess(sp) => {
+                    sp.element_order.push(id.clone());
+                    sp.elements.insert(id, element);
+                    return;
+                }
                 ParseContext::Process(p) => { p.elements.insert(id, element); return; }
                 _ => {}
             }
@@ -244,6 +435,7 @@ impl ParserState {
             match ctx {
                 ParseContext::SubProcess(sp) => {
                     sp.start_events.push(id.clone());
+                    sp.element_order.push(id.clone());
                     sp.elements.insert(id, element);
                     return;
                 }
@@ -262,6 +454,7 @@ impl ParserState {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
                 ParseContext::SubProcess(sp) => {
+                    sp.element_order.push(id.clone());
                     sp.elements.insert(id, element);
                     return;
                 }
@@ -320,49 +513,72 @@ impl ParserState {
                 let id = get_required_attr(e, "serviceTask", "id")?;
                 let mut task = ServiceTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::ServiceTask(task));
             }
             "userTask" => {
                 let id = get_required_attr(e, "userTask", "id")?;
                 let mut task = UserTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::UserTask(task));
             }
             "receiveTask" => {
                 let id = get_required_attr(e, "receiveTask", "id")?;
                 let mut task = ReceiveTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 task.message_ref = get_attr(e, "messageRef");
+                if let Some(r) = task.message_ref.as_ref() {
+                    task.message_name = self.messages.get(r).cloned();
+                    task.correlation_key = self.message_keys.get(r).cloned();
+                }
                 self.stack.push(ParseContext::ReceiveTask(task));
             }
             "scriptTask" => {
                 let id = get_required_attr(e, "scriptTask", "id")?;
                 let mut task = ScriptTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::ScriptTask(task));
             }
             "sendTask" => {
                 let id = get_required_attr(e, "sendTask", "id")?;
                 let mut task = SendTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::SendTask(task));
             }
             "businessRuleTask" => {
                 let id = get_required_attr(e, "businessRuleTask", "id")?;
                 let mut task = BusinessRuleTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::BusinessRuleTask(task));
+            }
+            "task" | "manualTask" => {
+                let id = get_required_attr(e, name, "id")?;
+                let mut task = Task::new(id, name == "manualTask");
+                task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
+                self.stack.push(ParseContext::Task(task));
             }
             "callActivity" => {
                 let id = get_required_attr(e, "callActivity", "id")?;
                 let mut ca = CallActivity::new(id);
                 ca.name = get_attr(e, "name");
+                ca.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::CallActivity(ca));
             }
-            "subProcess" => {
-                let id = get_required_attr(e, "subProcess", "id")?;
+            "subProcess" | "adHocSubProcess" => {
+                let id = get_required_attr(e, name, "id")?;
                 let mut sp = SubProcess::new(id);
                 sp.name = get_attr(e, "name");
+                sp.ad_hoc = name == "adHocSubProcess";
+                sp.is_for_compensation = is_for_compensation(e);
+                sp.cancel_remaining_instances = get_attr(e, "cancelRemainingInstances")
+                    .map(|v| v != "false")
+                    .unwrap_or(true);
                 sp.triggered_by_event = get_attr(e, "triggeredByEvent")
                     .map(|v| v == "true")
                     .unwrap_or(false);
@@ -419,6 +635,12 @@ impl ParserState {
             "extensionElements" => {
                 self.stack.push(ParseContext::ExtensionElements);
             }
+            "documentation" => self.current_text.clear(),
+            "property" => self.add_property(e),
+            "multiInstanceLoopCharacteristics" => {
+                self.pending_mi_sequential =
+                    Some(get_attr(e, "isSequential").is_some_and(|v| v == "true"));
+            }
             "timerEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Timer(TimerEventDefinition {
                     timer_type: TimerType::Duration,
@@ -432,9 +654,12 @@ impl ParserState {
                     .and_then(|r| self.messages.get(r))
                     .cloned()
                     .unwrap_or_default();
+                // A subscription on the event itself wins over the message's own.
+                let correlation_key = self.pending_correlation_key.take()
+                    .or_else(|| msg_ref.as_ref().and_then(|r| self.message_keys.get(r)).cloned());
                 self.pending_event_def = Some(EventDefinition::Message(MessageEventDefinition {
                     message_name: msg_name,
-                    correlation_key: None,
+                    correlation_key,
                 }));
             }
             "signalEventDefinition" => {
@@ -452,7 +677,7 @@ impl ParserState {
             "errorEventDefinition" => {
                 let error_ref = get_attr(e, "errorRef");
                 self.pending_event_def = Some(EventDefinition::Error(ErrorEventDefinition {
-                    error_code: error_ref,
+                    error_code: self.error_code(error_ref),
                     error_message_variable: None,
                     error_code_variable: None,
                 }));
@@ -460,14 +685,25 @@ impl ParserState {
             "escalationEventDefinition" => {
                 let escalation_ref = get_attr(e, "escalationRef");
                 self.pending_event_def = Some(EventDefinition::Escalation(EscalationEventDefinition {
-                    escalation_code: escalation_ref,
+                    escalation_code: self.escalation_code(escalation_ref),
                 }));
             }
             "terminateEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Terminate);
             }
             "compensateEventDefinition" => {
-                self.pending_event_def = Some(EventDefinition::Compensation);
+                self.pending_event_def = Some(compensate_definition(e));
+            }
+            "linkEventDefinition" => {
+                self.pending_event_def = Some(EventDefinition::Link(get_attr(e, "name").unwrap_or_default()));
+            }
+            "association" => self.add_association(e)?,
+            "complexGateway" => {
+                let id = get_required_attr(e, name, "id")?;
+                self.stack.push(ParseContext::Unsupported(UnsupportedElement {
+                    id,
+                    element_type: name.to_string(),
+                }));
             }
             // A sequenceFlow with child elements (e.g. conditionExpression) arrives as
             // a Start event rather than Empty. Handle it identically to the Empty case so
@@ -605,9 +841,11 @@ impl ParserState {
                 self.apply_task_listener(listener);
             }
             "loopCharacteristics" => {
-                let is_sequential = get_attr(e, "isSequential")
-                    .map(|v| v == "true")
-                    .unwrap_or(false);
+                // `isSequential` belongs on `<bpmn:multiInstanceLoopCharacteristics>`; the
+                // attribute on `zeebe:loopCharacteristics` is kept for older documents.
+                let is_sequential = self.pending_mi_sequential.unwrap_or_else(|| {
+                    get_attr(e, "isSequential").is_some_and(|v| v == "true")
+                });
                 let input_collection = get_attr(e, "inputCollection").unwrap_or_default();
                 let input_element = get_attr(e, "inputElement");
                 let output_collection = get_attr(e, "outputCollection");
@@ -637,9 +875,12 @@ impl ParserState {
                     .and_then(|r| self.messages.get(r))
                     .cloned()
                     .unwrap_or_default();
+                // A subscription on the event itself wins over the message's own.
+                let correlation_key = self.pending_correlation_key.take()
+                    .or_else(|| msg_ref.as_ref().and_then(|r| self.message_keys.get(r)).cloned());
                 self.pending_event_def = Some(EventDefinition::Message(MessageEventDefinition {
                     message_name: msg_name,
-                    correlation_key: None,
+                    correlation_key,
                 }));
                 self.finalize_event_definition();
             }
@@ -658,7 +899,7 @@ impl ParserState {
             }
             "errorEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Error(ErrorEventDefinition {
-                    error_code: get_attr(e, "errorRef"),
+                    error_code: self.error_code(get_attr(e, "errorRef")),
                     error_message_variable: None,
                     error_code_variable: None,
                 }));
@@ -666,7 +907,7 @@ impl ParserState {
             }
             "escalationEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Escalation(EscalationEventDefinition {
-                    escalation_code: get_attr(e, "escalationRef"),
+                    escalation_code: self.escalation_code(get_attr(e, "escalationRef")),
                 }));
                 self.finalize_event_definition();
             }
@@ -675,8 +916,29 @@ impl ParserState {
                 self.finalize_event_definition();
             }
             "compensateEventDefinition" => {
-                self.pending_event_def = Some(EventDefinition::Compensation);
+                self.pending_event_def = Some(compensate_definition(e));
                 self.finalize_event_definition();
+            }
+            "linkEventDefinition" => {
+                self.pending_event_def = Some(EventDefinition::Link(get_attr(e, "name").unwrap_or_default()));
+                self.finalize_event_definition();
+            }
+            "association" => self.add_association(e)?,
+            "property" => self.add_property(e),
+            "adHoc" => {
+                let active_elements = get_attr(e, "activeElementsCollection");
+                let output_collection = get_attr(e, "outputCollection");
+                let output_element = get_attr(e, "outputElement");
+                for ctx in self.stack.iter_mut().rev() {
+                    if let ParseContext::SubProcess(sp) = ctx {
+                        if sp.ad_hoc {
+                            sp.active_elements_collection = active_elements.filter(|v| !v.trim().is_empty());
+                            sp.output_collection = output_collection.filter(|v| !v.trim().is_empty());
+                            sp.output_element = output_element.filter(|v| !v.trim().is_empty());
+                        }
+                        break;
+                    }
+                }
             }
             _ => {}
         }
@@ -703,11 +965,35 @@ impl ParserState {
                 }
                 self.current_text.clear();
             }
+            "documentation" => {
+                let text = std::mem::take(&mut self.current_text);
+                if let Some(id) = self.detail_owner(0) {
+                    // The first documentation counts, as in bpmn-js.
+                    self.details.entry(id).or_default().documentation.get_or_insert(text);
+                }
+            }
             "conditionExpression" => {
                 let expr = self.current_text.clone();
                 self.current_text.clear();
                 // Apply to the most recently added sequence flow
                 self.apply_last_flow_condition(expr);
+            }
+            "completionCondition" => {
+                let expr = self.current_text.trim().to_string();
+                self.current_text.clear();
+                // Outside `multiInstanceLoopCharacteristics`, it is an ad-hoc sub-process's own.
+                let ad_hoc = match (self.pending_mi_sequential, self.stack.last_mut()) {
+                    (None, Some(ParseContext::SubProcess(sp))) if sp.ad_hoc => Some(sp),
+                    _ => None,
+                };
+                if let Some(sp) = ad_hoc {
+                    sp.completion_condition = Some(expr).filter(|e| !e.is_empty());
+                } else if let Some(Some(mi)) = self.current_multi_instance_mut() {
+                    mi.completion_condition = Some(expr);
+                }
+            }
+            "multiInstanceLoopCharacteristics" => {
+                self.pending_mi_sequential = None;
             }
             "incoming" => {
                 let id = self.current_text.clone().trim().to_string();
@@ -725,8 +1011,13 @@ impl ParserState {
             }
             "timerEventDefinition" | "messageEventDefinition" | "signalEventDefinition"
             | "errorEventDefinition" | "escalationEventDefinition"
-            | "terminateEventDefinition" | "compensateEventDefinition" => {
+            | "terminateEventDefinition" | "compensateEventDefinition" | "linkEventDefinition" => {
                 self.finalize_event_definition();
+            }
+            "complexGateway" => {
+                if let Some(ParseContext::Unsupported(el)) = self.stack.pop() {
+                    self.add_unsupported(el);
+                }
             }
             "extensionElements" => {
                 // Pop the ExtensionElements context
@@ -735,6 +1026,7 @@ impl ParserState {
                 }
             }
             "startEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::StartEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_start_event_to_scope(id, FlowElement::StartEvent(ev));
@@ -782,14 +1074,27 @@ impl ParserState {
                     self.add_element_to_scope(id, FlowElement::BusinessRuleTask(task));
                 }
             }
+            "task" | "manualTask" => {
+                if let Some(ParseContext::Task(task)) = self.stack.pop() {
+                    let id = task.id.clone();
+                    self.add_element_to_scope(id, FlowElement::Task(task));
+                }
+            }
             "callActivity" => {
                 if let Some(ParseContext::CallActivity(ca)) = self.stack.pop() {
                     let id = ca.id.clone();
                     self.add_element_to_scope(id, FlowElement::CallActivity(ca));
                 }
             }
-            "subProcess" => {
-                if let Some(ParseContext::SubProcess(sp)) = self.stack.pop() {
+            "subProcess" | "adHocSubProcess" => {
+                if let Some(ParseContext::SubProcess(mut sp)) = self.stack.pop() {
+                    if sp.ad_hoc {
+                        for child in &sp.element_order {
+                            if let Some(details) = self.details.remove(child) {
+                                sp.element_details.insert(child.clone(), details);
+                            }
+                        }
+                    }
                     let id = sp.id.clone();
                     self.add_element_to_scope(id, FlowElement::SubProcess(sp));
                 }
@@ -819,6 +1124,7 @@ impl ParserState {
                 }
             }
             "intermediateCatchEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::IntermediateCatchEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_element_to_scope(id, FlowElement::IntermediateCatchEvent(ev));
@@ -831,6 +1137,7 @@ impl ParserState {
                 }
             }
             "boundaryEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::BoundaryEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_element_to_scope(id, FlowElement::BoundaryEvent(ev));
@@ -838,28 +1145,21 @@ impl ParserState {
             }
             "process" => {
                 if let Some(ParseContext::Process(mut process)) = self.stack.pop() {
-                    // Resolve default flows: find every gateway that has a default_flow
-                    // and mark the corresponding sequence flow's is_default flag.
-                    let default_flow_ids: Vec<String> = process
-                        .elements
-                        .values()
-                        .filter_map(|el| match el {
-                            FlowElement::ExclusiveGateway(gw)
-                            | FlowElement::InclusiveGateway(gw) => gw.default_flow.clone(),
-                            _ => None,
-                        })
-                        .collect();
-                    for flow in process.sequence_flows.iter_mut() {
-                        if default_flow_ids.contains(&flow.id) {
-                            flow.is_default = true;
-                        }
-                    }
+                    mark_default_flows(&mut process.elements, &mut process.sequence_flows);
                     return Ok(Some(process));
                 }
             }
             _ => {}
         }
         Ok(None)
+    }
+
+    /// A `zeebe:property` inside `zeebe:properties` of a flow element.
+    fn add_property(&mut self, e: &quick_xml::events::BytesStart) {
+        let in_properties = self.xml_stack.iter().rev().take(2).map(String::as_str).eq(["properties", "extensionElements"]);
+        let (Some(owner), Some(name), true) = (self.detail_owner(1), get_attr(e, "name"), in_properties) else { return };
+        let value = get_attr(e, "value").unwrap_or_default();
+        self.details.entry(owner).or_default().properties.push((name, value));
     }
 
     fn finalize_event_definition(&mut self) {
@@ -890,6 +1190,34 @@ impl ParserState {
                     _ => {}
                 }
             }
+        }
+    }
+
+    fn add_association(&mut self, e: &quick_xml::events::BytesStart) -> Result<(), BpmnParseError> {
+        let association = Association {
+            id: get_attr(e, "id").unwrap_or_default(),
+            source_ref: get_required_attr(e, "association", "sourceRef")?,
+            target_ref: get_required_attr(e, "association", "targetRef")?,
+        };
+        for ctx in self.stack.iter_mut().rev() {
+            match ctx {
+                ParseContext::Process(p) => {
+                    p.associations.push(association);
+                    break;
+                }
+                ParseContext::SubProcess(sp) => {
+                    sp.associations.push(association);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn add_unsupported(&mut self, element: UnsupportedElement) {
+        if let Some(p) = self.current_process() {
+            p.unsupported_elements.push(element);
         }
     }
 
@@ -929,6 +1257,9 @@ impl ParserState {
         }
     }
 
+    /// Record a `<bpmn:incoming>` on the flow element it is in. A flow element without
+    /// incoming flows (a start or boundary event) ignores it; it never reaches an
+    /// enclosing element.
     fn apply_incoming(&mut self, id: String) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
@@ -937,6 +1268,8 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.incoming.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.incoming.push(id); return; }
                 ParseContext::SendTask(t) => { t.incoming.push(id); return; }
+                ParseContext::BusinessRuleTask(t) => { t.incoming.push(id); return; }
+                ParseContext::Task(t) => { t.incoming.push(id); return; }
                 ParseContext::CallActivity(t) => { t.incoming.push(id); return; }
                 ParseContext::SubProcess(t) => { t.incoming.push(id); return; }
                 ParseContext::ExclusiveGateway(g) => { g.incoming.push(id); return; }
@@ -946,11 +1279,14 @@ impl ParserState {
                 ParseContext::EndEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.incoming.push(id); return; }
+                ParseContext::StartEvent(_) | ParseContext::BoundaryEvent(_) | ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }
     }
 
+    /// Record a `<bpmn:outgoing>` on the flow element it is in. An end event, which has
+    /// no outgoing flows, ignores it; it never reaches an enclosing element.
     fn apply_outgoing(&mut self, id: String) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
@@ -960,6 +1296,8 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::SendTask(t) => { t.outgoing.push(id); return; }
+                ParseContext::BusinessRuleTask(t) => { t.outgoing.push(id); return; }
+                ParseContext::Task(t) => { t.outgoing.push(id); return; }
                 ParseContext::CallActivity(t) => { t.outgoing.push(id); return; }
                 ParseContext::SubProcess(t) => { t.outgoing.push(id); return; }
                 ParseContext::ExclusiveGateway(g) => { g.outgoing.push(id); return; }
@@ -969,6 +1307,7 @@ impl ParserState {
                 ParseContext::IntermediateCatchEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::BoundaryEvent(e) => { e.outgoing.push(id); return; }
+                ParseContext::EndEvent(_) | ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }
@@ -979,42 +1318,53 @@ impl ParserState {
             match ctx {
                 ParseContext::ServiceTask(t) => { t.task_definition = Some(def); return; }
                 ParseContext::SendTask(t) => { t.task_definition = Some(def); return; }
+                ParseContext::SubProcess(sp) if sp.ad_hoc => { sp.task_definition = Some(def); return; }
                 _ => {}
             }
         }
     }
 
+    /// Record a `zeebe:input` on the flow element it is in; one of an element without
+    /// input mappings is ignored, never given to an enclosing element.
     fn apply_input_mapping(&mut self, mapping: ZeebeIoMapping) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ServiceTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::UserTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ReceiveTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ScriptTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::SendTask(t) => { t.input_mappings.push(mapping); return; }
+                ParseContext::Task(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::CallActivity(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::SubProcess(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::StartEvent(e) => { e.input_mappings.push(mapping); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.input_mappings.push(mapping); return; }
-                _ => {}
+                ParseContext::Root | ParseContext::Process(_) | ParseContext::ExtensionElements => {}
+                _ => return,
             }
         }
     }
 
+    /// Record a `zeebe:output` on the flow element it is in; one of an element without
+    /// output mappings is ignored, never given to an enclosing element.
     fn apply_output_mapping(&mut self, mapping: ZeebeIoMapping) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ServiceTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::UserTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ReceiveTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ScriptTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::SendTask(t) => { t.output_mappings.push(mapping); return; }
+                ParseContext::Task(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::CallActivity(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::SubProcess(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::StartEvent(e) => { e.output_mappings.push(mapping); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.output_mappings.push(mapping); return; }
                 ParseContext::BoundaryEvent(e) => { e.output_mappings.push(mapping); return; }
-                _ => {}
+                ParseContext::Root | ParseContext::Process(_) | ParseContext::ExtensionElements => {}
+                _ => return,
             }
         }
     }
@@ -1059,18 +1409,27 @@ impl ParserState {
                 ParseContext::StartEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
                 ParseContext::IntermediateCatchEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
                 ParseContext::BoundaryEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
@@ -1130,14 +1489,35 @@ impl ParserState {
         }
     }
 
+    /// The multi-instance slot of the innermost activity being parsed.
+    fn current_multi_instance_mut(&mut self) -> Option<&mut Option<MultiInstanceLoopCharacteristics>> {
+        for ctx in self.stack.iter_mut().rev() {
+            match ctx {
+                ParseContext::ServiceTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::UserTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::ReceiveTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::ScriptTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::SendTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::Task(t) => return Some(&mut t.multi_instance),
+                ParseContext::BusinessRuleTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::CallActivity(t) => return Some(&mut t.multi_instance),
+                ParseContext::SubProcess(t) => return Some(&mut t.multi_instance),
+                _ => {}
+            }
+        }
+        None
+    }
+
     fn apply_multi_instance(&mut self, mi: MultiInstanceLoopCharacteristics) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ServiceTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::UserTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ReceiveTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ScriptTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::SendTask(t) => { t.multi_instance = Some(mi); return; }
+                ParseContext::Task(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::CallActivity(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::SubProcess(t) => { t.multi_instance = Some(mi); return; }
                 _ => {}
@@ -1277,6 +1657,43 @@ mod tests {
             }
         } else {
             panic!("Expected StartEvent");
+        }
+    }
+
+    #[test]
+    fn test_message_correlation_keys() {
+        // Event-level subscription before the definition; root-message subscription for the
+        // receive task and the second catch event.
+        let xml = r#"<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0">
+  <bpmn:message id="M1" name="go"/>
+  <bpmn:message id="M2" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="p" isExecutable="true">
+    <bpmn:intermediateCatchEvent id="A">
+      <bpmn:extensionElements><zeebe:subscription correlationKey="=key"/></bpmn:extensionElements>
+      <bpmn:messageEventDefinition messageRef="M1"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="B"><bpmn:messageEventDefinition messageRef="M2"/></bpmn:intermediateCatchEvent>
+    <bpmn:receiveTask id="R" messageRef="M2"><bpmn:incoming>F</bpmn:incoming></bpmn:receiveTask>
+  </bpmn:process>
+</bpmn:definitions>"#;
+        let processes = parse_bpmn(xml).unwrap();
+        let key_of = |id: &str| match processes[0].elements.get(id).unwrap() {
+            FlowElement::IntermediateCatchEvent(e) => match &e.event_definition {
+                Some(EventDefinition::Message(m)) => (m.message_name.clone(), m.correlation_key.clone()),
+                _ => panic!("expected a message definition on {id}"),
+            },
+            _ => panic!("expected a catch event {id}"),
+        };
+        assert_eq!(key_of("A"), ("go".to_string(), Some("=key".to_string())));
+        assert_eq!(key_of("B"), ("paid".to_string(), Some("=orderId".to_string())));
+        if let FlowElement::ReceiveTask(r) = processes[0].elements.get("R").unwrap() {
+            assert_eq!(r.message_name.as_deref(), Some("paid"));
+            assert_eq!(r.correlation_key.as_deref(), Some("=orderId"));
+        } else {
+            panic!("expected a receive task");
         }
     }
 }

@@ -7,10 +7,12 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/worker-client?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: tools](https://img.shields.io/badge/tier-tools-2563eb?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/worker-client/CHANGELOG.md)
 </div>
+
+> **Tools tier.** Maintained, on 0.x: a minor release can break, so pin a version. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
@@ -24,6 +26,7 @@ The key principle: workers built with this package have **zero BPMNKit runtime d
 
 - **Async generator polling** — `client.poll(jobType)` yields one `ActivatedJob` at a time; idles cleanly between polls
 - **Job lifecycle** — `complete(variables)`, `fail(message, retries)`, `throwError(code, message, variables)`
+- **Typed jobs** — `createWorkerClient<JobTypes>()` with the map `casen gen types` generates types each job's variables, output, headers and error codes by job type
 - **OAuth2 for Camunda SaaS** — token fetching and caching built in; no manual auth management
 - **Env-var driven** — reads `ZEEBE_ADDRESS`, `ZEEBE_CLIENT_ID`, `ZEEBE_CLIENT_SECRET` automatically
 - **Zero dependencies** — pure Node.js `fetch`, no external packages
@@ -69,7 +72,8 @@ const client = createWorkerClient({
 
 ### `client.poll(jobType, options?)`
 
-Async generator. Continuously polls Zeebe. Pauses 5 seconds between polls when idle.
+Async generator. Continuously polls Zeebe with long polling (`requestTimeout`, default 20 s).
+Transient errors go to `onError` and are retried; rejected credentials or a 4xx answer end the loop by throwing.
 
 ```typescript
 for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_000 })) {
@@ -78,14 +82,32 @@ for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_00
 }
 ```
 
+### Typed jobs from BPMN
+
+Generate a `JobTypes` map from your BPMN with `casen gen types processes/ --out src/generated/bpmn-types.ts`,
+then pass it as the type argument. Job types, variable names, output keys and error codes are checked at compile time:
+
+```typescript
+import type { JobTypes } from "./generated/bpmn-types.js"
+
+const client = createWorkerClient<JobTypes>()
+for await (const job of client.poll("charge-card")) {
+  job.variables.amount             // typed; a misspelt key is a compile error
+  job.customHeaders.provider       // literal header value from the BPMN
+  await job.complete({ transactionId: "t-1" })
+}
+```
+
+Without a type argument the client is untyped. See the [Typed Workers guide](https://bpmnkit.com/docs/guides/typed-workers).
+
 ### Job methods
 
 ```typescript
 // Return output variables to the process
 await job.complete({ approved: true })
 
-// Fail the job (Zeebe retries or raises incident at retries=0)
-await job.fail("upstream timeout", job.retries - 1)
+// Fail the job; retries default to job.retries - 1 (incident when none are left)
+await job.fail("upstream timeout")
 
 // Throw a BPMN error (caught by an error boundary event in the diagram)
 await job.throwError("PAYMENT_DECLINED", "Card issuer declined", { code: "05" })
@@ -117,11 +139,12 @@ See the [Standalone Workers guide](https://bpmnkit.com/docs/guides/workers-stand
 | [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import type { CachedToken, TokenStore } from "./types.js"
@@ -75,8 +75,14 @@ export class FileTokenStore implements TokenStore {
 				// Start with an empty cache if the file doesn't exist yet
 			}
 			cache[key] = token
-			mkdirSync(dirname(this.#filePath), { recursive: true })
-			writeFileSync(this.#filePath, JSON.stringify(cache, null, 2), "utf8")
+			// Bearer tokens: owner-only. `mode` applies only when the file is created,
+			// so chmod tightens a cache written by an earlier release.
+			mkdirSync(dirname(this.#filePath), { recursive: true, mode: 0o700 })
+			writeFileSync(this.#filePath, JSON.stringify(cache, null, 2), {
+				encoding: "utf8",
+				mode: 0o600,
+			})
+			chmodSync(this.#filePath, 0o600)
 		} catch (err) {
 			// Non-fatal — the in-memory token still works for this session
 			process.stderr.write(

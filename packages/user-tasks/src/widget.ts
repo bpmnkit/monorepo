@@ -1,6 +1,6 @@
 import type { FormDefinition } from "@bpmnkit/core"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
-import { applyTheme, injectUiStyles } from "@bpmnkit/ui"
+import { applyTheme, injectUiStyles, resolveTheme } from "@bpmnkit/ui"
 import { claimTask, completeTask, fetchTaskForm, unclaimTask } from "./actions.js"
 import type { UserTask, UserTaskWidgetApi, UserTaskWidgetOptions } from "./types.js"
 
@@ -245,7 +245,7 @@ export function createUserTaskWidget(options: UserTaskWidgetOptions): UserTaskWi
 				}
 			}
 			if (formDef && typeof formDef === "object" && "components" in formDef) {
-				const fvTheme: "light" | "dark" = theme === "light" ? "light" : "dark"
+				const fvTheme: "light" | "dark" = resolveTheme(theme) === "light" ? "light" : "dark"
 				formViewer = new FormViewer({ container: formContainer, theme: fvTheme })
 				formViewer.load(formDef as FormDefinition)
 			} else {
@@ -273,6 +273,7 @@ export function createUserTaskWidget(options: UserTaskWidgetOptions): UserTaskWi
 			})
 			.catch((err: unknown) => {
 				showError(`Claim failed: ${err instanceof Error ? err.message : String(err)}`)
+				claimBtn.disabled = !!currentTask.assignee
 			})
 			.finally(() => {
 				claimBtn.textContent = "Claim"
@@ -289,6 +290,7 @@ export function createUserTaskWidget(options: UserTaskWidgetOptions): UserTaskWi
 			})
 			.catch((err: unknown) => {
 				showError(`Unclaim failed: ${err instanceof Error ? err.message : String(err)}`)
+				unclaimBtn.disabled = !currentTask.assignee
 			})
 			.finally(() => {
 				unclaimBtn.textContent = "Unclaim"

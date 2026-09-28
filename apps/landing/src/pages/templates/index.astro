@@ -1,0 +1,85 @@
+---
+import "../../styles/global.css"
+import "../../styles/templates.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+import { TEMPLATE_CATEGORIES, TEMPLATE_VIEWS } from "../../data/templates"
+
+const total = TEMPLATE_VIEWS.length
+const scenarioCount = TEMPLATE_VIEWS.reduce((n, v) => n + v.scenarios.length, 0)
+const counts = new Map(
+	TEMPLATE_CATEGORIES.map((c) => [
+		c.id,
+		TEMPLATE_VIEWS.filter((v) => v.category.id === c.id).length,
+	]),
+)
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Templates", url: "https://bpmnkit.com/templates" },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`${total} Runnable Camunda 8 Process Templates — BPMN Kit`}
+    description={`${total} Camunda 8 process templates — order to cash, approvals, onboarding, incidents, sagas, human-in-the-loop and AI agent patterns — each with test scenarios. Open in the editor, download the BPMN, or add one with casen template use.`}
+    jsonLd={jsonLd}
+  />
+</head>
+<body>
+  <Nav />
+  <main class="tpl-main" id="main-content">
+    <div class="tpl-wrap">
+      <div class="tpl-eyebrow">Templates · {total} processes · {scenarioCount} scenarios</div>
+      <h1 class="tpl-h1">Start from a process that already runs</h1>
+      <p class="tpl-lede">
+        Camunda&nbsp;8 processes built with the <code>@bpmnkit/core</code> builder: laid out, with
+        job types, IO mappings, correlation keys, timers and error codes in place. Every template
+        lints clean and ships with test scenarios — a happy path and at least one alternative — that
+        pass on <code>@bpmnkit/engine</code>. Open one in the editor, download the <code>.bpmn</code>,
+        or write it into your project with <code>casen template use</code>.
+      </p>
+
+      <div class="tpl-filter" role="group" aria-label="Filter by category">
+        <button type="button" data-filter="all" aria-pressed="true">All<span class="tpl-count">{total}</span></button>
+        {TEMPLATE_CATEGORIES.map((c) => (
+          <button type="button" data-filter={c.id} aria-pressed="false" title={c.description}>
+            {c.label}<span class="tpl-count">{counts.get(c.id)}</span>
+          </button>
+        ))}
+      </div>
+
+      <div class="tpl-grid">
+        {TEMPLATE_VIEWS.map((v) => (
+          <a class="tpl-card" href={`/templates/${v.template.id}`} data-category={v.category.id}>
+            <div class="tpl-thumb">
+              <img src={v.svgHref} alt={`${v.template.title} process diagram`} loading="lazy" />
+            </div>
+            <div class="tpl-card-body">
+              <span class="tpl-label">{v.category.label}</span>
+              <h2>{v.template.title}</h2>
+              <p>{v.template.description}</p>
+              <span class="tpl-meta">
+                {v.scenarios.length} scenarios · {v.jobTypes.length} job types
+                {v.files.length > 2 && ` · ${v.files.length - 2} extra files`}
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </main>
+  <Footer />
+  <script>
+    import "../../scripts/templates.ts"
+  </script>
+</body>
+</html>

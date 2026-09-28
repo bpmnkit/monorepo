@@ -72,11 +72,17 @@ function requiredAttr(attributes: Attrs, name: string, elementName: string): str
 	return value
 }
 
+/**
+ * The attributes `BpmnDefinitions` models. Checked against its own list rather than
+ * `KNOWN_ATTRS`, which names flow-node attributes: a `name` on `<definitions>` is
+ * not modelled, so it has to travel in `unknownAttributes` or it is lost.
+ */
+const DEFINITIONS_ATTRS = new Set(["id", "targetNamespace", "exporter", "exporterVersion"])
+
 /** Known attribute names on flow nodes — everything else goes to unknownAttributes. */
 const KNOWN_ATTRS = new Set([
 	"id",
 	"name",
-	"default",
 	"attachedToRef",
 	"cancelActivity",
 	"isForCompensation",
@@ -113,6 +119,37 @@ function unknownAttrs(attributes: Attrs): Record<string, string> {
 		result[key] = attributes[key] as string
 	}
 	return result
+}
+
+const NO_ATTRS: ReadonlySet<string> = new Set()
+const ID_ATTRS: ReadonlySet<string> = new Set(["id"])
+const DI_REF_ATTRS: ReadonlySet<string> = new Set(["id", "bpmnElement"])
+const POINT_ATTRS: ReadonlySet<string> = new Set(["x", "y"])
+
+/**
+ * The attributes of a DI element that its model does not name, or `undefined` when
+ * there are none — so a model built from a plain diagram carries no empty objects.
+ */
+function otherAttrs(attributes: Attrs, modelled: ReadonlySet<string>): Attrs | undefined {
+	let result: Attrs | undefined
+	for (const key in attributes) {
+		if (modelled.has(key) || key === "xmlns" || key.startsWith("xmlns:")) continue
+		result ??= {}
+		result[key] = attributes[key] as string
+	}
+	return result
+}
+
+/**
+ * A gateway's base fields without `default` in its unknown attributes: the gateway
+ * models it, so leaving a copy there would re-emit a stale value after an edit.
+ * Activities keep theirs in `unknownAttributes` — BPMN allows a default flow on any
+ * activity, and the SDK does not model it there.
+ */
+function gatewayBase<T extends { unknownAttributes: Record<string, string> }>(base: T): T {
+	if (!("default" in base.unknownAttributes)) return base
+	const { default: _, ...unknownAttributes } = base.unknownAttributes
+	return { ...base, unknownAttributes }
 }
 
 /** Known child local names for flow nodes — anything else is an extension. */
@@ -280,9 +317,15 @@ function dropLayoutWhitespace(element: XmlElement | undefined): void {
 	}
 }
 
+/** A `<documentation>`'s attributes (`id`, `textFormat`), or `undefined` when it has none. */
+function documentationAttrs(attrs: Attrs): Attrs | undefined {
+	return otherAttrs(attrs, NO_ATTRS)
+}
+
 /** The `documentation` and `extensionElements` every `tBaseElement` may carry. */
 interface BaseFields {
 	documentation?: string
+	documentationAttributes?: Attrs
 	extensionElements?: XmlElement[]
 }
 
@@ -295,6 +338,7 @@ interface BaseFields {
  */
 abstract class BaseElementFrame extends Frame implements TextOwner {
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensions: XmlElement[] | null = null
 
@@ -318,6 +362,7 @@ abstract class BaseElementFrame extends Frame implements TextOwner {
 	protected baseFields(): BaseFields {
 		const fields: BaseFields = {}
 		if (this.documentation !== undefined) fields.documentation = this.documentation
+		if (this.documentationAttributes) fields.documentationAttributes = this.documentationAttributes
 		if (this.extensions !== null && this.extensions.length > 0) {
 			fields.extensionElements = this.extensions
 		}
@@ -327,6 +372,7 @@ abstract class BaseElementFrame extends Frame implements TextOwner {
 	setText(slot: number, text: string | undefined, attrs: Attrs): void {
 		if (slot === SLOT_DOCUMENTATION) {
 			this.documentation = text
+			this.documentationAttributes = documentationAttrs(attrs)
 			return
 		}
 		this.baseText(slot, text, attrs)
@@ -598,6 +644,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 	private readonly incoming: string[] = []
 	private readonly outgoing: string[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private readonly eventDefinitions: BpmnEventDefinition[] | null
@@ -684,6 +731,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 			}
 			case SLOT_DOCUMENTATION:
 				this.documentation = text
+				this.documentationAttributes = documentationAttrs(attrs)
 				break
 			case SLOT_COMPLETION_CONDITION:
 				this.completionCondition = { text: text ?? "", attributes: { ...attrs } }
@@ -713,6 +761,9 @@ class FlowNodeFrame extends Frame implements TextOwner {
 			incoming: this.incoming,
 			outgoing: this.outgoing,
 			documentation: this.documentation,
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(attrs),
 		}
@@ -819,7 +870,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 				break
 
 			case "exclusiveGateway":
-				el = { ...base, type: "exclusiveGateway", default: attr(attrs, "default") }
+				el = { ...gatewayBase(base), type: "exclusiveGateway", default: attr(attrs, "default") }
 				break
 
 			case "parallelGateway":
@@ -827,7 +878,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 				break
 
 			case "inclusiveGateway":
-				el = { ...base, type: "inclusiveGateway", default: attr(attrs, "default") }
+				el = { ...gatewayBase(base), type: "inclusiveGateway", default: attr(attrs, "default") }
 				break
 
 			case "eventBasedGateway":
@@ -835,7 +886,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 				break
 
 			case "complexGateway":
-				el = { ...base, type: "complexGateway", default: attr(attrs, "default") }
+				el = { ...gatewayBase(base), type: "complexGateway", default: attr(attrs, "default") }
 				break
 
 			case "dataObject":
@@ -874,6 +925,23 @@ class FlowNodeFrame extends Frame implements TextOwner {
 // Event definitions
 // ---------------------------------------------------------------------------
 
+/** An event definition's unmodelled attributes, spread into the definition when present. */
+function definitionExtras(
+	attrs: Attrs,
+	modelled: ReadonlySet<string>,
+): { unknownAttributes?: Attrs } {
+	const unknownAttributes = otherAttrs(attrs, modelled)
+	return unknownAttributes ? { unknownAttributes } : {}
+}
+
+const ERROR_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "errorRef"])
+const ESCALATION_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "escalationRef"])
+const MESSAGE_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "messageRef"])
+const SIGNAL_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "signalRef"])
+const LINK_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "name"])
+const COMPENSATE_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "activityRef"])
+const LOOP_ATTRS: ReadonlySet<string> = new Set(["id", "isSequential"])
+
 function eventDefinitionFrame(
 	local: string,
 	attrs: Attrs,
@@ -885,35 +953,61 @@ function eventDefinitionFrame(
 		case "conditionalEventDefinition":
 			return new ConditionalDefinitionFrame(attrs, target)
 		case "errorEventDefinition":
-			target.push({ type: "error", id: attr(attrs, "id"), errorRef: attr(attrs, "errorRef") })
+			target.push({
+				type: "error",
+				id: attr(attrs, "id"),
+				errorRef: attr(attrs, "errorRef"),
+				...definitionExtras(attrs, ERROR_DEF_ATTRS),
+			})
 			return null
 		case "escalationEventDefinition":
 			target.push({
 				type: "escalation",
 				id: attr(attrs, "id"),
 				escalationRef: attr(attrs, "escalationRef"),
+				...definitionExtras(attrs, ESCALATION_DEF_ATTRS),
 			})
 			return null
 		case "messageEventDefinition":
-			target.push({ type: "message", id: attr(attrs, "id"), messageRef: attr(attrs, "messageRef") })
+			target.push({
+				type: "message",
+				id: attr(attrs, "id"),
+				messageRef: attr(attrs, "messageRef"),
+				...definitionExtras(attrs, MESSAGE_DEF_ATTRS),
+			})
 			return null
 		case "signalEventDefinition":
-			target.push({ type: "signal", id: attr(attrs, "id"), signalRef: attr(attrs, "signalRef") })
+			target.push({
+				type: "signal",
+				id: attr(attrs, "id"),
+				signalRef: attr(attrs, "signalRef"),
+				...definitionExtras(attrs, SIGNAL_DEF_ATTRS),
+			})
 			return null
 		case "linkEventDefinition":
-			target.push({ type: "link", id: attr(attrs, "id"), name: attr(attrs, "name") })
+			target.push({
+				type: "link",
+				id: attr(attrs, "id"),
+				name: attr(attrs, "name"),
+				...definitionExtras(attrs, LINK_DEF_ATTRS),
+			})
 			return null
 		case "cancelEventDefinition":
-			target.push({ type: "cancel", id: attr(attrs, "id") })
+			target.push({ type: "cancel", id: attr(attrs, "id"), ...definitionExtras(attrs, ID_ATTRS) })
 			return null
 		case "terminateEventDefinition":
-			target.push({ type: "terminate", id: attr(attrs, "id") })
+			target.push({
+				type: "terminate",
+				id: attr(attrs, "id"),
+				...definitionExtras(attrs, ID_ATTRS),
+			})
 			return null
 		case "compensateEventDefinition":
 			target.push({
 				type: "compensate",
 				id: attr(attrs, "id"),
 				activityRef: attr(attrs, "activityRef"),
+				...definitionExtras(attrs, COMPENSATE_DEF_ATTRS),
 			})
 			return null
 		default:
@@ -967,14 +1061,25 @@ class TimerDefinitionFrame extends Frame implements TextOwner {
 		this.target.push({
 			type: "timer",
 			id: attr(this.attrs, "id"),
-			timeDuration: this.duration?.text?.trim(),
+			timeDuration: partText(this.duration),
 			timeDurationAttributes: partAttributes(this.duration),
-			timeDate: this.date?.text?.trim(),
+			timeDate: partText(this.date),
 			timeDateAttributes: partAttributes(this.date),
-			timeCycle: this.cycle?.text?.trim(),
+			timeCycle: partText(this.cycle),
 			timeCycleAttributes: partAttributes(this.cycle),
+			...definitionExtras(this.attrs, ID_ATTRS),
 		})
 	}
+}
+
+/**
+ * A present-but-empty part reads as `""`, not `undefined`: modelers emit an empty
+ * `<timeDate/>` for a timer whose value is still to be filled in, and dropping it
+ * would change which kind of timer the event is.
+ */
+function partText(part: TimerPart | undefined): string | undefined {
+	if (!part) return undefined
+	return part.text?.trim() ?? ""
 }
 
 function partAttributes(part: TimerPart | undefined): Attrs | undefined {
@@ -985,6 +1090,7 @@ function partAttributes(part: TimerPart | undefined): Attrs | undefined {
 class ConditionalDefinitionFrame extends Frame implements TextOwner {
 	private conditionSeen = false
 	private condition: string | undefined
+	private conditionAttributes: Attrs | undefined
 
 	constructor(
 		private readonly attrs: Attrs,
@@ -996,6 +1102,7 @@ class ConditionalDefinitionFrame extends Frame implements TextOwner {
 	override child(local: string, _name: string, attrs: Attrs): Frame | null {
 		if (local !== "condition" || this.conditionSeen) return null
 		this.conditionSeen = true
+		if (Object.keys(attrs).length > 0) this.conditionAttributes = { ...attrs }
 		return new TextFrame(this, SLOT_CONDITION, attrs)
 	}
 
@@ -1007,7 +1114,10 @@ class ConditionalDefinitionFrame extends Frame implements TextOwner {
 		this.target.push({
 			type: "conditional",
 			id: attr(this.attrs, "id"),
-			condition: this.condition?.trim(),
+			// Present but empty stays "", like a timer part: the element is still there.
+			condition: this.conditionSeen ? (this.condition?.trim() ?? "") : undefined,
+			...(this.conditionAttributes ? { conditionAttributes: this.conditionAttributes } : {}),
+			...definitionExtras(this.attrs, ID_ATTRS),
 		})
 	}
 }
@@ -1058,11 +1168,13 @@ class LoopFrame extends Frame implements TextOwner {
 
 	finish(): void {
 		this.owner.setLoopCharacteristics({
+			...(this.attrs.id !== undefined ? { id: this.attrs.id } : {}),
 			isSequential: this.attrs.isSequential === "true" ? true : undefined,
 			loopCardinality: this.loopCardinality,
 			completionCondition: this.completionCondition,
 			extensionElements: this.extensionElements ?? [],
 			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
+			...definitionExtras(this.attrs, LOOP_ATTRS),
 		})
 	}
 }
@@ -1077,7 +1189,11 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 	private readonly targetRef: string
 	private conditionExpression: BpmnConditionExpression | undefined
 	private conditionSeen = false
+	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
+	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
+	private readonly unknownChildren: XmlElement[] = []
 
 	constructor(
 		name: string,
@@ -1090,22 +1206,31 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 		this.targetRef = requiredAttr(attrs, "targetRef", name)
 	}
 
-	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+	override child(local: string, name: string, attrs: Attrs): Frame | null {
 		switch (local) {
 			case "conditionExpression":
 				if (this.conditionSeen) return null
 				this.conditionSeen = true
 				return new TextFrame(this, SLOT_CONDITION_EXPRESSION, attrs)
+			case "documentation":
+				if (this.documentationSeen) return null
+				this.documentationSeen = true
+				return new TextFrame(this, SLOT_DOCUMENTATION, attrs)
 			case "extensionElements":
 				if (this.extensionElements !== null) return null
 				this.extensionElements = []
 				return new TreeFrame(this.extensionElements)
 			default:
-				return null
+				return captureUnknown(this.unknownChildren, name, attrs)
 		}
 	}
 
-	setText(_slot: number, text: string | undefined, attrs: Attrs): void {
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot === SLOT_DOCUMENTATION) {
+			this.documentation = text
+			this.documentationAttributes = documentationAttrs(attrs)
+			return
+		}
 		this.conditionExpression = { text: text ?? "", attributes: { ...attrs } }
 	}
 
@@ -1115,9 +1240,14 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 			name: attr(this.attrs, "name"),
 			sourceRef: this.sourceRef,
 			targetRef: this.targetRef,
+			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			conditionExpression: this.conditionExpression,
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(this.attrs),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -1235,6 +1365,7 @@ class DataAssociationFrame extends BaseElementFrame {
 	finish(): void {
 		this.target.push({
 			id: attr(this.attrs, "id"),
+			...this.baseFields(),
 			sourceRefs: this.sourceRefs,
 			targetRef: this.targetRef,
 			unknownAttributes: unknownAttrs(this.attrs),
@@ -1332,6 +1463,7 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 	private readonly id: string
 	private readonly unknownChildren: XmlElement[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private laneSet: BpmnLaneSet | undefined
@@ -1368,8 +1500,10 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 		}
 	}
 
-	setText(slot: number, text: string | undefined): void {
-		if (slot === SLOT_DOCUMENTATION) this.documentation = text
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot !== SLOT_DOCUMENTATION) return
+		this.documentation = text
+		this.documentationAttributes = documentationAttrs(attrs)
 	}
 
 	setLaneSet(laneSet: BpmnLaneSet): void {
@@ -1383,6 +1517,9 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 			name: attr(attrs, "name"),
 			isExecutable: attr(attrs, "isExecutable") === "true" ? true : undefined,
 			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(attrs),
 			laneSet: this.laneSet,
@@ -1451,6 +1588,7 @@ class CollaborationFrame extends Frame {
 	finish(): void {
 		this.target.push({
 			id: this.id,
+			name: attr(this.attrs, "name"),
 			participants: this.participants,
 			messageFlows: this.messageFlows,
 			textAnnotations: this.textAnnotations,
@@ -1475,7 +1613,10 @@ class LabelFrame extends Frame {
 	private bounds: BpmnBounds | undefined
 	private boundsSeen = false
 
-	constructor(private readonly owner: LabelOwner) {
+	constructor(
+		private readonly owner: LabelOwner,
+		private readonly attrs: Attrs,
+	) {
 		super()
 	}
 
@@ -1488,7 +1629,11 @@ class LabelFrame extends Frame {
 	}
 
 	finish(): void {
-		this.owner.setLabel({ bounds: this.bounds })
+		const unknownAttributes = otherAttrs(this.attrs, NO_ATTRS)
+		this.owner.setLabel({
+			bounds: this.bounds,
+			...(unknownAttributes ? { unknownAttributes } : {}),
+		})
 	}
 }
 
@@ -1513,7 +1658,7 @@ class ShapeFrame extends Frame implements LabelOwner {
 			case "BPMNLabel":
 				if (this.labelSeen) return null
 				this.labelSeen = true
-				return new LabelFrame(this)
+				return new LabelFrame(this, attrs)
 			default:
 				return null
 		}
@@ -1527,8 +1672,8 @@ class ShapeFrame extends Frame implements LabelOwner {
 		const attrs = this.attrs
 		if (!this.bounds) throw new ParseError(`Missing <dc:Bounds> in shape "${attr(attrs, "id")}"`)
 		this.target.push({
-			id: requiredAttr(attrs, "id", this.name),
-			bpmnElement: requiredAttr(attrs, "bpmnElement", this.name),
+			id: attr(attrs, "id") ?? "",
+			bpmnElement: attr(attrs, "bpmnElement") ?? "",
 			isMarkerVisible:
 				attr(attrs, "isMarkerVisible") !== undefined
 					? attr(attrs, "isMarkerVisible") === "true"
@@ -1561,16 +1706,19 @@ class EdgeFrame extends Frame implements LabelOwner {
 
 	override child(local: string, _name: string, attrs: Attrs): Frame | null {
 		switch (local) {
-			case "waypoint":
+			case "waypoint": {
+				const unknownAttributes = otherAttrs(attrs, POINT_ATTRS)
 				this.waypoints.push({
 					x: Number(attr(attrs, "x") ?? "0"),
 					y: Number(attr(attrs, "y") ?? "0"),
+					...(unknownAttributes ? { unknownAttributes } : {}),
 				})
 				return null
+			}
 			case "BPMNLabel":
 				if (this.labelSeen) return null
 				this.labelSeen = true
-				return new LabelFrame(this)
+				return new LabelFrame(this, attrs)
 			default:
 				return null
 		}
@@ -1583,8 +1731,8 @@ class EdgeFrame extends Frame implements LabelOwner {
 	finish(): void {
 		const attrs = this.attrs
 		this.target.push({
-			id: requiredAttr(attrs, "id", this.name),
-			bpmnElement: requiredAttr(attrs, "bpmnElement", this.name),
+			id: attr(attrs, "id") ?? "",
+			bpmnElement: attr(attrs, "bpmnElement") ?? "",
 			waypoints: this.waypoints,
 			label: this.label,
 			unknownAttributes: unknownAttrs(attrs),
@@ -1618,6 +1766,7 @@ class PlaneFrame extends Frame {
 class DiagramFrame extends Frame {
 	private plane: PlaneFrame | undefined
 	private planeSeen = false
+	private readonly unknownChildren: XmlElement[] = []
 
 	constructor(
 		private readonly name: string,
@@ -1628,7 +1777,8 @@ class DiagramFrame extends Frame {
 	}
 
 	override child(local: string, name: string, attrs: Attrs): Frame | null {
-		if (local !== "BPMNPlane" || this.planeSeen) return null
+		if (local !== "BPMNPlane") return captureUnknown(this.unknownChildren, name, attrs)
+		if (this.planeSeen) return null
 		this.planeSeen = true
 		return new PlaneFrame(name, attrs, this)
 	}
@@ -1640,14 +1790,22 @@ class DiagramFrame extends Frame {
 	finish(): void {
 		const plane = this.plane
 		if (!plane) throw new ParseError("Missing <bpmndi:BPMNPlane> in diagram")
+		// BPMN DI makes every `id` and `bpmnElement` here optional, and real models
+		// (the OMG interchange suite among them) omit them. An absent one reads as ""
+		// and is written back absent.
+		const diagramAttributes = otherAttrs(this.attrs, ID_ATTRS)
+		const planeAttributes = otherAttrs(plane.attrs, DI_REF_ATTRS)
 		this.target.push({
-			id: requiredAttr(this.attrs, "id", this.name),
+			id: attr(this.attrs, "id") ?? "",
 			plane: {
-				id: requiredAttr(plane.attrs, "id", plane.name),
-				bpmnElement: requiredAttr(plane.attrs, "bpmnElement", plane.name),
+				id: attr(plane.attrs, "id") ?? "",
+				bpmnElement: attr(plane.attrs, "bpmnElement") ?? "",
 				shapes: plane.shapes,
 				edges: plane.edges,
+				...(planeAttributes ? { unknownAttributes: planeAttributes } : {}),
 			},
+			...(diagramAttributes ? { unknownAttributes: diagramAttributes } : {}),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -1659,6 +1817,7 @@ class DiagramFrame extends Frame {
 class DefinitionsFrame extends Frame implements TextOwner {
 	private readonly categories: BpmnCategory[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private readonly errors: BpmnError[] = []
 	private readonly escalations: BpmnEscalation[] = []
@@ -1708,8 +1867,10 @@ class DefinitionsFrame extends Frame implements TextOwner {
 		}
 	}
 
-	setText(slot: number, text: string | undefined): void {
-		if (slot === SLOT_DOCUMENTATION) this.documentation = text
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot !== SLOT_DOCUMENTATION) return
+		this.documentation = text
+		this.documentationAttributes = documentationAttrs(attrs)
 	}
 
 	finish(): void {
@@ -1723,7 +1884,7 @@ class DefinitionsFrame extends Frame implements TextOwner {
 				namespaces[key.slice(6)] = value
 			} else if (key === "xmlns") {
 				namespaces[""] = value
-			} else if (KNOWN_ATTRS.has(key)) {
+			} else if (DEFINITIONS_ATTRS.has(key)) {
 			} else {
 				unknownAttributes[key] = value
 			}
@@ -1737,6 +1898,9 @@ class DefinitionsFrame extends Frame implements TextOwner {
 			namespaces,
 			unknownAttributes,
 			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			...(this.categories.length > 0 ? { categories: this.categories } : {}),
 			errors: this.errors,
 			escalations: this.escalations,

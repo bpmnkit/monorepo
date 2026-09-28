@@ -7,10 +7,12 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/core?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: core](https://img.shields.io/badge/tier-core-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/core/CHANGELOG.md)
 </div>
+
+> **Core tier.** Semver at 1.0: nothing breaks without a major release. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
@@ -278,6 +280,13 @@ Event definitions are options on the element: `timerDuration`, `timerDate`,
 | `projectSemantics(defs)` | The canonical, presentation-free projection the hash covers |
 | `diffSemantics(a, b)` | What changed between two models, keyed by element id |
 
+### Typed code generation
+
+| Export | Description |
+|--------|-------------|
+| `generateProcessTypes(defs \| defs[], options?)` | TypeScript source typing job types (variables, output, headers, errors), process ids, messages, signals, error and escalation codes. Deterministic |
+| `extractProcessContract(defs \| defs[])` | The same contract as data — what `casen gen types` renders and `--check-workers` compares |
+
 ### Editing
 
 | Export | Description |
@@ -322,10 +331,22 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 |--------|-------------|
 | `layoutProcess(process)` | Auto-layout all elements; returns `LayoutResult` |
 | `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |
+| `analyzeCamundaCompat(defs, version?)` | What the targeted Camunda 8 version cannot run or requires, as `compat/*` findings — Camunda Modeler's `@camunda/linting` rules |
 | `compactify(defs)` | Convert to compact `CompactDiagram` |
 | `expand(compact)` | Restore full `BpmnDefinitions` |
 | `createCompactStream(opts?)` | Read a diagram out of a model's token stream, frame by frame |
 | `generateId(prefix)` | Generate a unique short ID |
+
+### Process documentation
+
+| Export | Description |
+|--------|-------------|
+| `renderDocumentationHtml(defs, options?)` | Self-contained, print-ready HTML: diagram, contents, every element in flow order, linked DMN tables and forms. Print → Save as PDF |
+| `renderDocumentationMarkdown(defs, options?)` | The same content as Markdown, for wikis and Confluence |
+| `renderDocumentationDocx(defs, options?)` | The same content as a Word `.docx` (bytes), diagram as SVG |
+| `buildProcessDocumentation(defs, options?)` | The structured content, for a renderer of your own |
+
+`options` takes `decisions` (`DmnDefinitions[]`), `forms` (`FormDefinition[]`), `title`, `subtitle` and `diagram`. Output is deterministic and all model text is escaped.
 
 ---
 
@@ -335,11 +356,12 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 |---------|-------------|
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

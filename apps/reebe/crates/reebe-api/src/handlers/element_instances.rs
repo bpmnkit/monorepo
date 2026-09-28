@@ -1,9 +1,12 @@
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use reebe_db::state::element_instances::ElementInstanceRepository;
 use crate::app::ApiState;
-use crate::dto::element_instances::{ElementInstanceDto, SearchElementInstancesRequest};
+use crate::dto::element_instances::{
+    ActivateAdHocActivitiesRequest, ElementInstanceDto, SearchElementInstancesRequest,
+};
 use crate::error::{ApiError, ApiResult};
 use crate::pagination::PageResponse;
 
@@ -54,4 +57,51 @@ pub async fn search(
     let dtos: Vec<ElementInstanceDto> = eis.into_iter().map(Into::into).collect();
 
     Ok(Json(PageResponse::new(dtos, first_key, last_key)))
+}
+
+/// The engine command for `POST /v2/element-instances/ad-hoc-activities/{key}/activation`;
+/// `Err` is a 400 for a body the specification does not allow.
+pub fn ad_hoc_activation_payload(
+    key: &str,
+    req: ActivateAdHocActivitiesRequest,
+) -> Result<serde_json::Value, ApiError> {
+    let elements = req
+        .elements
+        .ok_or_else(|| ApiError::InvalidRequest("No elements provided: 'elements' is required".to_string()))?;
+    let elements = elements
+        .into_iter()
+        .map(|element| match element.element_id {
+            Some(id) if !id.is_empty() => Ok(serde_json::json!({
+                "elementId": id,
+                "variables": element.variables.unwrap_or_default(),
+            })),
+            _ => Err(ApiError::InvalidRequest("No elementId provided for an element to activate".to_string())),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(serde_json::json!({
+        "adHocSubProcessInstanceKey": key,
+        "elements": elements,
+        "cancelRemainingInstances": req.cancel_remaining_instances,
+    }))
+}
+
+/// Activate activities within an active ad-hoc sub-process: 204, or 404 when the key
+/// is not an ad-hoc sub-process instance or names an element it cannot activate.
+pub async fn activate_ad_hoc_activities(
+    State(state): State<ApiState>,
+    Path(key): Path<String>,
+    Json(req): Json<ActivateAdHocActivitiesRequest>,
+) -> ApiResult<impl IntoResponse> {
+    let payload = ad_hoc_activation_payload(&key, req)?;
+    state
+        .engine
+        .send_command(
+            "AD_HOC_SUB_PROCESS_INSTRUCTION".to_string(),
+            "ACTIVATE".to_string(),
+            payload,
+            "<default>".to_string(),
+        )
+        .await
+        .map_err(ApiError::EngineError)?;
+    Ok(StatusCode::NO_CONTENT)
 }

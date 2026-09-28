@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_testing" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Msg_Confirm" name="payment-confirmed" />
+
+  <!-- Service tasks and an exclusive gateway -->
+  <bpmn:process id="order-process" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f_start</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="payment" name="Charge card">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="payment" />
+        <zeebe:taskHeaders><zeebe:header key="provider" value="stripe" /></zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f_start</bpmn:incoming><bpmn:outgoing>f_paid</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="paid_gw" default="f_unpaid">
+      <bpmn:incoming>f_paid</bpmn:incoming>
+      <bpmn:outgoing>f_ship</bpmn:outgoing><bpmn:outgoing>f_unpaid</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="ship" name="Ship">
+      <bpmn:extensionElements><zeebe:taskDefinition type="ship" /></bpmn:extensionElements>
+      <bpmn:incoming>f_ship</bpmn:incoming><bpmn:outgoing>f_shipped</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end_ok"><bpmn:incoming>f_shipped</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end_cancel"><bpmn:incoming>f_unpaid</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f_start" sourceRef="start" targetRef="payment" />
+    <bpmn:sequenceFlow id="f_paid" sourceRef="payment" targetRef="paid_gw" />
+    <bpmn:sequenceFlow id="f_ship" sourceRef="paid_gw" targetRef="ship">
+      <bpmn:conditionExpression>=paid = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f_unpaid" sourceRef="paid_gw" targetRef="end_cancel" />
+    <bpmn:sequenceFlow id="f_shipped" sourceRef="ship" targetRef="end_ok" />
+  </bpmn:process>
+
+  <!-- Intermediate timer -->
+  <bpmn:process id="timer-process" isExecutable="true">
+    <bpmn:startEvent id="t_start"><bpmn:outgoing>tf1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="wait_hour">
+      <bpmn:incoming>tf1</bpmn:incoming><bpmn:outgoing>tf2</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="t_end"><bpmn:incoming>tf2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="tf1" sourceRef="t_start" targetRef="wait_hour" />
+    <bpmn:sequenceFlow id="tf2" sourceRef="wait_hour" targetRef="t_end" />
+  </bpmn:process>
+
+  <!-- Absolute timer date -->
+  <bpmn:process id="date-process" isExecutable="true">
+    <bpmn:startEvent id="d_start"><bpmn:outgoing>df1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="wait_new_year">
+      <bpmn:incoming>df1</bpmn:incoming><bpmn:outgoing>df2</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDate>2027-01-01T00:00:00Z</bpmn:timeDate></bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="d_end"><bpmn:incoming>df2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="df1" sourceRef="d_start" targetRef="wait_new_year" />
+    <bpmn:sequenceFlow id="df2" sourceRef="wait_new_year" targetRef="d_end" />
+  </bpmn:process>
+
+  <!-- User task with an interrupting boundary timer -->
+  <bpmn:process id="review-process" isExecutable="true">
+    <bpmn:startEvent id="r_start"><bpmn:outgoing>rf1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:userTask id="review" name="Review">
+      <bpmn:extensionElements><zeebe:userTask /></bpmn:extensionElements>
+      <bpmn:incoming>rf1</bpmn:incoming><bpmn:outgoing>rf2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:boundaryEvent id="review_timeout" attachedToRef="review">
+      <bpmn:outgoing>rf3</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>P1D</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="r_done"><bpmn:incoming>rf2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:serviceTask id="escalate">
+      <bpmn:extensionElements><zeebe:taskDefinition type="escalate" /></bpmn:extensionElements>
+      <bpmn:incoming>rf3</bpmn:incoming><bpmn:outgoing>rf4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="r_escalated"><bpmn:incoming>rf4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="rf1" sourceRef="r_start" targetRef="review" />
+    <bpmn:sequenceFlow id="rf2" sourceRef="review" targetRef="r_done" />
+    <bpmn:sequenceFlow id="rf3" sourceRef="review_timeout" targetRef="escalate" />
+    <bpmn:sequenceFlow id="rf4" sourceRef="escalate" targetRef="r_escalated" />
+  </bpmn:process>
+
+  <!-- Message catch event -->
+  <bpmn:process id="message-process" isExecutable="true">
+    <bpmn:startEvent id="m_start"><bpmn:outgoing>mf1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="await_confirmation">
+      <bpmn:incoming>mf1</bpmn:incoming><bpmn:outgoing>mf2</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="Msg_Confirm" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="m_end"><bpmn:incoming>mf2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="mf1" sourceRef="m_start" targetRef="await_confirmation" />
+    <bpmn:sequenceFlow id="mf2" sourceRef="await_confirmation" targetRef="m_end" />
+  </bpmn:process>
+
+  <!-- Outbound connector with result mapping -->
+  <bpmn:process id="connector-process" isExecutable="true">
+    <bpmn:startEvent id="c_start"><bpmn:outgoing>cf1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="fetch_weather">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="weatherResponse" />
+          <zeebe:header key="resultExpression" value="={temperature: body.main.temp, ok: status = 200}" />
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>cf1</bpmn:incoming><bpmn:outgoing>cf2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="c_end"><bpmn:incoming>cf2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="cf1" sourceRef="c_start" targetRef="fetch_weather" />
+    <bpmn:sequenceFlow id="cf2" sourceRef="fetch_weather" targetRef="c_end" />
+  </bpmn:process>
+
+  <!-- Parallel split and join -->
+  <bpmn:process id="parallel-process" isExecutable="true">
+    <bpmn:startEvent id="p_start"><bpmn:outgoing>pf1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>pf1</bpmn:incoming><bpmn:outgoing>pf2</bpmn:outgoing><bpmn:outgoing>pf3</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:task id="branch_a"><bpmn:incoming>pf2</bpmn:incoming><bpmn:outgoing>pf4</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="branch_b"><bpmn:incoming>pf3</bpmn:incoming><bpmn:outgoing>pf5</bpmn:outgoing></bpmn:task>
+    <bpmn:parallelGateway id="join">
+      <bpmn:incoming>pf4</bpmn:incoming><bpmn:incoming>pf5</bpmn:incoming><bpmn:outgoing>pf6</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:endEvent id="p_end"><bpmn:incoming>pf6</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="pf1" sourceRef="p_start" targetRef="fork" />
+    <bpmn:sequenceFlow id="pf2" sourceRef="fork" targetRef="branch_a" />
+    <bpmn:sequenceFlow id="pf3" sourceRef="fork" targetRef="branch_b" />
+    <bpmn:sequenceFlow id="pf4" sourceRef="branch_a" targetRef="join" />
+    <bpmn:sequenceFlow id="pf5" sourceRef="branch_b" targetRef="join" />
+    <bpmn:sequenceFlow id="pf6" sourceRef="join" targetRef="p_end" />
+  </bpmn:process>
+</bpmn:definitions>

@@ -11,7 +11,15 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { LICENSE_OVERRIDES, PUBLISHED, STABLE } from "./published-packages.mjs"
+import {
+	APPS,
+	LICENSE_OVERRIDES,
+	PUBLISHED,
+	STABLE,
+	TIER,
+	TIERS,
+	manifestVersion,
+} from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
 
@@ -179,9 +187,52 @@ function checkStable() {
 	}
 }
 
+/**
+ * The product tiers, checked against the version numbers they make claims about.
+ *
+ *   - every published package has a tier, and nothing has a tier without being published;
+ *   - Core is exactly STABLE, because Core *is* the 1.0 promise;
+ *   - nothing Experimental is at 1.0 or above — a 1.0 promises what Experimental disclaims.
+ */
+function checkTiers() {
+	const flag = (label, msg) => {
+		console.error(`\n[${label}]`)
+		error(label, msg)
+	}
+
+	for (const dir of PUBLISHED) {
+		if (!(TIER[dir] in TIERS))
+			flag(dir, "published with no tier — add it to TIER in published-packages.mjs")
+	}
+	for (const dir of Object.keys(TIER)) {
+		if (!PUBLISHED.includes(dir)) flag(dir, "has a tier in TIER but is not in PUBLISHED")
+	}
+	for (const dir of PUBLISHED) {
+		if (STABLE.includes(dir) !== (TIER[dir] === "core")) {
+			flag(dir, `is tier "${TIER[dir]}" — Core must be exactly the STABLE list`)
+		}
+	}
+
+	const products = [
+		...PUBLISHED.map((dir) => ({ dir, tier: TIER[dir], manifest: `${dir}/package.json` })),
+		...APPS,
+	]
+	for (const app of APPS) {
+		if (!(app.tier in TIERS)) flag(app.dir, `unknown tier "${app.tier}"`)
+	}
+	for (const { dir, tier, manifest } of products) {
+		if (tier !== "experimental") continue
+		const version = manifestVersion(readFileSync(resolve(ROOT, manifest), "utf8"), manifest)
+		if (Number.parseInt(version.split(".")[0], 10) >= 1) {
+			flag(dir, `is Experimental at ${version} — an Experimental product stays below 1.0`)
+		}
+	}
+}
+
 console.log("Checking published package.json fields...\n")
 for (const dir of PUBLISHED) check(dir)
 checkStable()
+checkTiers()
 
 if (errors === 0) {
 	console.log(

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_07hq2mb" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:message id="Message_InvoiceReceived" name="InvoiceReceived" />
+  <bpmn:process id="invoice-approval" name="Invoice approval" isExecutable="true" camunda:versionTag="1.4">
+    <bpmn:startEvent id="StartEvent_invoice" name="Invoice received">
+      <bpmn:outgoing>Flow_toClassify</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_invoice" messageRef="Message_InvoiceReceived" />
+    </bpmn:startEvent>
+    <bpmn:businessRuleTask id="Task_classify" name="Classify invoice" camunda:resultVariable="approverGroup" camunda:decisionRef="invoice-classification" camunda:decisionRefBinding="deployment" camunda:mapDecisionResult="singleEntry">
+      <bpmn:incoming>Flow_toClassify</bpmn:incoming>
+      <bpmn:outgoing>Flow_toApprove</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:sequenceFlow id="Flow_toClassify" sourceRef="StartEvent_invoice" targetRef="Task_classify" />
+    <bpmn:userTask id="Task_approve" name="Approve invoice" camunda:formRef="approve-invoice" camunda:formRefBinding="latest" camunda:candidateGroups="accounting" camunda:assignee="accounting-lead">
+      <bpmn:incoming>Flow_toApprove</bpmn:incoming>
+      <bpmn:outgoing>Flow_toDecision</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_toApprove" sourceRef="Task_classify" targetRef="Task_approve" />
+    <bpmn:exclusiveGateway id="Gateway_approved" name="Approved?">
+      <bpmn:incoming>Flow_toDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_toDecision" sourceRef="Task_approve" targetRef="Gateway_approved" />
+    <bpmn:sequenceFlow id="Flow_yes" name="yes" sourceRef="Gateway_approved" targetRef="Task_archive">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approved == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_no" name="no" sourceRef="Gateway_approved" targetRef="Timer_clarify">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approved == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:intermediateCatchEvent id="Timer_clarify" name="Wait one day">
+      <bpmn:incoming>Flow_no</bpmn:incoming>
+      <bpmn:outgoing>Flow_toRejected</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_clarify">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P1D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="EndEvent_rejected" name="Invoice rejected">
+      <bpmn:incoming>Flow_toRejected</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toRejected" sourceRef="Timer_clarify" targetRef="EndEvent_rejected" />
+    <bpmn:serviceTask id="Task_archive" name="Archive invoice" camunda:asyncBefore="true" camunda:type="external" camunda:topic="archive-invoice">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="documentId">${invoice.documentId}</camunda:inputParameter>
+          <camunda:inputParameter name="retention">P10Y</camunda:inputParameter>
+          <camunda:outputParameter name="archiveId">${archiveId}</camunda:outputParameter>
+        </camunda:inputOutput>
+        <camunda:failedJobRetryTimeCycle>R3/PT0S</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_toBook</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:callActivity id="Task_book" name="Book invoice" calledElement="booking" camunda:calledElementBinding="latest">
+      <bpmn:extensionElements>
+        <camunda:in source="invoice" target="invoice" />
+        <camunda:in source="archiveId" target="archiveId" />
+        <camunda:out source="bookingId" target="bookingId" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toBook</bpmn:incoming>
+      <bpmn:outgoing>Flow_toTotal</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="Flow_toBook" sourceRef="Task_archive" targetRef="Task_book" />
+    <bpmn:scriptTask id="Task_total" name="Compute total" scriptFormat="feel" camunda:resultVariable="total">
+      <bpmn:incoming>Flow_toTotal</bpmn:incoming>
+      <bpmn:outgoing>Flow_toDone</bpmn:outgoing>
+      <bpmn:script>invoice.net + invoice.tax</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_toTotal" sourceRef="Task_book" targetRef="Task_total" />
+    <bpmn:endEvent id="EndEvent_done" name="Invoice booked">
+      <bpmn:incoming>Flow_toDone</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toDone" sourceRef="Task_total" targetRef="EndEvent_done" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="invoice-approval">
+      <bpmndi:BPMNShape id="StartEvent_invoice_di" bpmnElement="StartEvent_invoice">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_classify_di" bpmnElement="Task_classify">
+        <dc:Bounds x="240" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_approve_di" bpmnElement="Task_approve">
+        <dc:Bounds x="390" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_approved_di" bpmnElement="Gateway_approved" isMarkerVisible="true">
+        <dc:Bounds x="545" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Timer_clarify_di" bpmnElement="Timer_clarify">
+        <dc:Bounds x="652" y="292" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_rejected_di" bpmnElement="EndEvent_rejected">
+        <dc:Bounds x="742" y="292" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_archive_di" bpmnElement="Task_archive">
+        <dc:Bounds x="650" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_book_di" bpmnElement="Task_book">
+        <dc:Bounds x="800" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_total_di" bpmnElement="Task_total">
+        <dc:Bounds x="950" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_done_di" bpmnElement="EndEvent_done">
+        <dc:Bounds x="1102" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_toClassify_di" bpmnElement="Flow_toClassify">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="240" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toApprove_di" bpmnElement="Flow_toApprove">
+        <di:waypoint x="340" y="200" />
+        <di:waypoint x="390" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toDecision_di" bpmnElement="Flow_toDecision">
+        <di:waypoint x="490" y="200" />
+        <di:waypoint x="545" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_yes_di" bpmnElement="Flow_yes">
+        <di:waypoint x="595" y="200" />
+        <di:waypoint x="650" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_no_di" bpmnElement="Flow_no">
+        <di:waypoint x="570" y="225" />
+        <di:waypoint x="570" y="310" />
+        <di:waypoint x="652" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toRejected_di" bpmnElement="Flow_toRejected">
+        <di:waypoint x="688" y="310" />
+        <di:waypoint x="742" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toBook_di" bpmnElement="Flow_toBook">
+        <di:waypoint x="750" y="200" />
+        <di:waypoint x="800" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toTotal_di" bpmnElement="Flow_toTotal">
+        <di:waypoint x="900" y="200" />
+        <di:waypoint x="950" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toDone_di" bpmnElement="Flow_toDone">
+        <di:waypoint x="1050" y="200" />
+        <di:waypoint x="1102" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

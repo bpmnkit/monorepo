@@ -38,14 +38,29 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 
 - **Full-stack BPMN tooling** — parse, build, validate, auto-layout, and export BPMN 2.0 / DMN 1.3 / Camunda Forms with a fluent TypeScript API
 - **Interactive browser editor** — drag-and-drop BPMN editor with 40+ element types, undo/redo, multi-file tabs, AI chat, and in-browser process simulation
-- **22 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
+- **34 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **`casen` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** — 3–5 MB Tauri installer for Windows, macOS, and Linux
+- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](https://github.com/bpmnkit/monorepo/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff `.bpmn`, `.dmn` and `.form` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
+
+## Product tiers
+
+Every product is in one of three tiers. [Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
+says what each one promises; every package README shows its tier at the top.
+
+| Tier | Promise | Products |
+|------|---------|----------|
+| **Core** | Semver at 1.0: nothing breaks without a major release. | [`@bpmnkit/core`](packages/core), [`@bpmnkit/canvas`](packages/canvas), [`@bpmnkit/editor`](packages/editor), [`@bpmnkit/plugins`](packages/plugins), [`@bpmnkit/engine`](packages/engine), [`@bpmnkit/feel`](packages/feel), [`@bpmnkit/api`](packages/api), [`@bpmnkit/ascii`](packages/ascii), [`@bpmnkit/docspack`](packages/docspack), [`@bpmnkit/connector-gen`](packages/connector-gen), [`@bpmnkit/connectors`](packages/connectors), [`@bpmnkit/cli`](apps/cli) |
+| **Tools** | Maintained, on 0.x: a minor release can break, so pin a version. | [`@bpmnkit/ui`](packages/ui), [`@bpmnkit/markdown`](packages/markdown), [`@bpmnkit/camunda-docspack`](packages/camunda-docspack), [`@bpmnkit/profiles`](packages/profiles), [`@bpmnkit/astro-shared`](packages/astro-shared), [`@bpmnkit/patterns`](packages/patterns), [`@bpmnkit/worker-client`](packages/worker-client), [`@bpmnkit/cli-sdk`](packages/cli-sdk), [`@bpmnkit/create-casen-plugin`](packages/create-casen-plugin), [`@bpmnkit/proxy`](apps/proxy), [`@bpmnkit/casen-report`](plugins-cli/casen-report), [`@bpmnkit/casen-worker-http`](plugins-cli/casen-worker-http), [`@bpmnkit/casen-worker-ai`](plugins-cli/casen-worker-ai), BPMN Kit for VS Code ([`apps/vscode`](apps/vscode)), Drop ([`apps/drop`](apps/drop)) |
+| **Experimental** | May change or be discontinued. Not for production. | [`@bpmnkit/operate`](packages/operate), [`@bpmnkit/user-tasks`](packages/user-tasks), [`@bpmnkit/reebe-wasm`](apps/reebe-wasm), Reebe ([`apps/reebe`](apps/reebe)), Studio ([`apps/studio`](apps/studio)), Desktop app ([`apps/desktop`](apps/desktop)), proxy-rs ([`apps/proxy-rs`](apps/proxy-rs)) |
+
+Reebe is a dev/test engine, not for production. It is a clean-room implementation of the Zeebe
+API written from Camunda's public documentation, and is not affiliated with or endorsed by
+Camunda. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ## Packages
 
@@ -56,8 +71,8 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [`@bpmnkit/core`](packages/core) | [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine, optimizer |
 | [`@bpmnkit/canvas`](packages/canvas) | [![npm](https://img.shields.io/npm/v/@bpmnkit/canvas?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer with pan/zoom and plugin API |
 | [`@bpmnkit/editor`](packages/editor) | [![npm](https://img.shields.io/npm/v/@bpmnkit/editor?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight zero-dependency BPMN execution engine |
-| [`@bpmnkit/feel`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | Complete FEEL expression language — parser, evaluator, highlighter |
+| [`@bpmnkit/engine`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Zero-dependency BPMN simulator for tests and demos |
+| [`@bpmnkit/feel`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language — parser, evaluator, highlighter; 94% DMN TCK |
 | [`@bpmnkit/plugins`](packages/plugins) | [![npm](https://img.shields.io/npm/v/@bpmnkit/plugins?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [`@bpmnkit/ascii`](packages/ascii) | [![npm](https://img.shields.io/npm/v/@bpmnkit/ascii?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 
@@ -178,7 +193,7 @@ casen proxy start
 
 See the full [`@bpmnkit/cli` README](apps/cli/README.md) for all commands.
 
-### Monitoring — embed the operations frontend
+### Monitoring — embed the operations frontend (experimental)
 
 ```typescript
 import { createOperate } from "@bpmnkit/operate"
@@ -204,7 +219,7 @@ bpmnkit/monorepo
 │   ├── editor/         # @bpmnkit/editor  — Interactive editor
 │   ├── engine/         # @bpmnkit/engine  — Process execution engine
 │   ├── feel/           # @bpmnkit/feel    — FEEL expression language
-│   ├── plugins/        # @bpmnkit/plugins — 22 canvas plugins
+│   ├── plugins/        # @bpmnkit/plugins — 34 canvas plugins
 │   ├── api/            # @bpmnkit/api     — Camunda 8 REST client
 │   ├── connector-gen/  # @bpmnkit/connector-gen — OpenAPI → connectors
 │   ├── operate/        # @bpmnkit/operate — Monitoring frontend
@@ -213,7 +228,7 @@ bpmnkit/monorepo
 │   ├── ascii/          # @bpmnkit/ascii   — ASCII art renderer
 │   ├── ui/             # @bpmnkit/ui      — Design tokens
 │   └── astro-shared/   # Shared Astro CSS/metadata
-├── apps/               # Non-published applications
+├── apps/               # Applications (cli, proxy and reebe-wasm are published)
 │   ├── cli/            # casen CLI tool
 │   ├── proxy/          # Local AI + API proxy server
 │   ├── desktop/        # Tauri native desktop app
@@ -284,13 +299,16 @@ Every PR that changes a published package **must** include a changeset. Use `pat
 
 ## Versioning
 
-Every package is on **0.x**, which under semver promises nothing about compatibility — pin an
-exact version if that matters to you today.
+Packages version independently. Twelve are at **1.0** and covered by
+[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) — the contract
+that says what counts as public API, what makes a change breaking (including when generated
+BPMN counts as one), which runtimes are supported, and how deprecations run:
+`@bpmnkit/core`, `@bpmnkit/canvas`, `@bpmnkit/editor`, `@bpmnkit/plugins`, `@bpmnkit/engine`, `@bpmnkit/feel`, `@bpmnkit/api`, `@bpmnkit/ascii`, `@bpmnkit/docspack`, `@bpmnkit/connector-gen`, `@bpmnkit/connectors`, `@bpmnkit/cli`.
 
-[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) is the contract
-each package takes on when it reaches 1.0.0: what counts as public API, what makes a change
-breaking (including when generated BPMN counts as one), which runtimes are supported, and how
-deprecations run.
+The other published packages are on **0.x**, which under semver promises nothing about
+compatibility — pin an exact version of those if that matters to you today. Their
+[tier](#product-tiers) says what they do promise: Tools are maintained, Experimental may
+change or be discontinued.
 
 ## Contributing
 
@@ -313,6 +331,10 @@ Contributions are welcome — bug reports, feature requests, documentation impro
 ## License
 
 [MIT](./LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+
+Two parts carry a different licence: the Reebe engine in [`apps/reebe`](apps/reebe) is
+Apache-2.0, and [`@bpmnkit/camunda-docspack`](packages/camunda-docspack) redistributes
+Camunda's documentation under CC-BY-SA-3.0 (see its `NOTICE`).
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="32" height="32" alt="BPMN Kit"></a>

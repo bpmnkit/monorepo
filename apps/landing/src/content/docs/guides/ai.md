@@ -217,20 +217,55 @@ being edited does not have — so an edit reads as an edit rather than a rewrite
 nothing when the diagram has no sequence flows yet: a process built from scratch is new all the
 way through, and marking everything says no more than marking none of it.
 
+### What the model can do
+
+The proxy runs your installed `claude`, `copilot` or `gemini` CLI for the AI panel, but not as
+a coding agent. The model gets no shell, no file access and no web access, and none of your
+own MCP servers, settings or plugins. What it can do depends on the request:
+
+| Request | The model gets |
+|---|---|
+| AI panel chat, improve, explain (`/chat`) | The diagram tools of the proxy's MCP server, which change only the diagram held in that server's memory. The result comes back as the `xml` event; nothing is written to your project. |
+| Create form or decision (`/chat`), improve with operations (`/improve`, `casen lint --ai`), Operate chat, incident assist, AI search, `casen ask` | No tools. The model answers with text or JSON, and the proxy does the rest. |
+
+Everything that comes from the request — your chat text, the diagram, an incident's variables —
+reaches the model inside `<untrusted-input>` tags, and the system prompt tells it to treat that
+as data. A diagram that says "ignore your instructions" is still just a diagram.
+
 ## MCP Server
 
-BPMN Kit ships with a Model Context Protocol (MCP) server that exposes process editing
-tools to any MCP-compatible AI client (Claude Desktop, Cursor, etc.):
+BPMN Kit ships a Model Context Protocol (MCP) server that lets any MCP client — Claude Code,
+Claude Desktop, Cursor, VS Code — create, validate, simulate and deploy processes. It speaks
+stdio and is started by the CLI:
 
 ```sh
-# Start the MCP server
-casen mcp
+casen proxy mcp
 ```
 
-Available MCP tools:
-- `get_diagram` — returns the current diagram as CompactDiagram JSON
-- `update_diagram` — applies a CompactDiagram diff
-- `add_service_task` — adds a single service task with Zeebe config
-- `add_http_call` — adds a pre-configured Camunda HTTP connector task
-- `apply_layout` — re-runs auto-layout on the current diagram
-- `validate` — validates the diagram and returns any schema errors
+or, without installing the CLI first, in an MCP client's configuration:
+
+```json
+{
+  "mcpServers": {
+    "bpmnkit": { "command": "npx", "args": ["-y", "@bpmnkit/cli", "proxy", "mcp"] }
+  }
+}
+```
+
+Each CLI release submits it to the [MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.bpmnkit/bpmnkit`.
+
+Tools:
+
+- `bpmn_create`, `bpmn_read`, `bpmn_update` — write and read `.bpmn` files through the compact
+  format, with auto-layout applied on write
+- `bpmn_validate` — run the optimizer's findings over a file
+- `bpmn_simulate`, `bpmn_run_history` — run a process on the local engine and read past runs
+  (needs the proxy running: `casen proxy start`)
+- `bpmn_deploy` — deploy to the active `casen` profile (Camunda 8 or a local Reebe)
+- `form_create`, `dmn_create` — Camunda Forms and DMN decision tables
+- `worker_list`, `worker_scaffold` — list and generate job workers
+- `pattern_list`, `pattern_get` — the domain patterns in `@bpmnkit/patterns`
+- `camunda_search`, `camunda_execute` — discover and call any Camunda 8 REST operation
+
+The [Claude Code plugin](/docs/guides/claude-code-plugin) configures this server for you.

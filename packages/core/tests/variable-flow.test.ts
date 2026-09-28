@@ -84,6 +84,12 @@ describe("extractFeelIdentifiers", () => {
 		expect(extractFeelIdentifiers("")).toEqual([])
 	})
 
+	it("does not mistake a FEEL built-in for a variable", () => {
+		expect(
+			extractFeelIdentifiers("is empty(items) and partition(xs, 2) != null and fromAi(toolCall.a)"),
+		).toEqual(["items", "xs", "toolCall"])
+	})
+
 	it("extracts a simple name", () => {
 		expect(extractFeelIdentifiers("myVar")).toContain("myVar")
 	})

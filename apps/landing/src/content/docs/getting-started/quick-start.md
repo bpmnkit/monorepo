@@ -57,6 +57,14 @@ await new Promise<void>((resolve) => {
 });
 ```
 
+Prefer to see it? Write `xml` to `hello.bpmn` and run [`casen dev`](/docs/cli/dev) in that
+folder: the editor opens in your browser with the simulator, and every save is linted and runs
+the file's scenario tests.
+
+```sh
+npx @bpmnkit/cli dev
+```
+
 ## Step 3: Deploy to Camunda 8
 
 When you're ready for production, deploy to a real Camunda 8 cluster:

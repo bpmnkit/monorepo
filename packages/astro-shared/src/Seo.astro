@@ -32,6 +32,10 @@ if (canonicalPath.endsWith("/index")) canonicalPath = canonicalPath.slice(0, -"i
 if (canonicalPath === "") canonicalPath = "/"
 if (!canonicalPath.startsWith("/")) canonicalPath = `/${canonicalPath}`
 
+// Cloudflare Web Analytics: cookieless, no personal data, and only when a build sets the
+// site's public beacon token — local and preview builds send nothing.
+const analyticsToken: string | undefined = import.meta.env.PUBLIC_CF_WEB_ANALYTICS_TOKEN
+
 const canonicalUrl = new URL(canonicalPath, Astro.site)
 const jsonLdItems = jsonLd === undefined ? [] : Array.isArray(jsonLd) ? jsonLd : [jsonLd]
 ---
@@ -59,3 +63,11 @@ const jsonLdItems = jsonLd === undefined ? [] : Array.isArray(jsonLd) ? jsonLd :
 {jsonLdItems.map((item) => (
 	<script type="application/ld+json" set:html={JSON.stringify(item)} />
 ))}
+{analyticsToken && (
+	<script
+		is:inline
+		defer
+		src="https://static.cloudflareinsights.com/beacon.min.js"
+		data-cf-beacon={JSON.stringify({ token: analyticsToken })}
+	/>
+)}

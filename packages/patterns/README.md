@@ -7,10 +7,12 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/patterns?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: tools](https://img.shields.io/badge/tier-tools-2563eb?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/patterns/CHANGELOG.md)
 </div>
+
+> **Tools tier.** Maintained, on 0.x: a minor release can break, so pin a version. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
@@ -27,6 +29,7 @@ Patterns are hints, not rigid templates. Claude adapts them to the user's specif
 - **Worker specs** — typical service tasks with job types, typed inputs/outputs, and real integration options
 - **Compact BPMN templates** — token-efficient starting-point structure for LLM-based generation
 - **Keyword matching** — `findPattern(query)` scores keyword hits to find the best-fit pattern from a free-text description
+- **25 runnable templates** — `@bpmnkit/patterns/templates`: complete Camunda 8 processes (order to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven AI agent patterns) with DMN, forms and test scenarios that pass on `@bpmnkit/engine`
 
 ## Installation
 
@@ -65,6 +68,20 @@ console.log(invoice?.readme)    // domain context for the LLM
 | `content-moderation` | Trust & safety | ai-scan, apply-action, report-csam, notify-user |
 | `order-fulfillment` | E-commerce | validate-inventory, process-payment, create-warehouse-order, create-shipment |
 
+## Runnable Templates
+
+`@bpmnkit/patterns/templates` is the source of the [template gallery](https://bpmnkit.com/templates) and of `casen template use`. Each template builds a laid-out process with the `@bpmnkit/core` builder and carries a `.bpmn.tests.json` scenario set — a happy path and at least one alternative.
+
+```typescript
+import { getTemplate, listJobTypes, templateFiles } from "@bpmnkit/patterns/templates"
+
+const template = getTemplate("ai-agent-tool-loop")
+const defs = template?.build()               // BpmnDefinitions with DI
+const files = template ? templateFiles(template) : []
+// [{ path: "ai-agent-tool-loop.bpmn", content }, { path: "ai-agent-tool-loop.bpmn.tests.json", content }]
+const jobTypes = defs ? listJobTypes(defs) : []
+```
+
 ## API Reference
 
 ```typescript
@@ -94,6 +111,14 @@ export interface WorkerSpec {
   outputs: Record<string, string>
   integrationOptions?: string[]  // e.g. ["Stripe", "Adyen", "Braintree"]
 }
+
+// @bpmnkit/patterns/templates
+export const ALL_TEMPLATES: readonly ProcessTemplate[]
+export const TEMPLATE_CATEGORIES: readonly TemplateCategoryInfo[]
+export function getTemplate(id: string): ProcessTemplate | undefined
+export function templatesInCategory(category: TemplateCategory): ProcessTemplate[]
+export function templateFiles(template: ProcessTemplate): TemplateFile[]
+export function listJobTypes(defs: BpmnDefinitions): TemplateJobType[]
 ```
 
 ## Used by AIKit
@@ -111,11 +136,12 @@ See the [Pattern Library guide](https://bpmnkit.com/docs/guides/patterns) for a 
 | [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

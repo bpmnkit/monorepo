@@ -9,9 +9,9 @@
 	"files": ["LICENSE", "README.md", "dist/**/*.js"],
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
 		"check": "biome check .",
-		"test": "echo \"no tests\""
+		"test": "vitest run"
 	},
 	"description": "Scaffold a new casen CLI plugin in seconds",
 	"keywords": ["camunda", "casen", "cli", "plugin", "scaffold", "create", "bpmnkit"],

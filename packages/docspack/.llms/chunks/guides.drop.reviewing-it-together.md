@@ -28,19 +28,36 @@ removed, changed and *moved* elements marked on synchronised canvases, with pan 
 locked together. The same diff is available offline as
 [`casen diff bpmn`](/docs/cli/diff) and as a plugin in `@bpmnkit/plugins`.
 
-Diagram editing is limited to BPMN files with a single process — the editor handles one
-process at a time — and the built-in demo drop is read-only, though **Edit a copy** will
-upload it as a drop of your own. A FEEL statement is edited differently and on its own
-terms; see [trying it with your own numbers](#trying-it-with-your-own-numbers) above.
+**Comments.** Press **Comments** to open the review panel. With it open, click an element
+on the diagram to comment on that element, or just write to comment on the file as a
+whole. DMN, form and FEEL files take whole-file comments only. Each element with open
+threads gets a small numbered marker on the canvas; click it to jump to its threads.
+Threads take replies, and anyone who has commented on the drop can **Resolve** a thread or
+**Reopen** it. New comments, edits and resolutions reach everyone who has the drop open
+as they happen.
 
-### Rate limiting the edit baton
+A comment is anchored by the element's id, not by its position. It stays with the element
+when the element moves, and survives any number of edits. If a later edit deletes the
+element, the comment is still listed, marked **on a removed element** with the name the
+element had when the comment was written. While you preview an older version from
+**History**, the same label reads **not in this version**.
 
-Because a drop is editable by anyone holding the link, claiming the baton can be put behind
-a [Turnstile](https://developers.cloudflare.com/turnstile/) challenge — one challenge per
-editing session, not per keystroke. It is invisible to somebody who takes the baton once and
-edits for half an hour, and a real cost to a script that wants to rewrite every drop it can
-find. On a self-hosted deployment it is configuration (`TURNSTILE_SITE_KEY` and
-`TURNSTILE_SECRET`); with neither set, claims are not challenged.
+**@mentions.** Type `@` in a comment to pick from the names this drop has seen: the people
+who have it open now and everyone who has commented on it. A mentioned name is highlighted
+in the comment. If the mentioned person has the drop open, a notice appears at the top of
+their page with a button that opens the thread. Drop has no accounts and stores no email
+addresses, so **a mention sends no email and no push notification**. Someone who does not
+have the drop open sees the mention the next time they open it. If it matters, send them
+the link yourself.
+
+**Who you are, without an account.** Your display name is whatever you type into the
+comment box. The browser remembers it and shows it to the other people viewing the drop.
+Nothing checks it, so two people can both call themselves Anna. Your first comment on a
+drop gives your browser a private key for that drop, and the server stores only a hash
+of it. That key is what lets you edit or delete **your own** comments, and nobody else's.
+It lives in this browser only: clear the site data, or change browsers, and your earlier
+comments can no longer be edited or deleted from there. A deleted comment that has replies
+leaves a "Comment deleted" placeholder, so the replies still make sense.
 
 ---
 Source: https://bpmnkit.com/docs/guides/drop

@@ -1,5 +1,5 @@
-import { BpmnCanvas } from "@bpmnkit/canvas"
-import { Bpmn, compactify, sha256Hex } from "@bpmnkit/core"
+import { BpmnCanvas, type ViewportState } from "@bpmnkit/canvas"
+import { Bpmn, type BpmnDefinitions, compactify, sha256Hex } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
@@ -13,6 +13,8 @@ import {
 	PONG,
 	type ServerMessage,
 } from "../shared/room-protocol.js"
+import { CommentsPanel } from "./comments.js"
+import { type DocFormat, buildDropDocument, deliverDocument, isDocFormat } from "./doc-export.js"
 import { type FeelEditor, mountFeelEditor } from "./feel-edit.js"
 import { renderFeelDocument } from "./feel-view.js"
 import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
@@ -128,13 +130,33 @@ function showLiveUpdate(doc: WatcherDoc, change: Change | null): void {
 	}
 }
 
-async function renderBpmn(xml: string): Promise<void> {
+/** An element's name for a comment anchor, falling back to its id. */
+function elementLabel(canvas: BpmnCanvas, id: string): string {
+	const el = canvas.getElement(id)
+	const name = el && "shape" in el ? (el.flowElement?.name ?? el.annotation?.text) : undefined
+	return name?.trim() || id
+}
+
+/** `preview` marks an older version on the canvas, for how comments describe their anchors. */
+async function renderBpmn(xml: string, preview = false): Promise<void> {
 	viewer.innerHTML = ""
 	// Frame the whole diagram (fit-to-viewport), but never enlarge a small
 	// diagram past 100% — the first auto-fit reports its scale and we cap it.
 	let capped = false
-	const canvas = new BpmnCanvas({ container: viewer, xml, theme, grid: true, fit: "contain" })
+	const canvas = new BpmnCanvas({ container: viewer, theme, grid: true, fit: "contain" })
 	current = canvas
+	// Every load and every plane change clears the canvas's overlays, so the
+	// comment markers are put back on each — including a watcher's live update.
+	let shown: BpmnDefinitions | null = null
+	canvas.on("diagram:load", (defs) => {
+		shown = defs
+		comments.showOn(canvas, defs, preview)
+	})
+	canvas.on("plane:change", () => comments.showOn(canvas, shown, preview))
+	canvas.on("element:click", (id: string) => {
+		if (comments.isOpen()) comments.pick(id, elementLabel(canvas, id))
+	})
+	canvas.load(xml)
 	canvas.on("viewport:change", (state) => {
 		scale = state.scale
 		zoomLevel.textContent = `${Math.round(scale * 100)}%`
@@ -186,6 +208,9 @@ function wireCrossFileLinks(xml: string, canvas: BpmnCanvas): void {
 		return
 	}
 	canvas.on("element:click", (id: string) => {
+		// With the comments panel open a click picks what to comment on; jumping
+		// to another tab under the reader would lose the comment they were starting.
+		if (comments.isOpen()) return
 		const ref = refs.get(id)
 		if (!ref) return
 		if (ref.formId) {
@@ -244,6 +269,7 @@ async function select(index: number, xml?: string): Promise<void> {
 
 	// AI review applies to BPMN only; reset per-file review state on switch.
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
+	comments.setFile(file)
 	// Only BPMN has an op vocabulary, so a DMN or form tab watches nothing.
 	watcher.watch(file.kind === "bpmn" ? file.filename : null)
 	feelEditor?.destroy()
@@ -494,7 +520,7 @@ async function previewVersion(entry: VersionEntry): Promise<void> {
 	message("Loading…")
 	try {
 		const xml = await (await fetch(contentUrl(file, undefined, entry.seq))).text()
-		await renderBpmn(xml)
+		await renderBpmn(xml, true)
 		previewing = entry.seq
 		if (historyBanner && historyBannerText) {
 			historyBannerText.textContent =
@@ -604,6 +630,40 @@ document.getElementById("historyExit")?.addEventListener("click", () => {
 	}
 })
 
+// ── Comments ────────────────────────────────────────────────────────────────
+
+const commentsPanel = document.getElementById("commentsPanel") as HTMLElement
+const mentionNotice = document.getElementById("mentionNotice") as HTMLElement
+
+const comments = new CommentsPanel({
+	shareId: data.shareId,
+	// The same two carve-outs the room makes for edits, for the same reasons.
+	readOnly: isDemo
+		? "the demo cannot be annotated — take a copy to comment on one you own"
+		: data.pinned
+			? "this drop is pinned by an operator"
+			: null,
+	toggle: document.getElementById("commentsBtn") as HTMLButtonElement,
+	panel: commentsPanel,
+	list: document.getElementById("commentsBody") as HTMLElement,
+	compose: document.getElementById("commentsCompose") as HTMLElement,
+	notice: {
+		box: mentionNotice,
+		text: document.getElementById("mentionText") as HTMLElement,
+		open: document.getElementById("mentionOpen") as HTMLButtonElement,
+	},
+	challenge: (title) => challenge(title),
+	announceName: (name) => watcherSend({ type: "name", name }),
+	onOpen: () => {
+		for (const panel of [aiPanel, historyPanel, localHistoryPanel]) if (panel) panel.hidden = true
+	},
+})
+document.getElementById("commentsClose")?.addEventListener("click", () => comments.close())
+document.getElementById("mentionDismiss")?.addEventListener("click", () => {
+	mentionNotice.hidden = true
+})
+void comments.load()
+
 // ── Presence & actions ──────────────────────────────────────────────────────
 
 const presenceEl = document.getElementById("presence") as HTMLElement
@@ -662,7 +722,14 @@ try {
 			const editing = message.holder === null ? "" : " · 1 EDITING"
 			presenceEl.textContent = `${message.viewers} VIEWING${editing}`
 			presenceEl.hidden = message.viewers < 1
+			presenceEl.title = message.names.join(", ")
+			comments.setPresentNames(message.names)
+			// Said once per connection, so a reconnect is named again too.
+			if (message.type === "hello" && comments.displayName) {
+				watcherSend({ type: "name", name: comments.displayName })
+			}
 		}
+		if (message.type === "comment") comments.receive(message.comment)
 		handleEditMessage(message)
 		watcher.handle(message)
 	})
@@ -675,12 +742,14 @@ try {
 const editBtn = document.getElementById("editBtn") as HTMLButtonElement | null
 const doneBtn = document.getElementById("doneBtn") as HTMLButtonElement | null
 const localHistoryBtn = document.getElementById("localHistoryBtn") as HTMLButtonElement | null
+const editorLangSelect = document.getElementById("editorLang") as HTMLSelectElement | null
 const localHistoryPanel = document.getElementById("localHistoryPanel") as HTMLElement | null
 const localHistoryBody = document.getElementById("localHistoryBody") as HTMLElement | null
 const editNotice = document.getElementById("editNotice") as HTMLElement | null
 const editNoticeText = document.getElementById("editNoticeText") as HTMLElement | null
 const turnstileDialog = document.getElementById("turnstileDialog") as HTMLDialogElement | null
 const turnstileWidget = document.getElementById("turnstileWidget") as HTMLElement | null
+const turnstileTitle = document.getElementById("turnstileTitle") as HTMLElement | null
 const turnstileError = document.getElementById("turnstileError") as HTMLElement | null
 document
 	.getElementById("turnstileCancel")
@@ -691,6 +760,12 @@ let widgetId: string | null = null
 
 /** The editor, once someone has claimed the baton. Null while reading. */
 let session: import("./edit-session.js").EditSession | null = null
+/** The editor chunk, once fetched — it also carries the language list and loaders. */
+let editModule: typeof import("./edit-session.js") | null = null
+/** The language the editor is built in. The page around it stays English. */
+let editorLang: Awaited<ReturnType<typeof import("./edit-session.js").loadEditorLocale>> = {
+	code: "en",
+}
 /** The statement editor, when a FEEL tab is open for editing. */
 let feelEditor: FeelEditor | null = null
 /** The file the editor is open on, for going back to it afterwards. */
@@ -754,6 +829,7 @@ function updateEditAffordance(): void {
 	}
 	if (doneBtn) doneBtn.hidden = !editing
 	if (localHistoryBtn) localHistoryBtn.hidden = session === null
+	if (editorLangSelect) editorLangSelect.hidden = session === null
 }
 
 /**
@@ -882,9 +958,9 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	// deploy between this page loading and this click leaves the cached bundle
 	// asking for a chunk hash that no longer exists. Loading first means a
 	// failure costs nothing — the reader keeps the canvas they had.
-	let startEditSession: typeof import("./edit-session.js").startEditSession
 	try {
-		;({ startEditSession } = await import("./edit-session.js"))
+		editModule = await import("./edit-session.js")
+		editorLang = await editModule.loadEditorLocale()
 	} catch {
 		// Hand the baton straight back, or the drop stays locked by a tab that
 		// never got an editor. The release earns a `revoked` whose own message
@@ -898,18 +974,36 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	const viewport = current?.getViewport() ?? { tx: 0, ty: 0, scale: 1 }
 	// The watcher and the editor must not both be driving the canvas.
 	watcher.watch(null)
+	comments.showOn(null, null)
 	current?.destroy()
 	current = null
 	viewer.innerHTML = ""
 
 	editingFile = granted.filename
-	session = startEditSession({
+	openSession(editModule, granted.filename, granted.xml, viewport)
+	fillLanguagePicker(editModule)
+	zoombar.hidden = true
+	updateEditAffordance()
+}
+
+/** Builds the editor on `viewer` in the current language. */
+function openSession(
+	mod: typeof import("./edit-session.js"),
+	filename: string,
+	xml: string,
+	viewport: ViewportState,
+): void {
+	// `lang` on the editor alone: it is what speaks the language, not the page.
+	// It also makes Japanese and Chinese pick their own forms of shared glyphs.
+	viewer.lang = editorLang.code
+	session = mod.startEditSession({
 		container: viewer,
-		xml: granted.xml,
+		xml,
 		viewport,
 		theme,
 		shareId: data.shareId,
-		filename: granted.filename,
+		filename,
+		translate: editorLang.translate,
 		sendOp: (op) => {
 			opSeq += 1
 			watcherSend({ type: "op", seq: opSeq, op })
@@ -917,9 +1011,39 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	})
 	localHistoryBody?.replaceChildren(session.historyPanel)
 	void session.refreshHistory()
-	zoombar.hidden = true
-	updateEditAffordance()
 }
+
+/** Lists the editor's languages, once, each in its own name. */
+function fillLanguagePicker(mod: typeof import("./edit-session.js")): void {
+	if (!editorLangSelect) return
+	if (editorLangSelect.options.length === 0) {
+		for (const { code, name } of mod.EDITOR_LANGUAGES) {
+			editorLangSelect.append(new Option(name, code))
+		}
+	}
+	editorLangSelect.value = editorLang.code
+}
+
+/**
+ * A new language rebuilds the editor in place — same document, same view, same
+ * baton. Its strings are fixed when it is built, and a rebuild sends nothing to
+ * the room: loading is not an edit.
+ */
+editorLangSelect?.addEventListener("change", () => {
+	const mod = editModule
+	const code = editorLangSelect.value
+	if (!mod) return
+	mod.storeEditorLocale(code)
+	void mod.loadEditorLocale(code).then((lang) => {
+		editorLang = lang
+		if (!session || editingFile === null) return
+		const xml = session.currentXml()
+		const viewport = session.viewport()
+		session.destroy()
+		viewer.innerHTML = ""
+		openSession(mod, editingFile, xml, viewport)
+	})
+})
 
 /** Puts the baton down and goes back to reading. */
 function leaveEditMode(): void {
@@ -927,6 +1051,7 @@ function leaveEditMode(): void {
 	const edited = session.currentXml()
 	session.destroy()
 	session = null
+	viewer.removeAttribute("lang")
 	localHistoryBody?.replaceChildren()
 	if (localHistoryPanel) localHistoryPanel.hidden = true
 
@@ -1023,7 +1148,7 @@ type ChallengeResult =
  * benefit. With no key configured it resolves immediately with no token, so the
  * whole thing disappears from a deployment that does not use it.
  */
-function challenge(): Promise<ChallengeResult> {
+function challenge(title = "One check before you edit"): Promise<ChallengeResult> {
 	const sitekey = data.turnstileKey
 	if (!sitekey) return Promise.resolve({ ok: true, token: null })
 
@@ -1044,6 +1169,7 @@ function challenge(): Promise<ChallengeResult> {
 		}
 
 		if (turnstileError) turnstileError.hidden = true
+		if (turnstileTitle) turnstileTitle.textContent = title
 		turnstileWidget.replaceChildren()
 		turnstileDialog.showModal()
 		// Cancelling is the escape hatch for a challenge that will not resolve —
@@ -1130,6 +1256,52 @@ document.getElementById("reportSubmit")?.addEventListener("click", (e) => {
 	dialog.close()
 	alert("Thanks — your report has been submitted.")
 })
+
+// ── Process documentation ───────────────────────────────────────────────────
+// Read-only readers are the audience: nothing here needs the edit baton.
+
+const docBtn = document.getElementById("docBtn") as HTMLButtonElement | null
+const docDialog = document.getElementById("docDialog") as HTMLDialogElement | null
+const bpmnFiles = data.files.filter((f) => f.kind === "bpmn")
+if (docBtn) docBtn.hidden = bpmnFiles.length === 0
+docBtn?.addEventListener("click", () => docDialog?.showModal())
+docDialog?.addEventListener("close", () => {
+	const format = docDialog.returnValue
+	docDialog.returnValue = ""
+	if (isDocFormat(format)) void exportDocumentation(format)
+})
+
+async function exportDocumentation(format: DocFormat): Promise<void> {
+	const active = data.files[activeIndex]
+	const file = active?.kind === "bpmn" ? active : bpmnFiles[0]
+	if (!file) return
+	const read = async (f: DropFile, as?: "json"): Promise<string> => {
+		const res = await fetch(contentUrl(f, as))
+		if (!res.ok) throw new Error(`${f.filename}: HTTP ${res.status}`)
+		return res.text()
+	}
+	try {
+		const [xml, decisions, forms] = await Promise.all([
+			read(file),
+			Promise.all(
+				data.files
+					.filter((f) => f.kind === "dmn")
+					.map(async (f) => JSON.parse(await read(f, "json"))),
+			),
+			Promise.all(
+				data.files
+					.filter((f) => f.kind === "form")
+					.map(async (f) => JSON.parse(await read(f, "json"))),
+			),
+		])
+		deliverDocument(
+			buildDropDocument({ filename: file.filename, xml, decisions, forms }, format),
+			format,
+		)
+	} catch (err) {
+		alert(`Could not build the documentation — ${err instanceof Error ? err.message : String(err)}`)
+	}
+}
 
 // ── Start ───────────────────────────────────────────────────────────────────
 // Last, deliberately: `select` touches the panels declared above it in this

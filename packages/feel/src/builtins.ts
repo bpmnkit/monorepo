@@ -4,6 +4,7 @@ import type {
 	FeelDateTime,
 	FeelDayTimeDuration,
 	FeelFunction,
+	FeelRange,
 	FeelTime,
 	FeelValue,
 	FeelYearsMonthsDuration,
@@ -102,7 +103,9 @@ function isKnownTimezone(name: string): boolean {
 
 function parseTime(s: string): FeelTime | null {
 	const m =
-		/^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})(?::(\d{2}))?|Z)?(?:@(.+))?$/.exec(s)
+		/^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})(?::(\d{2}))?|Z)?(?:@(.+)|\[(.+)\])?$/.exec(
+			s,
+		)
 	if (!m) return null
 	const hour = Number(m[1])
 	const minute = Number(m[2])
@@ -121,6 +124,12 @@ function parseTime(s: string): FeelTime | null {
 		if (offsetSeconds !== undefined) return null
 		if (!isKnownTimezone(m[8])) return null
 		timezone = m[8]
+	} else if (m[9]) {
+		// Java's form, +02:00[Europe/Berlin]: the offset is the zone's at that
+		// moment, and the zone is what the value keeps.
+		if (!isKnownTimezone(m[9])) return null
+		offsetSeconds = undefined
+		timezone = m[9]
 	}
 	if (!isValidTime(hour, minute, second)) return null
 	return { type: "time", hour, minute, second, offsetSeconds, timezone }
@@ -647,6 +656,123 @@ reg("string join", (value, delimiter, prefix, suffix) => {
 	return head + parts.join(between) + tail
 })
 
+// Camunda extensions (feel-scala) --------------------------------------------
+
+reg("is blank", (str) => {
+	const s = toStr(str)
+	return s === null ? null : s.trim() === ""
+})
+
+reg("trim", (str) => {
+	const s = toStr(str)
+	return s === null ? null : s.trim()
+})
+
+reg("extract", (str, pattern) => {
+	const s = toStr(str)
+	const p = toStr(pattern)
+	if (s === null || p === null) return null
+	const re = cachedRegExp(p, "g")
+	if (re === null) return null
+	return [...s.matchAll(re)].map((m) => m[0])
+})
+
+reg("uuid", () => {
+	const platform = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+	if (platform?.randomUUID) return platform.randomUUID()
+	// A version 4 UUID from Math.random, for a platform without Web Crypto.
+	return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+		const r = Math.floor(Math.random() * 16)
+		return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
+	})
+})
+
+reg("to base64", (str) => {
+	const s = toStr(str)
+	return s === null ? null : encodeBase64(encodeUtf8(s))
+})
+
+reg("from base64", (str) => {
+	const s = toStr(str)
+	if (s === null) return null
+	const bytes = decodeBase64(s)
+	return bytes === null ? null : decodeUtf8(bytes)
+})
+
+const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+// Base64 and UTF-8 by hand: the package runs anywhere ES2022 does, without
+// relying on Buffer, btoa or TextEncoder being there.
+
+function encodeUtf8(s: string): number[] {
+	const bytes: number[] = []
+	for (const ch of s) {
+		const c = ch.codePointAt(0) ?? 0
+		if (c < 0x80) bytes.push(c)
+		else if (c < 0x800) bytes.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f))
+		else if (c < 0x10000) bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f))
+		else {
+			bytes.push(
+				0xf0 | (c >> 18),
+				0x80 | ((c >> 12) & 0x3f),
+				0x80 | ((c >> 6) & 0x3f),
+				0x80 | (c & 0x3f),
+			)
+		}
+	}
+	return bytes
+}
+
+/** Decodes UTF-8, or null when the bytes are not well-formed UTF-8. */
+function decodeUtf8(bytes: number[]): string | null {
+	let out = ""
+	for (let i = 0; i < bytes.length; ) {
+		const b = bytes[i] as number
+		const extra = b < 0x80 ? 0 : b >= 0xf0 ? 3 : b >= 0xe0 ? 2 : b >= 0xc0 ? 1 : -1
+		if (extra < 0 || b > 0xf4) return null
+		let c = extra === 0 ? b : b & (0x3f >> extra)
+		for (let k = 1; k <= extra; k++) {
+			const next = bytes[i + k]
+			if (next === undefined || (next & 0xc0) !== 0x80) return null
+			c = (c << 6) | (next & 0x3f)
+		}
+		const minimum = [0, 0x80, 0x800, 0x10000][extra] as number
+		if (c < minimum || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff)) return null
+		out += String.fromCodePoint(c)
+		i += extra + 1
+	}
+	return out
+}
+
+function encodeBase64(bytes: number[]): string {
+	let out = ""
+	for (let i = 0; i < bytes.length; i += 3) {
+		const n = ((bytes[i] ?? 0) << 16) | ((bytes[i + 1] ?? 0) << 8) | (bytes[i + 2] ?? 0)
+		out += BASE64[(n >> 18) & 63]
+		out += BASE64[(n >> 12) & 63]
+		out += i + 1 < bytes.length ? BASE64[(n >> 6) & 63] : "="
+		out += i + 2 < bytes.length ? BASE64[n & 63] : "="
+	}
+	return out
+}
+
+/** Decodes padded Base64, or null when the text is not Base64. */
+function decodeBase64(s: string): number[] | null {
+	if (s.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(s)) return null
+	const bytes: number[] = []
+	for (let i = 0; i < s.length; i += 4) {
+		let n = 0
+		for (let k = 0; k < 4; k++) {
+			const ch = s[i + k] as string
+			n = (n << 6) | (ch === "=" ? 0 : BASE64.indexOf(ch))
+		}
+		bytes.push((n >> 16) & 255)
+		if (s[i + 2] !== "=") bytes.push((n >> 8) & 255)
+		if (s[i + 3] !== "=") bytes.push(n & 255)
+	}
+	return bytes
+}
+
 // -------------------------------------------------------------------------
 // Number functions
 // -------------------------------------------------------------------------
@@ -1002,6 +1128,41 @@ reg("distinct values", (list) => {
 	return [...new Set(list)]
 })
 
+// Camunda extensions (feel-scala) --------------------------------------------
+
+reg("duplicate values", (list) => {
+	if (!isFeelList(list)) return null
+	// Each value that occurs more than once, in the order it first occurs.
+	// Numbers, strings and booleans are counted by key; structured values
+	// (dates, lists, contexts) are compared against the groups seen so far.
+	type Group = { item: FeelValue; count: number }
+	const groups: Group[] = []
+	const byKey = new Map<FeelValue, Group>()
+	for (const item of list) {
+		const keyed = item === null || typeof item !== "object"
+		let group = keyed ? byKey.get(item) : groups.find((g) => sameItem(g.item, item))
+		if (!group) {
+			group = { item, count: 0 }
+			groups.push(group)
+			if (keyed) byKey.set(item, group)
+		}
+		group.count++
+	}
+	return groups.filter((g) => g.count > 1).map((g) => g.item)
+})
+
+reg("is empty", (list) => (isFeelList(list) ? list.length === 0 : null))
+
+reg("partition", (list, size) => {
+	if (!isFeelList(list)) return null
+	const n = toNum(size)
+	// A size of zero has no partition either: it would never consume the list.
+	if (n === null || !Number.isInteger(n) || n <= 0) return null
+	const parts: FeelValue[] = []
+	for (let i = 0; i < list.length; i += n) parts.push(list.slice(i, i + n))
+	return parts
+})
+
 reg("flatten", (list) => {
 	if (!isFeelList(list)) return null
 	const result: FeelValue[] = []
@@ -1044,6 +1205,27 @@ reg("is defined", (v) => v !== null && v !== undefined)
 reg("get or else", (v, defaultVal) => {
 	return v !== null && v !== undefined ? v : (defaultVal ?? null)
 })
+
+/**
+ * Camunda's assert(): the value when the condition holds. Camunda fails the
+ * evaluation otherwise, with the cause as its message; this package reports
+ * an evaluation error as null, so a failed assertion is null here.
+ */
+reg("assert", (value, condition, cause) => {
+	if (cause !== undefined && cause !== null && typeof cause !== "string") return null
+	return condition === true ? (value ?? null) : null
+})
+
+// -------------------------------------------------------------------------
+// AI agent functions (Camunda extension)
+// -------------------------------------------------------------------------
+
+/**
+ * Tags a value as provided by an AI agent's tool call. The tag is read by the
+ * connector that builds the tool definition, not by the engine, so evaluating
+ * it returns the value unchanged.
+ */
+reg("fromAi", (value) => value ?? null)
 
 // -------------------------------------------------------------------------
 // Context functions
@@ -1148,7 +1330,8 @@ reg("date", (...args) => {
 reg("time", (...args) => {
 	if (args.length === 1) {
 		const v = at(args, 0)
-		if (typeof v === "string") return parseTime(v)
+		// ISO 8601's time designator may lead: time("T23:59:00").
+		if (typeof v === "string") return parseTime(v.startsWith("T") ? v.slice(1) : v)
 		if (isFeelDateTime(v)) return v.time
 		if (isFeelTime(v)) return v
 		if (isFeelDate(v)) return { type: "time", hour: 0, minute: 0, second: 0 }
@@ -1179,10 +1362,49 @@ reg("date and time", (...args) => {
 		const t = at(args, 1)
 		if (isFeelDate(d) && isFeelTime(t)) return { type: "date-time", date: d, time: t }
 		if (isFeelDateTime(d) && isFeelTime(t)) return { type: "date-time", date: d.date, time: t }
+		if (isFeelDateTime(d) && typeof t === "string") return inTimezone(d, t)
 		return null
 	}
 	return null
 })
+
+/**
+ * Camunda's date and time(date, timezone): the same instant, on the clock of
+ * another zone — an IANA name, "Z", or an offset such as "+02:00". A local
+ * date and time names no instant, so it has none to move and is null.
+ */
+function inTimezone(dt: FeelDateTime, zone: string): FeelDateTime | null {
+	if (offsetOf(dt.time, dateToEpochDays(dt.date)) === undefined) return null
+	const instant = dateTimeToSeconds(dt)
+	let offsetSeconds: number | undefined
+	let timezone: string | undefined
+	const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone)
+	if (zone === "Z") {
+		offsetSeconds = 0
+	} else if (fixed) {
+		offsetSeconds = (fixed[1] === "-" ? -1 : 1) * (Number(fixed[2]) * 3600 + Number(fixed[3]) * 60)
+		if (Math.abs(offsetSeconds) > MAX_OFFSET_SECONDS) return null
+	} else if (isKnownTimezone(zone)) {
+		timezone = zone
+	} else {
+		return null
+	}
+	const local = instant + (offsetSeconds ?? zoneOffsetSeconds(zone, instant / 86400))
+	const days = Math.floor(local / 86400)
+	const rem = local - days * 86400
+	return {
+		type: "date-time",
+		date: epochDaysToDate(days),
+		time: {
+			type: "time",
+			hour: Math.floor(rem / 3600),
+			minute: Math.floor((rem % 3600) / 60),
+			second: rem % 60,
+			offsetSeconds,
+			timezone,
+		},
+	}
+}
 
 reg("duration", (s) => {
 	if (typeof s !== "string") return null
@@ -1216,6 +1438,77 @@ function compareWithinMonth(a: FeelValue, b: FeelValue): number {
 	const [dayA, secA] = partsOf(a)
 	const [dayB, secB] = partsOf(b)
 	return dayB - dayA || secB - secA
+}
+
+// Camunda extensions (feel-scala) --------------------------------------------
+
+reg("to json", (v) => {
+	const json = toJson(v ?? null)
+	return json === undefined ? null : json
+})
+
+/** A value's JSON text, or undefined for a value JSON has no form for (a function, a range). */
+function toJson(v: FeelValue): string | undefined {
+	if (v === null || typeof v === "number" || typeof v === "boolean" || typeof v === "string") {
+		return JSON.stringify(v)
+	}
+	if (isFeelList(v)) {
+		const items: string[] = []
+		for (const item of v) {
+			const json = toJson(item)
+			if (json === undefined) return undefined
+			items.push(json)
+		}
+		return `[${items.join(",")}]`
+	}
+	if (isFeelContext(v)) {
+		const entries: string[] = []
+		for (const [key, value] of Object.entries(v)) {
+			const json = toJson(value)
+			if (json === undefined) return undefined
+			entries.push(`${JSON.stringify(key)}:${json}`)
+		}
+		return `{${entries.join(",")}}`
+	}
+	// A zoned date and time carries its offset as well, the form Java writes:
+	// 2025-11-24T10:00:00+01:00[Europe/Berlin].
+	if (isFeelDateTime(v) && v.time.timezone !== undefined && v.time.offsetSeconds === undefined) {
+		const offset = zoneOffsetSeconds(v.time.timezone, dateToEpochDays(v.date))
+		const time = formatTime({ ...v.time, offsetSeconds: offset, timezone: undefined })
+		return JSON.stringify(`${formatDate(v.date)}T${time}[${v.time.timezone}]`)
+	}
+	const text = scalarToString(v)
+	return typeof text === "string" ? JSON.stringify(text) : undefined
+}
+
+reg("from json", (text) => {
+	const s = toStr(text)
+	if (s === null) return null
+	let parsed: unknown
+	try {
+		parsed = JSON.parse(s)
+	} catch {
+		return null
+	}
+	return fromJson(parsed)
+})
+
+function fromJson(v: unknown): FeelValue {
+	if (v === null || typeof v === "number" || typeof v === "boolean" || typeof v === "string") {
+		return v
+	}
+	if (Array.isArray(v)) return v.map(fromJson)
+	const context: FeelContext = {}
+	for (const [key, value] of Object.entries(v as Record<string, unknown>)) {
+		// defineProperty, so that a "__proto__" key is an entry rather than a prototype.
+		Object.defineProperty(context, key, {
+			value: fromJson(value),
+			enumerable: true,
+			writable: true,
+			configurable: true,
+		})
+	}
+	return context
 }
 
 // -------------------------------------------------------------------------
@@ -1319,7 +1612,13 @@ reg("last day of month", (d) => {
 	if (isFeelDate(d)) date = d
 	else if (isFeelDateTime(d)) date = d.date
 	if (!date) return null
-	return daysInMonth(date.year, date.month)
+	// The date of that day, as Camunda defines it, not the day number.
+	return {
+		type: "date",
+		year: date.year,
+		month: date.month,
+		day: daysInMonth(date.year, date.month),
+	}
 })
 
 // -------------------------------------------------------------------------
@@ -1396,22 +1695,28 @@ reg("overlaps", (a, b) => {
 	return true
 })
 
+/**
+ * DMN's overlaps before, term by term: range1 starts first, ends inside
+ * range2 — touching its start only where both ends are closed — and does not
+ * outlast it.
+ */
+function overlapsBefore(a: FeelRange, b: FeelRange): boolean {
+	const startsFirst = cmpPts(startOf(a), startOf(b), "start") < 0
+	const c = compareValues(a.end, b.start) ?? -1
+	const reachesIn = c > 0 || (c === 0 && a.endIncluded && b.startIncluded)
+	const e = compareValues(a.end, b.end) ?? 1
+	const endsWithin = e < 0 || (e === 0 && (!a.endIncluded || b.endIncluded))
+	return startsFirst && reachesIn && endsWithin
+}
+
 reg("overlaps before", (a, b) => {
 	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") < 0 && cmpPts(ae, be, "end") < 0 && cmpPts(ae, bs, "end") >= 0
+	return overlapsBefore(a, b)
 })
 
 reg("overlaps after", (a, b) => {
 	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") > 0 && cmpPts(ae, be, "end") > 0 && cmpPts(as_, be, "end") <= 0
+	return overlapsBefore(b, a)
 })
 
 reg("during", (a, b) => {
@@ -1514,6 +1819,12 @@ function valueType(v: FeelValue): string {
 	return typeof tagged === "string" ? tagged : "context"
 }
 
+/** Whether two list items are equal: the same instant, number or string, or equal structures. */
+function sameItem(a: FeelValue, b: FeelValue): boolean {
+	if (valueType(a) !== valueType(b)) return false
+	return compareValues(a, b) === 0 || deepEquals(a, b)
+}
+
 function deepEquals(a: FeelValue, b: FeelValue): boolean {
 	if (a === b) return true
 	if (Array.isArray(a) && Array.isArray(b)) {
@@ -1541,6 +1852,16 @@ reg("coincides", (a, b) => {
 // Parameter names
 // -------------------------------------------------------------------------
 
+/** One signature per subset of the optional parameters, each in declaration order. */
+function withOptionalParams(required: string[], optional: string[]): string[][] {
+	const signatures = [required]
+	for (const param of optional) {
+		const count = signatures.length
+		for (let i = 0; i < count; i++) signatures.push([...(signatures[i] as string[]), param])
+	}
+	return signatures
+}
+
 // Parameter names of every built-in, in declaration order, so that a named
 // invocation such as `substring(start position: 2, string: "hello")` binds by
 // name rather than by the order the arguments happen to appear in. Built-ins
@@ -1564,6 +1885,13 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	is: [["value1"], ["value2"], ["value1", "value2"]],
 	"is defined": [["value"]],
 	"get or else": [["value", "default"]],
+	assert: [
+		["value", "condition"],
+		["value", "condition", "cause"],
+	],
+	// Every parameter after the value is optional, and is passed by name in any
+	// combination: fromAi(value: toolCall.id, type: "number").
+	fromAi: withOptionalParams(["value"], ["description", "type", "schema", "options"]),
 	// String
 	substring: [
 		["string", "start position"],
@@ -1587,6 +1915,14 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	],
 	split: [["string", "delimiter"]],
 	"string join": [["list"], ["list", "delimiter"], ["list", "delimiter", "prefix", "suffix"]],
+	"is blank": [["string"]],
+	trim: [["string"]],
+	extract: [["string", "pattern"]],
+	uuid: [[]],
+	"to base64": [["value"]],
+	"from base64": [["value"]],
+	"to json": [["value"]],
+	"from json": [["value"]],
 	// List
 	"list contains": [["list", "element"]],
 	count: [["list"]],
@@ -1614,6 +1950,9 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	"distinct values": [["list"]],
 	flatten: [["list"]],
 	sort: [["list", "precedes"]],
+	"duplicate values": [["list"]],
+	"is empty": [["list"]],
+	partition: [["list", "size"]],
 	// Numeric
 	decimal: [["n", "scale"]],
 	floor: [["n"], ["n", "scale"]],

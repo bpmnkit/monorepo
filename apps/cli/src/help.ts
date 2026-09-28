@@ -92,18 +92,16 @@ export function printGroupHelp(group: CommandGroup, colors: boolean): void {
 }
 
 export function printCommandHelp(group: CommandGroup, cmd: Command, colors: boolean): void {
-	process.stdout.write(
-		`${bold(`${BINARY} ${group.name} ${cmd.name}`, colors)} — ${cmd.description}\n\n`,
-	)
+	// A group whose only command shares its name (`casen dev`) is invoked without repeating it.
+	const path = cmd.name === group.name ? group.name : `${group.name} ${cmd.name}`
+	process.stdout.write(`${bold(`${BINARY} ${path}`, colors)} — ${cmd.description}\n\n`)
 
 	// Usage
 	const argPart = cmd.args
 		? cmd.args.map((a) => (a.required ? `<${a.name}>` : `[${a.name}]`)).join(" ")
 		: ""
 	process.stdout.write(`${bold("USAGE", colors)}\n`)
-	process.stdout.write(
-		`  ${BINARY} ${group.name} ${cmd.name}${argPart ? ` ${argPart}` : ""} [flags]\n\n`,
-	)
+	process.stdout.write(`  ${BINARY} ${path}${argPart ? ` ${argPart}` : ""} [flags]\n\n`)
 
 	// Args
 	if (cmd.args?.length) {

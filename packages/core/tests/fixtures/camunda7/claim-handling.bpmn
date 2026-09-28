@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0d9c2xk" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_ClaimSubmitted" name="ClaimSubmitted" />
+  <bpmn:signal id="Signal_FraudAlert" name="FraudAlert" />
+  <bpmn:process id="claim-handling" name="Claim handling" isExecutable="true" camunda:candidateStarterGroups="claims" camunda:historyTimeToLive="P30D">
+    <bpmn:startEvent id="StartEvent_claim" name="Claim submitted">
+      <bpmn:outgoing>Flow_toAssess</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_start" messageRef="Message_ClaimSubmitted" />
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_assess" name="Assess claim" camunda:formKey="embedded:app:forms/assess-claim.html" camunda:candidateUsers="${assessors}">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="sla" value="PT4H" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toAssess</bpmn:incoming>
+      <bpmn:outgoing>Flow_toFraudCheck</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_toAssess" sourceRef="StartEvent_claim" targetRef="Task_assess" />
+    <bpmn:serviceTask id="Task_fraudCheck" name="Check for fraud" camunda:class="com.acme.claims.FraudCheckDelegate">
+      <bpmn:extensionElements>
+        <camunda:field name="threshold">
+          <camunda:string>0.8</camunda:string>
+        </camunda:field>
+        <camunda:field name="region" expression="${claim.region}" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toFraudCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_toReviewItems</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_toFraudCheck" sourceRef="Task_assess" targetRef="Task_fraudCheck" />
+    <bpmn:subProcess id="SubProcess_items" name="Review items">
+      <bpmn:incoming>Flow_toReviewItems</bpmn:incoming>
+      <bpmn:outgoing>Flow_toPayout</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${claim.items}" camunda:elementVariable="item">
+        <bpmn:completionCondition xsi:type="bpmn:tFormalExpression">${nrOfCompletedInstances / nrOfInstances &gt;= 0.6}</bpmn:completionCondition>
+      </bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="StartEvent_item">
+        <bpmn:outgoing>Flow_toPrice</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:scriptTask id="Task_price" name="Price item" scriptFormat="feel" camunda:resultVariable="itemPrice">
+        <bpmn:incoming>Flow_toPrice</bpmn:incoming>
+        <bpmn:outgoing>Flow_toItemEnd</bpmn:outgoing>
+        <bpmn:script>item.quantity * item.unitPrice</bpmn:script>
+      </bpmn:scriptTask>
+      <bpmn:sequenceFlow id="Flow_toPrice" sourceRef="StartEvent_item" targetRef="Task_price" />
+      <bpmn:endEvent id="EndEvent_item">
+        <bpmn:incoming>Flow_toItemEnd</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_toItemEnd" sourceRef="Task_price" targetRef="EndEvent_item" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_toReviewItems" sourceRef="Task_fraudCheck" targetRef="SubProcess_items" />
+    <bpmn:serviceTask id="Task_payout" name="Pay out claim">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">https://payments.example.invalid/payouts</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="payout">
+            <camunda:map>
+              <camunda:entry key="claimId">${claim.id}</camunda:entry>
+              <camunda:entry key="currency">EUR</camunda:entry>
+            </camunda:map>
+          </camunda:inputParameter>
+          <camunda:inputParameter name="channels">
+            <camunda:list>
+              <camunda:value>email</camunda:value>
+              <camunda:value>${claim.preferredChannel}</camunda:value>
+            </camunda:list>
+          </camunda:inputParameter>
+          <camunda:inputParameter name="note">Paid for ${claim.id}</camunda:inputParameter>
+          <camunda:inputParameter name="audit">
+            <camunda:script scriptFormat="groovy">claim.audit.collect { it.id }</camunda:script>
+          </camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toPayout</bpmn:incoming>
+      <bpmn:outgoing>Flow_toNotify</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_toPayout" sourceRef="SubProcess_items" targetRef="Task_payout" />
+    <bpmn:endEvent id="EndEvent_paid" name="Claim paid">
+      <bpmn:incoming>Flow_toNotify</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_paid" camunda:type="external" camunda:topic="notify-claimant" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toNotify" sourceRef="Task_payout" targetRef="EndEvent_paid" />
+    <bpmn:boundaryEvent id="Signal_fraud" name="Fraud alert" attachedToRef="Task_assess">
+      <bpmn:outgoing>Flow_toFraudEnd</bpmn:outgoing>
+      <bpmn:signalEventDefinition id="SignalEventDefinition_fraud" signalRef="Signal_FraudAlert" />
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EndEvent_fraud" name="Claim blocked">
+      <bpmn:extensionElements>
+        <camunda:executionListener event="end">
+          <camunda:script scriptFormat="javascript">execution.setVariable("blocked", true)</camunda:script>
+        </camunda:executionListener>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toFraudEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toFraudEnd" sourceRef="Signal_fraud" targetRef="EndEvent_fraud" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="claim-handling">
+      <bpmndi:BPMNShape id="StartEvent_claim_di" bpmnElement="StartEvent_claim">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_assess_di" bpmnElement="Task_assess">
+        <dc:Bounds x="240" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_fraudCheck_di" bpmnElement="Task_fraudCheck">
+        <dc:Bounds x="390" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_items_di" bpmnElement="SubProcess_items" isExpanded="true">
+        <dc:Bounds x="540" y="100" width="350" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_item_di" bpmnElement="StartEvent_item">
+        <dc:Bounds x="572" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_price_di" bpmnElement="Task_price">
+        <dc:Bounds x="660" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_item_di" bpmnElement="EndEvent_item">
+        <dc:Bounds x="812" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_payout_di" bpmnElement="Task_payout">
+        <dc:Bounds x="940" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_paid_di" bpmnElement="EndEvent_paid">
+        <dc:Bounds x="1092" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_fraud_di" bpmnElement="EndEvent_fraud">
+        <dc:Bounds x="352" y="322" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Signal_fraud_di" bpmnElement="Signal_fraud">
+        <dc:Bounds x="272" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_toAssess_di" bpmnElement="Flow_toAssess">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="240" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toFraudCheck_di" bpmnElement="Flow_toFraudCheck">
+        <di:waypoint x="340" y="200" />
+        <di:waypoint x="390" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toReviewItems_di" bpmnElement="Flow_toReviewItems">
+        <di:waypoint x="490" y="200" />
+        <di:waypoint x="540" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toPrice_di" bpmnElement="Flow_toPrice">
+        <di:waypoint x="608" y="200" />
+        <di:waypoint x="660" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toItemEnd_di" bpmnElement="Flow_toItemEnd">
+        <di:waypoint x="760" y="200" />
+        <di:waypoint x="812" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toPayout_di" bpmnElement="Flow_toPayout">
+        <di:waypoint x="890" y="200" />
+        <di:waypoint x="940" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toNotify_di" bpmnElement="Flow_toNotify">
+        <di:waypoint x="1040" y="200" />
+        <di:waypoint x="1092" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toFraudEnd_di" bpmnElement="Flow_toFraudEnd">
+        <di:waypoint x="290" y="258" />
+        <di:waypoint x="290" y="340" />
+        <di:waypoint x="352" y="340" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

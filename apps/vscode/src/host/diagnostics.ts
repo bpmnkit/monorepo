@@ -9,7 +9,8 @@
  * @packageDocumentation
  */
 
-import type { LintDiagnostic, LintReport } from "@bpmnkit/core"
+import type { LintDiagnostic, LintReport, UnsupportedBpmnlintRule } from "@bpmnkit/core"
+import type { BpmnlintReport } from "@bpmnkit/core/node"
 import { type SourceSpan, indexElementIds } from "./locate.js"
 
 /** The whole file rather than a place in it — used when nothing can be located. */
@@ -24,6 +25,8 @@ export interface PlacedDiagnostic {
 	readonly suggestion: string
 	/** The rule that fired, e.g. `pattern/user-task-no-timer`. */
 	readonly code: string
+	/** Who reported it: BPMN Kit's analysis, or the project's own bpmnlint. */
+	readonly source: "bpmnkit" | "bpmnlint"
 }
 
 /**
@@ -57,14 +60,72 @@ export function placeDiagnostics(xml: string, report: LintReport): PlacedDiagnos
 			placed.push({
 				span,
 				severity: diagnostic.severity,
-				message: diagnostic.message,
+				// A finding a .bpmnlintrc governs says which of its rules did so.
+				message:
+					diagnostic.bpmnlintRule === undefined
+						? diagnostic.message
+						: `${diagnostic.message} (${diagnostic.bpmnlintRule})`,
 				suggestion: diagnostic.suggestion,
 				code: diagnostic.id,
+				source: "bpmnkit",
 			})
 		}
 	}
 
 	return placed
+}
+
+/**
+ * Places the findings of the project's own bpmnlint, the same way.
+ *
+ * @param xml - The source bpmnlint linted.
+ * @param reports - `BpmnlintSetup.reports`.
+ */
+export function placeBpmnlintReports(
+	xml: string,
+	reports: readonly BpmnlintReport[],
+): PlacedDiagnostic[] {
+	const index = indexElementIds(xml)
+	return reports.map((report) => ({
+		span: (report.elementId !== undefined ? index.get(report.elementId) : undefined) ?? WHOLE_FILE,
+		severity: report.severity,
+		message: report.message,
+		suggestion: report.documentationUrl ?? `Reported by the bpmnlint rule "${report.rule}".`,
+		code: report.rule,
+		source: "bpmnlint",
+	}))
+}
+
+/**
+ * The file-level notice for what a `.bpmnlintrc` asked for that BPMN Kit could
+ * not do — shown once per file rather than dropped, so a team is not left
+ * believing a rule ran.
+ *
+ * @param configPath - The `.bpmnlintrc` that applied.
+ * @param unsupported - `LintReport.bpmnlintUnsupported`.
+ * @param failure - Why the project's bpmnlint could not run, if it could not.
+ */
+export function bpmnlintNotice(
+	configPath: string,
+	unsupported: readonly UnsupportedBpmnlintRule[],
+	failure: string | undefined,
+): PlacedDiagnostic | undefined {
+	const parts = [
+		...(failure !== undefined ? [`the project's bpmnlint could not run (${failure})`] : []),
+		...(unsupported.length > 0
+			? [`no BPMN Kit equivalent for ${unsupported.map((rule) => rule.name).join(", ")}`]
+			: []),
+	]
+	if (parts.length === 0) return undefined
+	return {
+		span: WHOLE_FILE,
+		severity: "info",
+		message: `${configPath}: ${parts.join("; ")}.`,
+		suggestion:
+			"Install bpmnlint and bpmn-moddle in the project to run plugin rules with bpmnlint itself.",
+		code: "bpmnlintrc",
+		source: "bpmnkit",
+	}
 }
 
 /**

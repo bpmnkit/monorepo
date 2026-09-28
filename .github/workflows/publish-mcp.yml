@@ -1,0 +1,68 @@
+name: Publish to the MCP Registry
+
+# Lists BPMN Kit's MCP server (`casen proxy mcp`, shipped in @bpmnkit/cli) in the official
+# MCP Registry as io.github.bpmnkit/bpmnkit. Runs after the Release workflow, so the npm
+# version it points at exists; the registry checks that @bpmnkit/cli's package.json carries
+# the matching `mcpName`. Authentication is GitHub OIDC — no secret needed.
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish server.json
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # server.json names a version; the published CLI's version is the one to list.
+      - name: Sync version and check it is on npm
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/cli/package.json').version")
+          if ! npm view "@bpmnkit/cli@$VERSION" version >/dev/null 2>&1; then
+            echo "@bpmnkit/cli@$VERSION is not on npm yet — nothing to list." >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node -e '
+            const fs = require("node:fs")
+            const path = "apps/cli/server.json"
+            const server = JSON.parse(fs.readFileSync(path, "utf8"))
+            server.version = process.argv[1]
+            for (const pkg of server.packages) pkg.version = process.argv[1]
+            fs.writeFileSync(path, `${JSON.stringify(server, null, 2)}\n`)
+          ' "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install mcp-publisher
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+
+      - name: Publish
+        if: steps.version.outputs.skip != 'true'
+        working-directory: apps/cli
+        run: |
+          ../../mcp-publisher login github-oidc
+          # A version the registry already lists is not an error — Release runs on every
+          # changeset push, not only when the CLI's version moves.
+          if ! OUTPUT=$(../../mcp-publisher publish 2>&1); then
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qi "already exists\|duplicate"; then
+              echo "${{ steps.version.outputs.version }} is already listed." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            exit 1
+          fi
+          echo "$OUTPUT"
+          echo "Listed io.github.bpmnkit/bpmnkit ${{ steps.version.outputs.version }}." >> "$GITHUB_STEP_SUMMARY"

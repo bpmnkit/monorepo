@@ -1,4 +1,5 @@
 import type { BpmnDefinitions } from "../bpmn-model.js"
+import { analyzeCamundaCompat, dedupeCamundaCompat } from "../camunda-compat.js"
 import { analyzeAgentic } from "./agentic.js"
 import { analyzeDeploy } from "./deploy.js"
 import { analyzeFeelSyntax } from "./feel-syntax.js"
@@ -40,13 +41,14 @@ function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
 		reuseThreshold: opts?.reuseThreshold ?? 2,
 		categories: opts?.categories ?? [...ALL_CATEGORIES],
 		resolveConnectorRequirements: opts?.resolveConnectorRequirements,
+		camundaVersion: opts?.camundaVersion,
 	}
 }
 
 /** Run static analysis on a BPMN definitions object. */
 export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): OptimizationReport {
 	const resolved = resolveOptions(options)
-	const findings: OptimizationFinding[] = []
+	let findings: OptimizationFinding[] = []
 
 	for (const process of defs.processes) {
 		if (resolved.categories.includes("feel")) {
@@ -71,7 +73,11 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 			findings.push(...analyzeVariableFlow(process))
 		}
 		if (resolved.categories.includes("deploy") || resolved.categories.includes("connector")) {
-			const deployFindings = analyzeDeploy(process, resolved.resolveConnectorRequirements)
+			const deployFindings = analyzeDeploy(
+				process,
+				resolved.resolveConnectorRequirements,
+				defs.messages,
+			)
 			findings.push(
 				...deployFindings.filter(
 					(f) =>
@@ -83,6 +89,14 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 		if (resolved.categories.includes("agentic")) {
 			findings.push(...analyzeAgentic(process))
 		}
+	}
+
+	// Camunda-version compatibility findings are deployability findings (category
+	// `deploy`, ids `compat/…`); a version pinned by a `.bpmnlintrc` asks for them
+	// even when the `deploy` category is off, as on a model that names no platform.
+	if (resolved.categories.includes("deploy") || options?.camundaVersion !== undefined) {
+		findings.push(...analyzeCamundaCompat(defs, resolved.camundaVersion))
+		findings = dedupeCamundaCompat(findings)
 	}
 
 	const byCategory = Object.fromEntries(

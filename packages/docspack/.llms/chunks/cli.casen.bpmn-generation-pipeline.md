@@ -19,6 +19,7 @@ casen connector search slack
 casen connector show io.camunda.connectors.Slack.v1
 
 # Deploy-readiness gate, then deploy
+# (a .bpmnlintrc in the diagram's folder or above is honoured; --no-bpmnlintrc ignores it)
 casen lint lint order-process.bpmn --profile deploy
 casen deploy deploy order-process.bpmn                   # local Reebe
 casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 profile
@@ -27,6 +28,10 @@ casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 prof
 `casen synth` reports any problems keyed by JSON path in the plan (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run. If the plan has a `tests` array, `casen synth` also writes a `<file>.bpmn.tests.json` sidecar, runnable with `casen test <file>.bpmn`.
 
 See [Building Processes with AI](/docs/guides/ai-implement) and [AI Agents](/docs/guides/ai-agents) for full walkthroughs.
+
+`casen lint` reads a `.bpmnlintrc` if your project has one. See
+[bpmnlint Compatibility](/docs/guides/bpmnlint) for how the rules map and how to run your
+own `bpmnlint-plugin-*` rules.
 
 ---
 Source: https://bpmnkit.com/docs/cli/casen

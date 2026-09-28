@@ -13,7 +13,8 @@
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+		"test": "vitest run",
 		"check": "biome check ."
 	},
 	"description": "Thin Zeebe REST client for standalone workers — no BPMNKit SDK required at runtime",

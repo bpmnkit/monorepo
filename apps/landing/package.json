@@ -23,7 +23,9 @@
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
 		"@bpmnkit/feel": "workspace:*",
+		"@bpmnkit/markdown": "workspace:*",
 		"@bpmnkit/operate": "workspace:*",
+		"@bpmnkit/patterns": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*"
 	}
 }

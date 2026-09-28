@@ -1,0 +1,375 @@
+/* ── Template gallery (/templates and /templates/<id>) ─────────────
+   Same system as the homepage: hairline-ruled boxes, square corners,
+   mono for every label, one accent. Card grids are one bordered box
+   subdivided by the rule, never gapped cards. */
+
+.tpl-main {
+	padding-top: var(--nav-h);
+	min-height: 100dvh;
+}
+
+.tpl-wrap {
+	max-width: var(--max-width);
+	margin: 0 auto;
+	padding: 48px var(--gutter) 72px;
+}
+
+.tpl-eyebrow,
+.tpl-crumbs,
+.tpl-meta,
+.tpl-label {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.tpl-eyebrow {
+	color: var(--accent);
+	margin-bottom: 14px;
+}
+
+.tpl-h1 {
+	font-size: 40px;
+	line-height: 1.1;
+	letter-spacing: -0.03em;
+	font-weight: 600;
+	margin: 0 0 16px;
+	max-width: 22em;
+}
+
+.tpl-lede {
+	font-size: 16px;
+	line-height: 1.6;
+	color: var(--ink-body);
+	max-width: 46em;
+	margin: 0 0 32px;
+}
+
+.tpl-lede code,
+.tpl-note code {
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+	background: var(--ground-alt);
+	padding: 1px 5px;
+}
+
+/* Filter toolbar: one bordered strip subdivided by the rule. */
+.tpl-filter {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1px;
+	background: var(--rule);
+	border: 1px solid var(--rule);
+	margin-bottom: 24px;
+}
+
+.tpl-filter button {
+	flex: 1 1 auto;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ink-body-soft);
+	background: var(--panel);
+	border: 0;
+	padding: 10px 14px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.tpl-filter button:hover {
+	color: var(--ink);
+}
+
+.tpl-filter button[aria-pressed="true"] {
+	color: #fff;
+	background: var(--ink);
+}
+
+.tpl-filter .tpl-count {
+	opacity: 0.6;
+	margin-left: 6px;
+}
+
+/* Gallery grid */
+.tpl-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1px;
+	background: var(--rule);
+	border: 1px solid var(--rule);
+}
+
+.tpl-card {
+	display: flex;
+	flex-direction: column;
+	background: var(--panel);
+	color: inherit;
+	text-decoration: none;
+	min-width: 0;
+}
+
+.tpl-card[hidden] {
+	display: none;
+}
+
+.tpl-card:hover {
+	background: #fff;
+	text-decoration: none;
+	color: inherit;
+}
+
+.tpl-card:hover h2 {
+	color: var(--accent);
+}
+
+.tpl-thumb {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 150px;
+	padding: 12px;
+	border-bottom: 1px solid var(--rule);
+	background: var(--ground);
+}
+
+.tpl-thumb img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+}
+
+.tpl-card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 18px 20px 20px;
+	flex: 1;
+}
+
+.tpl-card .tpl-label {
+	font-size: 10.5px;
+	color: var(--accent);
+}
+
+.tpl-card h2 {
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	line-height: 1.25;
+	margin: 0;
+}
+
+.tpl-card p {
+	font-size: 13.5px;
+	line-height: 1.55;
+	color: var(--ink-body-soft);
+	margin: 0;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.tpl-card .tpl-meta {
+	margin-top: auto;
+	padding-top: 6px;
+	font-size: 10.5px;
+	color: var(--ink-meta);
+}
+
+/* Template page */
+.tpl-crumbs {
+	color: var(--ink-meta);
+	margin-bottom: 22px;
+}
+
+.tpl-crumbs a {
+	color: var(--ink-meta);
+}
+
+.tpl-crumbs a:hover {
+	color: var(--accent);
+}
+
+.tpl-tags {
+	margin-bottom: 28px;
+}
+
+.tpl-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	gap: 12px;
+	margin-bottom: 36px;
+}
+
+.tpl-cmd {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: var(--code-bg);
+	color: var(--code-fg);
+	font-family: var(--font-mono);
+	font-size: 13px;
+	padding: 0 0 0 16px;
+	min-width: 0;
+}
+
+.tpl-cmd code {
+	white-space: nowrap;
+	overflow-x: auto;
+	padding: 10px 0;
+}
+
+.tpl-cmd code::before {
+	content: "$ ";
+	color: var(--code-kw);
+}
+
+.tpl-cmd button {
+	align-self: stretch;
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-fg-muted);
+	background: none;
+	border: 0;
+	border-left: 1px solid var(--ink-rule);
+	padding: 0 14px;
+	cursor: pointer;
+}
+
+.tpl-cmd button:hover {
+	color: var(--accent-on-ink);
+}
+
+.tpl-diagram {
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	padding: 20px;
+	overflow-x: auto;
+	margin-bottom: 40px;
+}
+
+.tpl-diagram svg {
+	display: block;
+	width: 100%;
+	height: auto;
+	min-width: 640px;
+}
+
+.tpl-sections {
+	display: grid;
+	grid-template-columns: 1.2fr 1fr;
+	gap: 1px;
+	background: var(--rule);
+	border: 1px solid var(--rule);
+	margin-bottom: 40px;
+}
+
+.tpl-section {
+	background: var(--panel);
+	padding: 24px;
+	min-width: 0;
+}
+
+.tpl-section--wide {
+	grid-column: 1 / -1;
+}
+
+.tpl-section h2 {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	font-weight: 400;
+	color: var(--ink-meta);
+	margin: 0 0 14px;
+}
+
+.tpl-rows {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.tpl-rows li {
+	padding: 10px 0;
+	border-top: 1px solid var(--rule);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.tpl-rows li:first-child {
+	border-top: 0;
+	padding-top: 0;
+}
+
+.tpl-rows code,
+.tpl-mono {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--ink);
+	overflow-wrap: anywhere;
+}
+
+.tpl-sub {
+	display: block;
+	font-size: 12.5px;
+	color: var(--ink-body-soft);
+	margin-top: 2px;
+}
+
+.tpl-path {
+	display: block;
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-meta);
+	margin-top: 4px;
+	overflow-wrap: anywhere;
+}
+
+.tpl-related {
+	margin-top: 40px;
+}
+
+.tpl-note {
+	font-size: 13.5px;
+	color: var(--ink-body-soft);
+	max-width: 60em;
+}
+
+@media (max-width: 1000px) {
+	.tpl-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media (max-width: 760px) {
+	.tpl-wrap {
+		padding: 32px var(--gutter) 56px;
+	}
+
+	.tpl-h1 {
+		font-size: 30px;
+	}
+
+	.tpl-grid,
+	.tpl-sections {
+		grid-template-columns: 1fr;
+	}
+
+	.tpl-filter button {
+		flex: 1 1 40%;
+	}
+
+	.tpl-actions > * {
+		flex: 1 1 100%;
+		justify-content: center;
+	}
+
+	.tpl-cmd {
+		justify-content: space-between;
+	}
+}

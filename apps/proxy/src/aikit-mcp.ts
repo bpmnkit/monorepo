@@ -28,6 +28,7 @@ import { Bpmn, compactify, optimize } from "@bpmnkit/core"
 import { ALL_PATTERNS, findPattern } from "@bpmnkit/patterns"
 import { getActiveProfile, getAuthHeader } from "@bpmnkit/profiles"
 import { CAMUNDA_SPEC } from "./camunda-spec.js"
+import { writeModelXml } from "./model-write.js"
 import { runSandboxed } from "./sandbox.js"
 import type { HostFunction } from "./sandbox.js"
 
@@ -114,13 +115,11 @@ async function fetchProxyXml(
 	return { xml, json, text: tokens.join("") }
 }
 
-/** Write BPMN XML to disk and return the absolute path. */
-function writeBpmn(dir: string, name: string, xml: string): string {
+/** Where a new diagram named `name` goes in `dir`, creating the directory. */
+function bpmnPath(dir: string, name: string): string {
 	const safeDir = expandHome(dir)
 	if (!existsSync(safeDir)) mkdirSync(safeDir, { recursive: true })
-	const filePath = join(safeDir, name.endsWith(".bpmn") ? name : `${name}.bpmn`)
-	writeFileSync(filePath, xml, "utf8")
-	return filePath
+	return join(safeDir, name.endsWith(".bpmn") ? name : `${name}.bpmn`)
 }
 
 // ── Built-in worker catalog ───────────────────────────────────────────────────
@@ -437,7 +436,8 @@ async function toolBpmnCreate(description: string, outputDir?: string): Promise<
 
 	if (!xml) throw new Error("AI did not produce a BPMN diagram. Try a more specific description.")
 
-	const filePath = writeBpmn(dir, slug, xml)
+	const filePath = bpmnPath(dir, slug)
+	await writeModelXml(filePath, xml)
 	return JSON.stringify({ path: filePath, patternMatched: pattern?.id ?? null })
 }
 
@@ -466,8 +466,8 @@ async function toolBpmnUpdate(path: string, instruction: string): Promise<string
 
 	if (!updatedXml) throw new Error("AI did not produce an updated diagram.")
 
-	writeFileSync(absPath, updatedXml, "utf8")
-	return JSON.stringify({ path: absPath, updated: true })
+	const { changes } = await writeModelXml(absPath, updatedXml)
+	return JSON.stringify({ path: absPath, updated: true, changes })
 }
 
 function toolBpmnValidate(path: string): string {

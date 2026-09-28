@@ -11,6 +11,8 @@ export function createRouter(): {
 	navigate(path: string): void
 	start(): () => void
 	currentPath(): string
+	/** Re-run the handler for the current path, e.g. after the profile changed. */
+	refresh(): void
 } {
 	const routes: Route[] = []
 	let _current = "/"
@@ -64,5 +66,9 @@ export function createRouter(): {
 		return _current
 	}
 
-	return { on, navigate, start, currentPath }
+	function refresh(): void {
+		dispatch(_current)
+	}
+
+	return { on, navigate, start, currentPath, refresh }
 }

@@ -75,6 +75,7 @@ export const workspace = {
 	createFileSystemWatcher: () => ({
 		onDidChange: noopEvent,
 		onDidCreate: noopEvent,
+		onDidDelete: noopEvent,
 		dispose: () => {},
 	}),
 	openTextDocument: () => Promise.resolve({}),

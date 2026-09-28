@@ -225,6 +225,42 @@
 	max-width: 62ch;
 }
 
+/* Product tier: a mono label and the one line it promises. Experimental alone
+   takes the accent, because it is the one to notice before depending on it. */
+.docs-header p.docs-tier {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px 12px;
+	margin-top: 14px;
+	font-size: 13.5px;
+}
+
+.docs-tier-label {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ink-body);
+	border: 1px solid var(--rule-strong);
+	padding: 1px 6px;
+}
+
+.docs-tier-label:hover {
+	text-decoration: none;
+	border-color: var(--ink-body);
+}
+
+.docs-tier-label--experimental {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+.docs-tier-label--experimental:hover {
+	border-color: var(--accent);
+	background: var(--accent-tint);
+}
+
 /* ── Prose ──────────────────────────────────────────────────────── */
 
 .docs-prose {

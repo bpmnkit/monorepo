@@ -33,7 +33,8 @@ mod tests {
         RecordProcessor, Writers,
         DeploymentProcessor, ProcessInstanceCreationProcessor,
         BpmnElementProcessor, JobProcessor, VariableDocumentProcessor,
-        UserTaskProcessor,
+        UserTaskProcessor, IncidentProcessor, AdHocSubProcessInstructionProcessor, ProcessInstanceModificationProcessor,
+        DecisionEvaluationProcessor,
     };
     use crate::processor::signal::SignalProcessor;
     use crate::processor::timer::TimerProcessor;
@@ -70,6 +71,10 @@ mod tests {
                 Arc::new(SignalProcessor),
                 Arc::new(TimerProcessor),
                 Arc::new(MessageProcessor),
+                Arc::new(IncidentProcessor),
+                Arc::new(AdHocSubProcessInstructionProcessor),
+                Arc::new(ProcessInstanceModificationProcessor),
+                Arc::new(DecisionEvaluationProcessor),
             ];
             Self { backend, state, processors }
         }
@@ -81,6 +86,12 @@ mod tests {
             intent: &str,
             payload: Value,
         ) -> Option<Value> {
+            let position = self.submit(value_type, intent, payload).await;
+            self.drain(position).await
+        }
+
+        /// Append a command to the log without processing it.
+        async fn submit(&self, value_type: &str, intent: &str, payload: Value) -> i64 {
             let (position, key) = self.backend.next_position_and_key(0).await.unwrap();
             let record = DbRecord {
                 partition_id: 0,
@@ -95,7 +106,12 @@ mod tests {
                 tenant_id: "<default>".to_string(),
             };
             self.backend.insert_record(&record).await.unwrap();
+            position
+        }
 
+        /// Process the commands from `position` on, and their follow-ups, until
+        /// quiescent. Returns the response to the command at `position`.
+        async fn drain(&self, position: i64) -> Option<Value> {
             let mut last_pos = position - 1;
             let mut response: Option<Value> = None;
 
@@ -111,46 +127,51 @@ mod tests {
                             if rec.position == position {
                                 response = writers.response.clone();
                             }
-                            let total = writers.events.len() + writers.commands.len();
-                            if total > 0 {
-                                let first = self.backend.next_position_batch(0, total).await.unwrap();
-                                let mut recs = Vec::with_capacity(total);
-                                for (i, ev) in writers.events.iter().enumerate() {
-                                    recs.push(DbRecord {
-                                        partition_id: 0,
-                                        position: first + i as i64,
-                                        record_type: "EVENT".to_string(),
-                                        value_type: ev.value_type.clone(),
-                                        intent: ev.intent.clone(),
-                                        record_key: ev.key,
-                                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
-                                        payload: ev.payload.clone(),
-                                        source_position: Some(rec.position),
-                                        tenant_id: rec.tenant_id.clone(),
-                                    });
-                                }
-                                for (i, cmd) in writers.commands.iter().enumerate() {
-                                    recs.push(DbRecord {
-                                        partition_id: 0,
-                                        position: first + writers.events.len() as i64 + i as i64,
-                                        record_type: "COMMAND".to_string(),
-                                        value_type: cmd.value_type.clone(),
-                                        intent: cmd.intent.clone(),
-                                        record_key: cmd.key,
-                                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
-                                        payload: cmd.payload.clone(),
-                                        source_position: Some(rec.position),
-                                        tenant_id: rec.tenant_id.clone(),
-                                    });
-                                }
-                                self.backend.insert_records_batch(&recs).await.unwrap();
-                            }
+                            self.append_follow_ups(rec, &writers).await;
                             break;
                         }
                     }
                 }
             }
             response
+        }
+
+        /// Write the events and commands a processor produced for `rec` to the log.
+        async fn append_follow_ups(&self, rec: &DbRecord, writers: &Writers) {
+            let total = writers.events.len() + writers.commands.len();
+            if total > 0 {
+                let first = self.backend.next_position_batch(0, total).await.unwrap();
+                let mut recs = Vec::with_capacity(total);
+                for (i, ev) in writers.events.iter().enumerate() {
+                    recs.push(DbRecord {
+                        partition_id: 0,
+                        position: first + i as i64,
+                        record_type: "EVENT".to_string(),
+                        value_type: ev.value_type.clone(),
+                        intent: ev.intent.clone(),
+                        record_key: ev.key,
+                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
+                        payload: ev.payload.clone(),
+                        source_position: Some(rec.position),
+                        tenant_id: rec.tenant_id.clone(),
+                    });
+                }
+                for (i, cmd) in writers.commands.iter().enumerate() {
+                    recs.push(DbRecord {
+                        partition_id: 0,
+                        position: first + writers.events.len() as i64 + i as i64,
+                        record_type: "COMMAND".to_string(),
+                        value_type: cmd.value_type.clone(),
+                        intent: cmd.intent.clone(),
+                        record_key: cmd.key,
+                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
+                        payload: cmd.payload.clone(),
+                        source_position: Some(rec.position),
+                        tenant_id: rec.tenant_id.clone(),
+                    });
+                }
+                self.backend.insert_records_batch(&recs).await.unwrap();
+            }
         }
 
         /// Deploy an XML resource (BPMN or DMN — detected automatically).
@@ -1327,7 +1348,8 @@ mod tests {
         h.start("proc", serde_json::json!({ "score": 900 })).await;
         assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
         let result = h.get_var("tierResult").expect("tierResult must be set");
-        assert_eq!(result["tier"], serde_json::json!("PLATINUM"),
+        // A single-output table yields the value itself, as in Zeebe.
+        assert_eq!(result, serde_json::json!("PLATINUM"),
             "FIRST hit: score=900 should match PLATINUM first; got: {result:?}");
 
         // score=500 → r1 does not match, r2 does not match, r3 matches first
@@ -1337,13 +1359,13 @@ mod tests {
         h2.start("proc", serde_json::json!({ "score": 500 })).await;
         assert_eq!(h2.process_state("proc").as_deref(), Some("COMPLETED"));
         let result2 = h2.get_var("tierResult").expect("tierResult must be set");
-        assert_eq!(result2["tier"], serde_json::json!("SILVER"),
+        assert_eq!(result2, serde_json::json!("SILVER"),
             "FIRST hit: score=500 should match SILVER; got: {result2:?}");
     }
 
     // ─────────────────────────────────────────────────────────────────
     // 26. BRT + DMN: result variable drives downstream gateway
-    //     (extracted field from UNIQUE-hit object used in condition)
+    //     (a single-output UNIQUE hit is the value itself)
     // ─────────────────────────────────────────────────────────────────
 
     #[tokio::test]
@@ -1389,7 +1411,7 @@ mod tests {
     <bpmn:sequenceFlow id="f1"          sourceRef="start" targetRef="brt1"/>
     <bpmn:sequenceFlow id="f2"          sourceRef="brt1"  targetRef="gw1"/>
     <bpmn:sequenceFlow id="f-eligible"  sourceRef="gw1"   targetRef="end-eligible">
-      <bpmn:conditionExpression>=eligibilityResult.eligible = true</bpmn:conditionExpression>
+      <bpmn:conditionExpression>=eligibilityResult = true</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="f-ineligible" sourceRef="gw1"  targetRef="end-ineligible"/>
 "#);
@@ -1662,7 +1684,7 @@ mod tests {
     <bpmn:sequenceFlow id="pf1" sourceRef="p-start" targetRef="p-call"/>
     <bpmn:sequenceFlow id="pf2" sourceRef="p-call"  targetRef="gw1"/>
     <bpmn:sequenceFlow id="f-vip" sourceRef="gw1"   targetRef="end-vip">
-      <bpmn:conditionExpression>=classification.tier = "VIP"</bpmn:conditionExpression>
+      <bpmn:conditionExpression>=classification = "VIP"</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="f-other" sourceRef="gw1" targetRef="end-other"/>
 "#);
@@ -1702,7 +1724,8 @@ mod tests {
         assert!(!h.visited("end-other"));
 
         let classification = h.get_var("classification").expect("classification must be in parent scope");
-        assert_eq!(classification["tier"], serde_json::json!("VIP"));
+        // A single-output table yields the value itself, as in Zeebe.
+        assert_eq!(classification, serde_json::json!("VIP"));
 
         // STANDARD path: score=500
         let h2 = Harness::new();
@@ -2183,5 +2206,4097 @@ mod tests {
         h.start("proc", serde_json::json!({})).await;
         assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
         assert!(h.visited("start-v2"), "latest version (v2) should be used for new instances");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Job variables without output mappings reach the process
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_job_variables_merge_without_output_mappings() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("work", serde_json::json!({ "out": 42 })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("out"), Some(serde_json::json!(42)));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Message correlation keys are FEEL-evaluated; message variables merge
+    // ─────────────────────────────────────────────────────────────────
+
+    const MESSAGE_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="M_go" name="go"/>
+  <bpmn:message id="M_paid" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="wait">
+      <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="M_go"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:receiveTask id="receive" messageRef="M_paid">
+      <bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="wait"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="wait" targetRef="receive"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="receive" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>"#;
+
+    #[tokio::test]
+    async fn test_message_correlates_on_evaluated_key_and_merges_variables() {
+        let h = Harness::new();
+        h.deploy(MESSAGE_BPMN).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        // A message for another order must not correlate.
+        h.publish_message("go", "o-2", serde_json::json!({})).await;
+        assert!(!h.visited("receive"), "message for another key must not correlate");
+
+        h.publish_message("go", "o-1", serde_json::json!({ "shipped": true })).await;
+        assert!(h.visited("receive"), "catch event should correlate on the evaluated key");
+        assert_eq!(h.get_var("shipped"), Some(serde_json::json!(true)));
+
+        // The receive task takes its key from the root message's subscription.
+        h.publish_message("paid", "o-1", serde_json::json!({ "amount": 10 })).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.get_var("amount"), Some(serde_json::json!(10)));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Errors and escalations: end events throw, the nearest scope catches
+    // ─────────────────────────────────────────────────────────────────
+
+    /// A definitions document with root declarations (errors, escalations) and one process.
+    fn wrap_definitions(roots: &str, process_id: &str, body: &str) -> String {
+        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+{roots}
+  <bpmn:process id="{process_id}" isExecutable="true">
+{body}
+  </bpmn:process>
+</bpmn:definitions>"#)
+    }
+
+    fn element_state(h: &Harness, element_id: &str) -> Option<String> {
+        h.backend.list_element_instances().into_iter()
+            .find(|e| e.element_id == element_id)
+            .map(|e| e.state)
+    }
+
+    // The error's id differs from its code, so a match proves the ref resolves to the code.
+    const ERROR_ROOTS: &str = r#"  <bpmn:error id="Err_stock" name="Out of stock" errorCode="OUT_OF_STOCK"/>"#;
+
+    /// start → sub[ start → check → gw → (ok: end | no: error end) ] → done;
+    /// error boundary on sub → handled.
+    fn error_end_in_subprocess(boundary: bool) -> String {
+        let boundary_xml = if boundary {
+            r#"
+    <bpmn:boundaryEvent id="on-error" attachedToRef="sub">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f-err" sourceRef="on-error" targetRef="handled"/>"#
+        } else {
+            ""
+        };
+        wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:serviceTask id="check">
+        <bpmn:extensionElements><zeebe:taskDefinition type="check"/></bpmn:extensionElements>
+        <bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>s2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="gw" default="s-no">
+        <bpmn:incoming>s2</bpmn:incoming><bpmn:outgoing>s-ok</bpmn:outgoing><bpmn:outgoing>s-no</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s-ok</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="s-error"><bpmn:incoming>s-no</bpmn:incoming>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="s1" sourceRef="s-start" targetRef="check"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="check" targetRef="gw"/>
+      <bpmn:sequenceFlow id="s-ok" sourceRef="gw" targetRef="s-end">
+        <bpmn:conditionExpression>=available</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="s-no" sourceRef="gw" targetRef="s-error"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="sub"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="sub" targetRef="done"/>{boundary_xml}
+"#))
+    }
+
+    #[tokio::test]
+    async fn test_error_end_event_is_caught_by_boundary_on_enclosing_subprocess() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": false })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("on-error") && h.visited("handled"), "the boundary path must run");
+        assert!(!h.visited("done"), "the sub-process must not complete normally");
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_state(&h, "s-error").as_deref(), Some("TERMINATED"));
+        assert_eq!(h.get_var("errorCode"), None, "no variables leak from the throw");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_error_end_event_happy_path_is_unaffected() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": true })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("done"));
+        assert!(!h.visited("on-error"));
+    }
+
+    #[tokio::test]
+    async fn test_uncaught_error_end_event_raises_incident() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(false)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": false })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+            "an unhandled error stops the instance");
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1, "incidents: {incidents:?}");
+        assert_eq!(incidents[0].error_type, "UNHANDLED_ERROR_EVENT");
+        assert_eq!(incidents[0].element_id, "s-error");
+        assert!(incidents[0].error_message.as_deref().unwrap_or("").contains("OUT_OF_STOCK"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_job_error_is_caught_by_boundary_on_enclosing_subprocess() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("check").expect("check job");
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "OUT_OF_STOCK",
+            "errorMessage": "none left",
+        })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("handled"));
+        assert_eq!(element_state(&h, "check").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+    }
+
+    #[tokio::test]
+    async fn test_error_is_caught_by_error_event_subprocess_and_cancels_the_scope() {
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>fa</bpmn:outgoing><bpmn:outgoing>fb</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="slow">
+      <bpmn:extensionElements><zeebe:taskDefinition type="slow"/></bpmn:extensionElements>
+      <bpmn:incoming>fa</bpmn:incoming><bpmn:outgoing>fa2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="slow-end"><bpmn:incoming>fa2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:serviceTask id="trigger">
+      <bpmn:extensionElements><zeebe:taskDefinition type="trigger"/></bpmn:extensionElements>
+      <bpmn:incoming>fb</bpmn:incoming><bpmn:outgoing>fb2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="fail"><bpmn:incoming>fb2</bpmn:incoming>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="err-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="err-start" targetRef="err-end"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="fork"/>
+    <bpmn:sequenceFlow id="fa" sourceRef="fork" targetRef="slow"/>
+    <bpmn:sequenceFlow id="fa2" sourceRef="slow" targetRef="slow-end"/>
+    <bpmn:sequenceFlow id="fb" sourceRef="fork" targetRef="trigger"/>
+    <bpmn:sequenceFlow id="fb2" sourceRef="trigger" targetRef="fail"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert!(h.activatable_job("slow").is_some());
+        h.complete_job("trigger", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "the event sub-process ends the process; instances: {:?}", h.process_instances());
+        assert!(h.visited("err-end"));
+        assert_eq!(element_state(&h, "slow").as_deref(), Some("TERMINATED"));
+        let job_state = h.backend.list_jobs().into_iter().find(|j| j.job_type == "slow").map(|j| j.state);
+        assert_eq!(job_state.as_deref(), Some("CANCELED"), "the interrupted task's job is canceled");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_error_from_called_process_is_caught_on_the_call_activity() {
+        let child = wrap_definitions(ERROR_ROOTS, "child", r#"
+    <bpmn:startEvent id="c-start"><bpmn:outgoing>c1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="c-error"><bpmn:incoming>c1</bpmn:incoming>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="c1" sourceRef="c-start" targetRef="c-error"/>
+"#);
+        let parent = wrap_definitions(ERROR_ROOTS, "parent", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:callActivity id="call">
+      <bpmn:extensionElements><zeebe:calledElement processId="child"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:boundaryEvent id="on-error" attachedToRef="call">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="call"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="call" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-err" sourceRef="on-error" targetRef="handled"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&child).await;
+        h.deploy(&parent).await;
+        h.start("parent", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("parent").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.process_state("child").as_deref(), Some("TERMINATED"));
+        assert!(h.visited("handled"));
+        assert!(!h.visited("done"));
+        assert_eq!(element_state(&h, "call").as_deref(), Some("TERMINATED"));
+    }
+
+    const ESCALATION_ROOTS: &str =
+        r#"  <bpmn:escalation id="Esc_late" name="Late" escalationCode="LATE"/>"#;
+
+    #[tokio::test]
+    async fn test_uncaught_escalation_end_event_is_not_an_incident() {
+        let bpmn = wrap_definitions(ESCALATION_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="escalate"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="escalate"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "an uncaught escalation ends like a none end event");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_escalation_throw_is_caught_by_non_interrupting_boundary() {
+        let bpmn = wrap_definitions(ESCALATION_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:intermediateThrowEvent id="notify-late"><bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>s2</bpmn:outgoing>
+        <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+      </bpmn:intermediateThrowEvent>
+      <bpmn:serviceTask id="finish">
+        <bpmn:extensionElements><zeebe:taskDefinition type="finish"/></bpmn:extensionElements>
+        <bpmn:incoming>s2</bpmn:incoming><bpmn:outgoing>s3</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s3</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="s1" sourceRef="s-start" targetRef="notify-late"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="notify-late" targetRef="finish"/>
+      <bpmn:sequenceFlow id="s3" sourceRef="finish" targetRef="s-end"/>
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="on-late" attachedToRef="sub" cancelActivity="false">
+      <bpmn:outgoing>f-late</bpmn:outgoing>
+      <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="tell-customer">
+      <bpmn:extensionElements><zeebe:taskDefinition type="tell"/></bpmn:extensionElements>
+      <bpmn:incoming>f-late</bpmn:incoming><bpmn:outgoing>f-late2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="told"><bpmn:incoming>f-late2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="sub"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="sub" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-late" sourceRef="on-late" targetRef="tell-customer"/>
+    <bpmn:sequenceFlow id="f-late2" sourceRef="tell-customer" targetRef="told"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        // Both paths are live: the escalation path and the sub-process that threw it.
+        assert!(h.activatable_job("tell").is_some(), "the boundary path must start");
+        assert!(h.activatable_job("finish").is_some(), "the thrower must carry on");
+        h.complete_job("tell", serde_json::json!({})).await;
+        h.complete_job("finish", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("told") && h.visited("done"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Ad-hoc sub-process with a job worker implementation (AI Agent)
+    // ─────────────────────────────────────────────────────────────────
+
+    fn ad_hoc_agent() -> String {
+        wrap_definitions(
+            r#"  <bpmn:error id="Err_agent" errorCode="AGENT_FAILED"/>"#,
+            "proc",
+            r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="agent">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="agent-worker"/>
+        <zeebe:ioMapping>
+          <zeebe:output source="=agent" target="agent"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:serviceTask id="tool">
+        <bpmn:extensionElements><zeebe:taskDefinition type="tool"/></bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:boundaryEvent id="agent-failed" attachedToRef="agent">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_agent"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="fallback"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="agent"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="agent" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-err" sourceRef="agent-failed" targetRef="fallback"/>
+"#,
+        )
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_runs_as_its_job() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert!(h.activatable_job("tool").is_none(), "inner tools are not activated by Reebe");
+        h.complete_job("agent-worker", serde_json::json!({ "agent": { "responseText": "done" } })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("done"));
+        assert_eq!(h.get_var("agent"), Some(serde_json::json!({ "responseText": "done" })));
+        let agent_type = h.backend.list_element_instances().into_iter()
+            .find(|e| e.element_id == "agent").map(|e| e.element_type);
+        assert_eq!(agent_type.as_deref(), Some("AD_HOC_SUB_PROCESS"));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_job_error_takes_the_boundary() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("agent-worker").expect("agent job");
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "AGENT_FAILED",
+        })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("fallback"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_without_job_or_elements_to_activate_waits() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="tools">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:task id="tool"/>
+    </bpmn:adHocSubProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="tools"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="tools" targetRef="done"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        // Run by Zeebe without an activeElementsCollection, nothing is activated and the
+        // ad-hoc sub-process stays active, as in Zeebe.
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        assert!(h.incidents().is_empty());
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(!h.visited("done"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Timer, message and signal boundary events
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Fire the ACTIVE timer of `element_id` (a catch event or boundary event).
+    async fn fire_timer(h: &Harness, element_id: &str) -> Timer {
+        let timer = h.backend.list_timers().into_iter()
+            .find(|t| t.element_id == element_id && t.state == "ACTIVE")
+            .unwrap_or_else(|| panic!("no active timer for '{element_id}': {:?}", h.backend.list_timers()));
+        h.run("TIMER", "TRIGGER", serde_json::json!({ "timerKey": timer.key.to_string() })).await;
+        timer
+    }
+
+    fn timers_of(h: &Harness, element_id: &str) -> Vec<Timer> {
+        h.backend.list_timers().into_iter().filter(|t| t.element_id == element_id).collect()
+    }
+
+    fn job_state(h: &Harness, job_type: &str) -> Option<String> {
+        h.backend.list_jobs().into_iter().find(|j| j.job_type == job_type).map(|j| j.state)
+    }
+
+    /// start → task (work) → done, with a boundary on the task leading to `handle` → handled.
+    fn task_with_boundary(boundary_attrs: &str, definition: &str) -> String {
+        wrap_definitions(
+            r#"  <bpmn:message id="M_cancel" name="cancel">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:signal id="S_stop" name="stop"/>"#,
+            "proc",
+            &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="on-event" attachedToRef="task" {boundary_attrs}>
+      <bpmn:outgoing>f3</bpmn:outgoing>
+      {definition}
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="handle">
+      <bpmn:extensionElements><zeebe:taskDefinition type="handle"/></bpmn:extensionElements>
+      <bpmn:incoming>f3</bpmn:incoming><bpmn:outgoing>f4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="done"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="on-event" targetRef="handle"/>
+    <bpmn:sequenceFlow id="f4" sourceRef="handle" targetRef="handled"/>
+"#),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_timer_boundary_terminates_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            "",
+            r#"<bpmn:timerEventDefinition><bpmn:timeDuration>=duration("PT" + string(hours) + "H")</bpmn:timeDuration></bpmn:timerEventDefinition>"#,
+        )).await;
+        let before = chrono::Utc::now();
+        h.start("proc", serde_json::json!({ "hours": 2 })).await;
+
+        let timers = timers_of(&h, "on-event");
+        assert_eq!(timers.len(), 1, "the boundary timer arms when the task activates");
+        let due = timers[0].due_date - before;
+        assert!(due >= chrono::Duration::minutes(119) && due <= chrono::Duration::minutes(121),
+            "the due date is evaluated with FEEL against the instance variables: {due:?}");
+
+        fire_timer(&h, "on-event").await;
+
+        assert_eq!(element_state(&h, "task").as_deref(), Some("TERMINATED"));
+        assert_eq!(job_state(&h, "work").as_deref(), Some("CANCELED"), "the task's job is cancelled");
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("handled"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_cycle_timer_boundary_repeats_and_keeps_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            r#"cancelActivity="false""#,
+            r#"<bpmn:timerEventDefinition><bpmn:timeCycle>R2/PT10M</bpmn:timeCycle></bpmn:timerEventDefinition>"#,
+        )).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        let first = fire_timer(&h, "on-event").await;
+        assert_eq!(first.repetitions, 2);
+        assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"), "the task keeps running");
+        assert!(h.activatable_job("handle").is_some(), "the boundary path starts");
+
+        let second = fire_timer(&h, "on-event").await;
+        assert_eq!(second.repetitions, 1);
+        assert_eq!(second.due_date - first.due_date, chrono::Duration::minutes(10), "the cycle repeats every 10 minutes");
+        assert!(timers_of(&h, "on-event").iter().all(|t| t.state != "ACTIVE"), "R2 fires twice, then stops");
+        let handle_jobs = h.backend.list_jobs().into_iter().filter(|j| j.job_type == "handle").count();
+        assert_eq!(handle_jobs, 2);
+
+        h.complete_job("handle", serde_json::json!({})).await;
+        h.complete_job("handle", serde_json::json!({})).await;
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("done") && h.visited("handled"));
+    }
+
+    #[tokio::test]
+    async fn test_boundary_timers_and_subscriptions_close_when_the_task_completes() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            "",
+            r#"<bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>"#,
+        )).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(timers_of(&h, "on-event")[0].state, "ACTIVE");
+
+        h.complete_job("work", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(timers_of(&h, "on-event")[0].state, "CANCELED");
+        // A timer that was already due when the task completed does nothing.
+        let t = &timers_of(&h, "on-event")[0];
+        h.run("TIMER", "TRIGGER", serde_json::json!({ "timerKey": t.key.to_string() })).await;
+        assert!(h.activatable_job("handle").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_message_boundary_subscribes_on_activation_and_closes_on_completion() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary("", r#"<bpmn:messageEventDefinition messageRef="M_cancel"/>"#)).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+        let subs = h.backend.list_message_subscriptions();
+        assert_eq!(subs.len(), 1);
+        assert_eq!((subs[0].message_name.as_str(), subs[0].correlation_key.as_str(), subs[0].state.as_str()),
+            ("cancel", "o-1", "OPENED"));
+
+        h.publish_message("cancel", "o-1", serde_json::json!({ "reason": "customer" })).await;
+
+        assert_eq!(element_state(&h, "task").as_deref(), Some("TERMINATED"));
+        assert_eq!(job_state(&h, "work").as_deref(), Some("CANCELED"));
+        assert_eq!(h.get_var("reason"), Some(serde_json::json!("customer")), "message variables merge");
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+
+        // On the normal path, completing the task closes the subscription.
+        let h2 = Harness::new();
+        h2.deploy(&task_with_boundary("", r#"<bpmn:messageEventDefinition messageRef="M_cancel"/>"#)).await;
+        h2.start("proc", serde_json::json!({ "orderId": "o-2" })).await;
+        h2.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h2.backend.list_message_subscriptions()[0].state, "CLOSED");
+        h2.publish_message("cancel", "o-2", serde_json::json!({})).await;
+        assert!(h2.activatable_job("handle").is_none());
+        assert_eq!(h2.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_signal_boundary_keeps_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(r#"cancelActivity="false""#, r#"<bpmn:signalEventDefinition signalRef="S_stop"/>"#)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.broadcast_signal("stop").await;
+        assert!(h.activatable_job("handle").is_some());
+        assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"));
+        h.complete_job("work", serde_json::json!({})).await;
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Event-based gateway: the first event wins
+    // ─────────────────────────────────────────────────────────────────
+
+    fn event_gateway() -> String {
+        wrap_definitions(
+            r#"  <bpmn:message id="M_paid" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>"#,
+            "proc",
+            r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:eventBasedGateway id="gw"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:outgoing>g-msg</bpmn:outgoing><bpmn:outgoing>g-timer</bpmn:outgoing></bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="paid"><bpmn:incoming>g-msg</bpmn:incoming><bpmn:outgoing>f-paid</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="M_paid"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="timeout"><bpmn:incoming>g-timer</bpmn:incoming><bpmn:outgoing>f-timeout</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>P1D</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="end-paid"><bpmn:incoming>f-paid</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-timeout"><bpmn:incoming>f-timeout</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="gw"/>
+    <bpmn:sequenceFlow id="g-msg" sourceRef="gw" targetRef="paid"/>
+    <bpmn:sequenceFlow id="g-timer" sourceRef="gw" targetRef="timeout"/>
+    <bpmn:sequenceFlow id="f-paid" sourceRef="paid" targetRef="end-paid"/>
+    <bpmn:sequenceFlow id="f-timeout" sourceRef="timeout" targetRef="end-timeout"/>
+"#,
+        )
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_waits_without_entering_its_events() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        assert_eq!(element_state(&h, "gw").as_deref(), Some("ACTIVATED"));
+        assert!(!h.visited("paid") && !h.visited("timeout"), "the events are armed, not entered");
+        assert_eq!(timers_of(&h, "timeout").len(), 1);
+        assert_eq!(h.backend.list_message_subscriptions().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_won_by_a_message_cancels_the_timer() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        h.publish_message("paid", "o-1", serde_json::json!({ "amount": 5 })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("end-paid"));
+        assert!(!h.visited("timeout") && !h.visited("end-timeout"));
+        assert_eq!(timers_of(&h, "timeout")[0].state, "CANCELED", "the losing timer is cancelled");
+        assert_eq!(h.get_var("amount"), Some(serde_json::json!(5)));
+        assert_eq!(element_state(&h, "gw").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_won_by_a_timer_closes_the_subscription() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        fire_timer(&h, "timeout").await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-timeout"));
+        assert_eq!(h.backend.list_message_subscriptions()[0].state, "CLOSED");
+        h.publish_message("paid", "o-1", serde_json::json!({})).await;
+        assert!(!h.visited("paid"), "a message after the timer won is not correlated");
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_correlates_a_buffered_message_at_once() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.publish_message("paid", "o-1", serde_json::json!({})).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-paid"));
+        assert_eq!(timers_of(&h, "timeout")[0].state, "CANCELED");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Multi-instance on any activity
+    // ─────────────────────────────────────────────────────────────────
+
+    fn mi_service_task(sequential: bool, completion: &str) -> String {
+        let completion = if completion.is_empty() {
+            String::new()
+        } else {
+            format!("<bpmn:completionCondition>{completion}</bpmn:completionCondition>")
+        };
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="{sequential}">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=items" inputElement="item"
+                                     outputCollection="results" outputElement="=result"/>
+        </bpmn:extensionElements>
+        {completion}
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#))
+    }
+
+    /// Activatable jobs of `job_type` with the inner instance's local variable `name`.
+    fn jobs_with_local(h: &Harness, job_type: &str, name: &str) -> Vec<(Job, Value)> {
+        let vars = h.backend.list_variables();
+        h.backend.list_jobs().into_iter()
+            .filter(|j| j.job_type == job_type && j.state == "ACTIVATABLE")
+            .map(|j| {
+                let v = vars.iter()
+                    .find(|v| v.scope_key == j.element_instance_key && v.name == name)
+                    .map(|v| v.value.clone())
+                    .unwrap_or(Value::Null);
+                (j, v)
+            })
+            .collect()
+    }
+
+    async fn complete_job_key(h: &Harness, key: i64, variables: Value) {
+        h.run("JOB", "COMPLETE", serde_json::json!({
+            "jobKey": key.to_string(),
+            "variables": variables,
+        })).await;
+    }
+
+    fn root_var(h: &Harness, name: &str) -> Option<Value> {
+        let pi = h.process_instances()[0].key;
+        h.backend.list_variables().into_iter()
+            .find(|v| v.scope_key == pi && v.name == name)
+            .map(|v| v.value)
+    }
+
+    #[tokio::test]
+    async fn test_parallel_multi_instance_service_task_collects_output_in_order() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2, 3] })).await;
+
+        let jobs = jobs_with_local(&h, "work", "item");
+        assert_eq!(jobs.len(), 3, "one job per item, all at once");
+        let mut items: Vec<Value> = jobs.iter().map(|(_, item)| item.clone()).collect();
+        items.sort_by_key(|v| v.as_i64());
+        assert_eq!(items, vec![serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)],
+            "each inner instance has its own local inputElement");
+        let counters: Vec<Value> = jobs_with_local(&h, "work", "loopCounter").into_iter().map(|(_, c)| c).collect();
+        assert!(counters.contains(&serde_json::json!(1)) && counters.contains(&serde_json::json!(3)));
+
+        // Complete in reverse; the output keeps the input order.
+        let mut jobs = jobs;
+        jobs.sort_by_key(|(_, item)| -item.as_i64().unwrap());
+        for (job, item) in jobs {
+            complete_job_key(&h, job.key, serde_json::json!({ "result": item.as_i64().unwrap() * 10 })).await;
+        }
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!([10, 20, 30])));
+        assert_eq!(root_var(&h, "item"), None, "inputElement stays local to each instance");
+        assert_eq!(root_var(&h, "loopCounter"), None);
+        assert_eq!(root_var(&h, "result"), None, "the output element is local to each instance");
+    }
+
+    #[tokio::test]
+    async fn test_sequential_multi_instance_service_task_stops_at_completion_condition() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(true, "=numberOfCompletedInstances >= 2")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b", "c"] })).await;
+
+        for expected in ["a", "b"] {
+            let jobs = jobs_with_local(&h, "work", "item");
+            assert_eq!(jobs.len(), 1, "one instance at a time");
+            assert_eq!(jobs[0].1, serde_json::json!(expected));
+            complete_job_key(&h, jobs[0].0.key, serde_json::json!({ "result": expected.to_uppercase() })).await;
+        }
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.backend.list_jobs().len(), 2, "the third instance never starts");
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["A", "B", null])));
+    }
+
+    #[tokio::test]
+    async fn test_parallel_multi_instance_completion_condition_terminates_the_rest() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, r#"=result = "found""#)).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2, 3] })).await;
+
+        let jobs = jobs_with_local(&h, "work", "item");
+        complete_job_key(&h, jobs[1].0.key, serde_json::json!({ "result": "found" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        let states: Vec<String> = h.backend.list_jobs().into_iter().map(|j| j.state).collect();
+        assert_eq!(states.iter().filter(|s| *s == "CANCELED").count(), 2, "jobs: {states:?}");
+        let terminated = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id == "task" && e.state == "TERMINATED")
+            .count();
+        assert_eq!(terminated, 2);
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_completion_condition_that_is_not_a_boolean_raises_an_incident() {
+        // Zeebe's MultiInstanceBodyProcessor evaluates the condition with
+        // evaluateBooleanExpression before the inner instance completes: the inner
+        // instance stays completing with an EXTRACT_VALUE_ERROR incident.
+        let h = Harness::new();
+        h.deploy(&mi_service_task(true, "=done")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b", "c"] })).await;
+        let jobs = jobs_with_local(&h, "work", "item");
+        complete_job_key(&h, jobs[0].0.key, serde_json::json!({ "result": "A" })).await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected result of the expression 'done' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        let inner = h.backend.list_element_instances().into_iter()
+            .find(|e| e.key == incidents[0].element_instance_key).unwrap();
+        assert_eq!((inner.element_id.as_str(), inner.element_type.as_str()), ("task", "SERVICE_TASK"));
+        assert_eq!(inner.state, "COMPLETING");
+        assert!(jobs_with_local(&h, "work", "item").is_empty(), "the next instance waits");
+
+        // Resolving it completes the same inner instance again, and evaluates the condition.
+        set_variables(&h, serde_json::json!({ "done": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        assert_eq!(element_states(&h, "task").iter().filter(|s| *s == "COMPLETED").count(), 2, "{:?}", element_states(&h, "task"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["A", null, null])));
+        assert_eq!(h.backend.list_jobs().len(), 1, "the second instance never starts");
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_with_an_empty_collection_is_skipped() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": [] })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.backend.list_jobs().is_empty());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!([])));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_user_task_and_sub_process() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:userTask id="review">
+      <bpmn:extensionElements><zeebe:userTask/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics>
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=reviewers" inputElement="reviewer"/>
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:userTask>
+    <bpmn:subProcess id="notify">
+      <bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=reviewers" inputElement="reviewer"
+                                     outputCollection="sent" outputElement="=reviewer + &quot;!&quot;"/>
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="n-start"><bpmn:outgoing>n1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:serviceTask id="send">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="send"/>
+          <zeebe:ioMapping><zeebe:input source="=reviewer" target="to"/></zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>n1</bpmn:incoming><bpmn:outgoing>n2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="n-end"><bpmn:incoming>n2</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="n1" sourceRef="n-start" targetRef="send"/>
+      <bpmn:sequenceFlow id="n2" sourceRef="send" targetRef="n-end"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="review"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="review" targetRef="notify"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="notify" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "reviewers": ["ann", "bob"] })).await;
+
+        assert_eq!(h.pending_user_tasks("review").len(), 2, "one user task per reviewer");
+        h.complete_user_task("review", serde_json::json!({})).await;
+        h.complete_user_task("review", serde_json::json!({})).await;
+
+        // The sub-process runs once per reviewer, one after the other, and its
+        // inner elements see the instance's local inputElement.
+        let vars = h.backend.list_variables();
+        let to_of = |j: &Job| vars.iter().find(|v| v.scope_key == j.element_instance_key && v.name == "to").map(|v| v.value.clone());
+        let first = h.activatable_job("send").expect("first send");
+        assert_eq!(to_of(&first), Some(serde_json::json!("ann")));
+        h.complete_job("send", serde_json::json!({})).await;
+        let vars = h.backend.list_variables();
+        let to_of = |j: &Job| vars.iter().find(|v| v.scope_key == j.element_instance_key && v.name == "to").map(|v| v.value.clone());
+        let second = h.activatable_job("send").expect("second send");
+        assert_eq!(to_of(&second), Some(serde_json::json!("bob")));
+        h.complete_job("send", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(root_var(&h, "sent"), Some(serde_json::json!(["ann!", "bob!"])));
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_boundary_on_multi_instance_terminates_the_body() {
+        let bpmn = mi_service_task(false, "").replace(
+            r#"<bpmn:endEvent id="end">"#,
+            r#"<bpmn:boundaryEvent id="late" attachedToRef="task"><bpmn:outgoing>f-late</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="end-late"><bpmn:incoming>f-late</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f-late" sourceRef="late" targetRef="end-late"/>
+    <bpmn:endEvent id="end">"#,
+        );
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2] })).await;
+        assert_eq!(timers_of(&h, "late").len(), 1, "the boundary belongs to the body, not each instance");
+
+        fire_timer(&h, "late").await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-late"));
+        assert!(h.backend.list_jobs().iter().all(|j| j.state == "CANCELED"));
+        assert_eq!(root_var(&h, "results"), None, "no partial output");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // A job carries the variables visible from its element
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_job_carries_visible_variables() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="work"/>
+        <zeebe:ioMapping><zeebe:input source="=orderId + &quot;-x&quot;" target="ref"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1", "amount": 5 })).await;
+        let job = h.activatable_job("work").expect("job");
+        assert_eq!(job.variables, serde_json::json!({ "orderId": "o-1", "amount": 5, "ref": "o-1-x" }));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_jobs_see_their_own_item() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b"] })).await;
+        let mut seen: Vec<(Value, Value)> = h.backend.list_jobs().into_iter()
+            .filter(|j| j.job_type == "work")
+            .map(|j| (j.variables["item"].clone(), j.variables["loopCounter"].clone()))
+            .collect();
+        seen.sort_by_key(|(_, c)| c.as_i64());
+        assert_eq!(seen, vec![
+            (serde_json::json!("a"), serde_json::json!(1)),
+            (serde_json::json!("b"), serde_json::json!(2)),
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Flow scope completion and terminate end events
+    // ─────────────────────────────────────────────────────────────────
+
+    fn task(id: &str, job_type: &str, incoming: &str, outgoing: &str) -> String {
+        let outgoing = if outgoing.is_empty() { String::new() } else { format!("<bpmn:outgoing>{outgoing}</bpmn:outgoing>") };
+        format!(r#"<bpmn:serviceTask id="{id}">
+      <bpmn:extensionElements><zeebe:taskDefinition type="{job_type}"/></bpmn:extensionElements>
+      <bpmn:incoming>{incoming}</bpmn:incoming>{outgoing}
+    </bpmn:serviceTask>"#)
+    }
+
+    fn flow(id: &str, from: &str, to: &str) -> String {
+        format!(r#"<bpmn:sequenceFlow id="{id}" sourceRef="{from}" targetRef="{to}"/>"#)
+    }
+
+    /// start → sub[ start → fork → (end-early | inner → end-late) ] → after → done.
+    /// `early_end` goes inside the early end event (e.g. a terminate definition);
+    /// without `inner_has_end`, `inner` has no outgoing flow.
+    fn sub_with_two_branches(early_end: &str, inner_has_end: bool) -> String {
+        let inner_end = if inner_has_end {
+            format!(r#"<bpmn:endEvent id="end-late"><bpmn:incoming>s5</bpmn:incoming></bpmn:endEvent>{}"#, flow("s5", "inner", "end-late"))
+        } else {
+            String::new()
+        };
+        let inner = task("inner", "inner", "s4", if inner_has_end { "s5" } else { "" });
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:parallelGateway id="fork"><bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>s2</bpmn:outgoing><bpmn:outgoing>s4</bpmn:outgoing></bpmn:parallelGateway>
+      <bpmn:endEvent id="end-early"><bpmn:incoming>s2</bpmn:incoming>{early_end}</bpmn:endEvent>
+      {inner}
+      {inner_end}
+      {s1}{s2}{s4}
+    </bpmn:subProcess>
+    {after}
+    <bpmn:endEvent id="done"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}
+"#,
+            after = task("after", "after", "f2", "f3"),
+            s1 = flow("s1", "s-start", "fork"), s2 = flow("s2", "fork", "end-early"), s4 = flow("s4", "fork", "inner"),
+            f1 = flow("f1", "start", "sub"), f2 = flow("f2", "sub", "after"), f3 = flow("f3", "after", "done"),
+        ))
+    }
+
+    #[tokio::test]
+    async fn test_sub_process_completes_only_when_no_inner_branch_is_active() {
+        for inner_has_end in [true, false] {
+            let h = Harness::new();
+            h.deploy(&sub_with_two_branches("", inner_has_end)).await;
+            h.start("proc", serde_json::json!({})).await;
+
+            assert_eq!(element_state(&h, "end-early").as_deref(), Some("COMPLETED"));
+            assert_eq!(element_state(&h, "sub").as_deref(), Some("ACTIVATED"),
+                "an end event does not complete the sub-process while `inner` is active");
+            assert!(h.activatable_job("after").is_none());
+
+            h.complete_job("inner", serde_json::json!({})).await;
+            assert_eq!(element_state(&h, "sub").as_deref(), Some("COMPLETED"),
+                "the last path to end completes it (inner has an end event: {inner_has_end})");
+            h.complete_job("after", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scope_waits_for_a_token_that_has_not_activated_yet() {
+        // fork → (gw → task | end). The exclusive gateway completes, and hands its token
+        // to `task`, only after the end event has been activated: when the end event
+        // completes, no element of the other branch is active, but its token is on its way.
+        let body = |end_scope: &str| format!(r#"
+      <bpmn:parallelGateway id="fork"><bpmn:incoming>a1</bpmn:incoming><bpmn:outgoing>a2</bpmn:outgoing><bpmn:outgoing>a3</bpmn:outgoing></bpmn:parallelGateway>
+      <bpmn:exclusiveGateway id="gw"><bpmn:incoming>a2</bpmn:incoming><bpmn:outgoing>a4</bpmn:outgoing></bpmn:exclusiveGateway>
+      {task}
+      <bpmn:endEvent id="end-{end_scope}"><bpmn:incoming>a3</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="end-task-{end_scope}"><bpmn:incoming>a5</bpmn:incoming></bpmn:endEvent>
+      {a2}{a3}{a4}{a5}"#,
+            task = task("task", "work", "a4", "a5"),
+            a2 = flow("a2", "fork", "gw"), a3 = flow("a3", "fork", &format!("end-{end_scope}")),
+            a4 = flow("a4", "gw", "task"), a5 = flow("a5", "task", &format!("end-task-{end_scope}")));
+
+        // In the process scope.
+        let h = Harness::new();
+        h.deploy(&wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>a1</bpmn:outgoing></bpmn:startEvent>
+    {}{}"#, body("p"), flow("a1", "start", "fork")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+            "the process must wait for `task`; elements: {:?}", h.backend.list_element_instances());
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+
+        // In an embedded sub-process.
+        let h = Harness::new();
+        h.deploy(&wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>a1</bpmn:outgoing></bpmn:startEvent>
+      {}{}
+    </bpmn:subProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {}{}"#, body("s"), flow("a1", "s-start", "fork"), flow("f1", "start", "sub"), flow("f2", "sub", "done")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("ACTIVATED"));
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_process_completes_only_when_no_branch_is_active() {
+        let h = Harness::new();
+        h.deploy(&wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing><bpmn:outgoing>f3</bpmn:outgoing></bpmn:parallelGateway>
+    <bpmn:endEvent id="end-early"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {}
+    {}{}{}"#, task("slow", "slow", "f3", ""), flow("f1", "start", "fork"), flow("f2", "fork", "end-early"), flow("f3", "fork", "slow")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        h.complete_job("slow", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "a task without an outgoing flow ends the last path");
+    }
+
+    #[tokio::test]
+    async fn test_terminate_end_event_in_a_sub_process_ends_only_that_sub_process() {
+        // A second branch at process level stays active: the terminate end event must
+        // not reach outside the sub-process.
+        let xml = sub_with_two_branches("<bpmn:terminateEventDefinition/>", true)
+            .replace(r#"<bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>"#,
+                &format!(r#"<bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="p-fork"><bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>f1</bpmn:outgoing><bpmn:outgoing>f9</bpmn:outgoing></bpmn:parallelGateway>
+    {}{}{}"#, task("outside", "outside", "f9", ""), flow("f0", "start", "p-fork"), flow("f9", "p-fork", "outside")))
+            .replace(&flow("f1", "start", "sub"), &flow("f1", "p-fork", "sub"));
+        let h = Harness::new();
+        h.deploy(&xml).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert_eq!(element_state(&h, "inner").as_deref(), Some("TERMINATED"));
+        assert!(h.activatable_job("inner").is_none());
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("COMPLETED"), "the sub-process completes, not terminates");
+        assert!(h.activatable_job("after").is_some(), "the sub-process takes its outgoing flow");
+        assert_eq!(job_state(&h, "outside").as_deref(), Some("ACTIVATABLE"), "outside the sub-process nothing is terminated");
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+
+        h.complete_job("after", serde_json::json!({})).await;
+        h.complete_job("outside", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_terminate_end_event_at_process_level_completes_the_process() {
+        let h = Harness::new();
+        h.deploy(&wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing><bpmn:outgoing>f3</bpmn:outgoing></bpmn:parallelGateway>
+    {}
+    {}
+    <bpmn:endEvent id="kill"><bpmn:incoming>f4</bpmn:incoming><bpmn:terminateEventDefinition/></bpmn:endEvent>
+    {}{}{}{}"#,
+            task("a", "a", "f2", ""), task("b", "b", "f3", "f4"),
+            flow("f1", "start", "fork"), flow("f2", "fork", "a"), flow("f3", "fork", "b"), flow("f4", "b", "kill")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+
+        assert_eq!(element_state(&h, "a").as_deref(), Some("TERMINATED"));
+        assert_eq!(job_state(&h, "a").as_deref(), Some("CANCELED"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "the process completes, not terminates");
+    }
+
+    #[tokio::test]
+    async fn test_flows_inside_a_doubly_nested_sub_process_are_taken() {
+        let h = Harness::new();
+        h.deploy(&wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="o-start"><bpmn:outgoing>o1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:subProcess id="inner-sub">
+        <bpmn:incoming>o1</bpmn:incoming><bpmn:outgoing>o2</bpmn:outgoing>
+        <bpmn:startEvent id="i-start"><bpmn:outgoing>i1</bpmn:outgoing></bpmn:startEvent>
+        {}
+        <bpmn:endEvent id="i-end"><bpmn:incoming>i2</bpmn:incoming></bpmn:endEvent>
+        {}{}
+      </bpmn:subProcess>
+      <bpmn:endEvent id="o-end"><bpmn:incoming>o2</bpmn:incoming></bpmn:endEvent>
+      {}{}
+    </bpmn:subProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {}{}"#,
+            task("deep", "deep", "i1", "i2"), flow("i1", "i-start", "deep"), flow("i2", "deep", "i-end"),
+            flow("o1", "o-start", "inner-sub"), flow("o2", "inner-sub", "o-end"),
+            flow("f1", "start", "outer"), flow("f2", "outer", "done")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("deep", serde_json::json!({})).await;
+        assert!(h.visited("i-end"), "the flow after `deep` is taken");
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Timer and message start events
+    // ─────────────────────────────────────────────────────────────────
+
+    fn now(h: &Harness) -> chrono::DateTime<chrono::Utc> {
+        h.state.clock.now()
+    }
+
+    /// `start_events` → work → end, plus a timer event sub-process, whose start event
+    /// is not a start event of the process.
+    fn process_with_start_events(process_id: &str, start_events: &str) -> String {
+        wrap_definitions(
+            r#"  <bpmn:message id="M_order" name="order-placed"/>"#,
+            process_id,
+            &format!(r#"
+    {start_events}
+    {work}
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {f2}
+    <bpmn:subProcess id="on-timeout" triggeredByEvent="true">
+      <bpmn:startEvent id="esp-timer" isInterrupting="false">
+        <bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:timerEventDefinition><bpmn:timeDuration>PT5M</bpmn:timeDuration></bpmn:timerEventDefinition>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="esp-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+      {e1}
+    </bpmn:subProcess>
+"#,
+                work = task("work", "work", "f1", "f2"),
+                f2 = flow("f2", "work", "end"),
+                e1 = flow("e1", "esp-timer", "esp-end"),
+            ),
+        )
+    }
+
+    fn timer_start(id: &str, definition: &str) -> String {
+        format!(r#"<bpmn:startEvent id="{id}"><bpmn:outgoing>f1</bpmn:outgoing><bpmn:timerEventDefinition>{definition}</bpmn:timerEventDefinition></bpmn:startEvent>
+    {}"#, flow("f1", id, "work"))
+    }
+
+    #[tokio::test]
+    async fn test_time_date_start_event_creates_one_instance() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &timer_start(
+            "tick", "<bpmn:timeDate>2030-01-01T09:00:00Z</bpmn:timeDate>"))).await;
+
+        let timers = h.backend.list_timers();
+        assert_eq!(timers.len(), 1, "only the process's own timer start event is scheduled: {timers:?}");
+        assert_eq!(timers[0].element_id, "tick");
+        assert_eq!(timers[0].element_instance_key, None);
+        assert_eq!(timers[0].due_date.to_rfc3339(), "2030-01-01T09:00:00+00:00");
+        assert!(h.process_instances().is_empty());
+
+        fire_timer(&h, "tick").await;
+        assert_eq!(h.process_instances().len(), 1);
+        assert!(h.visited("tick"));
+        assert!(h.activatable_job("work").is_some());
+        assert!(timers_of(&h, "tick").iter().all(|t| t.state != "ACTIVE"), "a time date fires once");
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_time_cycle_start_event_repeats() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &timer_start(
+            "tick", "<bpmn:timeCycle>R2/PT1H</bpmn:timeCycle>"))).await;
+        let first = timers_of(&h, "tick");
+        assert_eq!((first.len(), first[0].repetitions), (1, 2));
+        assert_eq!(first[0].due_date - now(&h), chrono::Duration::hours(1));
+
+        fire_timer(&h, "tick").await;
+        let active: Vec<Timer> = timers_of(&h, "tick").into_iter().filter(|t| t.state == "ACTIVE").collect();
+        assert_eq!(active.len(), 1, "the cycle schedules its next firing");
+        assert_eq!(active[0].repetitions, 1);
+        assert_eq!(active[0].due_date - now(&h), chrono::Duration::hours(1));
+
+        fire_timer(&h, "tick").await;
+        assert!(timers_of(&h, "tick").iter().all(|t| t.state != "ACTIVE"), "R2 fires twice");
+        assert_eq!(h.process_instances().len(), 2, "each firing creates an instance");
+        assert_eq!(h.backend.list_jobs().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_cron_start_event_fires_at_the_next_matching_time() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &timer_start(
+            "tick", "<bpmn:timeCycle>0 0 9 * * *</bpmn:timeCycle>"))).await;
+        let timer = timers_of(&h, "tick")[0].clone();
+        assert!(timer.due_date > now(&h) && timer.due_date - now(&h) <= chrono::Duration::days(1));
+        assert_eq!(timer.due_date.format("%H:%M:%S").to_string(), "09:00:00");
+        assert_eq!(timer.repetitions, -1, "a cron cycle repeats without end");
+
+        fire_timer(&h, "tick").await;
+        assert_eq!(h.process_instances().len(), 1);
+        let next = timers_of(&h, "tick").into_iter().find(|t| t.state == "ACTIVE").expect("next firing");
+        assert_eq!(next.due_date, timer.due_date, "the next 09:00 after the (unchanged) clock");
+    }
+
+    #[tokio::test]
+    async fn test_new_version_replaces_the_timer_start_events_of_the_previous_one() {
+        let h = Harness::new();
+        let v1 = process_with_start_events("proc", &timer_start("tick", "<bpmn:timeCycle>R/PT1H</bpmn:timeCycle>"));
+        h.deploy(&v1).await;
+        let v1_timer = timers_of(&h, "tick")[0].clone();
+
+        h.deploy(&v1.replace("PT1H", "PT2H")).await;
+        let timers = h.backend.list_timers();
+        assert_eq!(timers.iter().find(|t| t.key == v1_timer.key).map(|t| t.state.as_str()), Some("CANCELED"));
+        let v2_timer = timers.iter().find(|t| t.state == "ACTIVE").expect("the new version's timer");
+        assert_eq!(v2_timer.due_date - now(&h), chrono::Duration::hours(2));
+
+        fire_timer(&h, "tick").await;
+        assert_eq!(h.process_instances().iter().map(|p| p.version).collect::<Vec<_>>(), vec![2]);
+
+        // A version without a timer start event cancels the timer too.
+        h.deploy(&process_with_start_events("proc", &format!(
+            r#"<bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>{}"#,
+            flow("f1", "start", "work")))).await;
+        // The running instance's event sub-process timer is not a start event timer.
+        assert!(h.backend.list_timers().iter()
+            .filter(|t| t.element_instance_key.is_none())
+            .all(|t| t.state != "ACTIVE"));
+    }
+
+    #[tokio::test]
+    async fn test_creating_an_instance_starts_at_the_none_start_event() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &format!(
+            r#"<bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:startEvent id="tick"><bpmn:outgoing>f0</bpmn:outgoing><bpmn:timerEventDefinition><bpmn:timeCycle>R/PT1H</bpmn:timeCycle></bpmn:timerEventDefinition></bpmn:startEvent>
+    {}{}"#, flow("f1", "start", "work"), flow("f0", "tick", "work")))).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert!(h.visited("start"));
+        assert!(!h.visited("tick"), "the timer start event is not part of a created instance");
+        assert_eq!(h.backend.list_jobs().len(), 1);
+    }
+
+    fn message_start() -> String {
+        format!(r#"<bpmn:startEvent id="on-order"><bpmn:outgoing>f1</bpmn:outgoing><bpmn:messageEventDefinition messageRef="M_order"/></bpmn:startEvent>
+    {}"#, flow("f1", "on-order", "work"))
+    }
+
+    #[tokio::test]
+    async fn test_message_start_event_creates_an_instance_per_message() {
+        let h = Harness::new();
+        // Published before the process is deployed: never correlated to its start event.
+        h.publish_message("order-placed", "", serde_json::json!({ "early": true })).await;
+        h.deploy(&process_with_start_events("proc", &message_start())).await;
+        assert!(h.process_instances().is_empty());
+
+        h.publish_message("order-placed", "", serde_json::json!({ "orderId": "o-1" })).await;
+        h.publish_message("order-placed", "", serde_json::json!({ "orderId": "o-2" })).await;
+        assert_eq!(h.process_instances().len(), 2, "without a correlation key every message starts an instance");
+        assert!(h.visited("on-order"));
+        let mut order_ids: Vec<String> = h.backend.list_jobs().into_iter().map(|j| j.variables["orderId"].to_string()).collect();
+        order_ids.sort();
+        assert_eq!(order_ids, vec![r#""o-1""#, r#""o-2""#], "the message variables are the instance's");
+
+        h.publish_message("something-else", "", serde_json::json!({})).await;
+        assert_eq!(h.process_instances().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_message_start_event_allows_one_active_instance_per_correlation_key() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &message_start())).await;
+
+        h.publish_message("order-placed", "k1", serde_json::json!({ "n": 1 })).await;
+        h.publish_message("order-placed", "k1", serde_json::json!({ "n": 2 })).await;
+        h.publish_message("order-placed", "k2", serde_json::json!({ "n": 3 })).await;
+        let active = |h: &Harness| h.process_instances().into_iter().filter(|p| p.state == "ACTIVE").count();
+        assert_eq!(active(&h), 2, "the second k1 message waits while the first k1 instance is active");
+
+        // The first k1 instance ends: the buffered k1 message starts the next one.
+        let first = h.backend.list_jobs().into_iter().find(|j| j.variables["n"] == 1).expect("job of n=1");
+        h.run("JOB", "COMPLETE", serde_json::json!({ "jobKey": first.key.to_string(), "variables": {} })).await;
+        assert_eq!(h.process_instances().len(), 3);
+        assert_eq!(active(&h), 2);
+        assert!(h.backend.list_jobs().iter().any(|j| j.variables["n"] == 2 && j.state == "ACTIVATABLE"));
+
+        // Each message starts the process once: no further instance after this one ends.
+        let second = h.backend.list_jobs().into_iter().find(|j| j.variables["n"] == 2).expect("job of n=2");
+        h.run("JOB", "COMPLETE", serde_json::json!({ "jobKey": second.key.to_string(), "variables": {} })).await;
+        assert_eq!(h.process_instances().len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_new_version_closes_the_message_start_subscription_of_the_previous_one() {
+        let h = Harness::new();
+        h.deploy(&process_with_start_events("proc", &message_start())).await;
+        h.deploy(&process_with_start_events("proc", &format!(
+            r#"<bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>{}"#,
+            flow("f1", "start", "work")))).await;
+        h.publish_message("order-placed", "", serde_json::json!({})).await;
+        assert!(h.process_instances().is_empty());
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Timer, message and signal event sub-processes
+    // ─────────────────────────────────────────────────────────────────
+
+    const ESP_ROOTS: &str = r#"  <bpmn:message id="M_esp" name="esp-msg">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:signal id="S_esp" name="esp-signal"/>"#;
+
+    const ESP_TIMER: &str = r#"<bpmn:timerEventDefinition><bpmn:timeDuration>=duration("PT" + string(minutes) + "M")</bpmn:timeDuration></bpmn:timerEventDefinition>"#;
+    const ESP_CYCLE: &str = r#"<bpmn:timerEventDefinition><bpmn:timeCycle>R2/PT10M</bpmn:timeCycle></bpmn:timerEventDefinition>"#;
+    const ESP_MESSAGE: &str = r#"<bpmn:messageEventDefinition messageRef="M_esp"/>"#;
+    const ESP_SIGNAL: &str = r#"<bpmn:signalEventDefinition signalRef="S_esp"/>"#;
+
+    /// A flow scope `s-start → work → s-end` with event sub-processes: each
+    /// `(id, interrupting, definition)` is `{id}-start → {id} (job type {id}) → {id}-end`.
+    /// With `in_sub`, the scope is the sub-process `sub` (`start → sub → done`), whose
+    /// input mappings shadow `minutes` and `orderId`; otherwise it is the process.
+    fn esp_scope(in_sub: bool, esps: &[(&str, bool, &str)]) -> String {
+        let mut body = format!(
+            r#"<bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {work}
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s2</bpmn:incoming></bpmn:endEvent>
+      {s1}{s2}"#,
+            work = task("work", "work", "s1", "s2"),
+            s1 = flow("s1", "s-start", "work"),
+            s2 = flow("s2", "work", "s-end"),
+        );
+        for (id, interrupting, definition) in esps {
+            body.push_str(&format!(
+                r#"
+      <bpmn:subProcess id="{id}-esp" triggeredByEvent="true">
+        <bpmn:startEvent id="{id}-start" isInterrupting="{interrupting}"><bpmn:outgoing>{id}-e1</bpmn:outgoing>{definition}</bpmn:startEvent>
+        {handler}
+        <bpmn:endEvent id="{id}-end"><bpmn:incoming>{id}-e2</bpmn:incoming></bpmn:endEvent>
+        {e1}{e2}
+      </bpmn:subProcess>"#,
+                handler = task(id, id, &format!("{id}-e1"), &format!("{id}-e2")),
+                e1 = flow(&format!("{id}-e1"), &format!("{id}-start"), id),
+                e2 = flow(&format!("{id}-e2"), id, &format!("{id}-end")),
+            ));
+        }
+        let process = if in_sub {
+            format!(
+                r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:extensionElements><zeebe:ioMapping>
+        <zeebe:input source="=minutes * 4" target="minutes"/>
+        <zeebe:input source="=orderId + &quot;-sub&quot;" target="orderId"/>
+      </zeebe:ioMapping></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      {body}
+    </bpmn:subProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}
+"#,
+                f1 = flow("f1", "start", "sub"),
+                f2 = flow("f2", "sub", "done"),
+            )
+        } else {
+            body
+        };
+        wrap_definitions(ESP_ROOTS, "proc", &process)
+    }
+
+    /// The correlation key the scope evaluates `=orderId` to.
+    fn esp_key(in_sub: bool) -> &'static str {
+        if in_sub { "o-1-sub" } else { "o-1" }
+    }
+
+    async fn start_esp(h: &Harness) {
+        h.start("proc", serde_json::json!({ "orderId": "o-1", "minutes": 5 })).await;
+    }
+
+    fn jobs_of(h: &Harness, job_type: &str) -> Vec<Job> {
+        h.backend.list_jobs().into_iter().filter(|j| j.job_type == job_type).collect()
+    }
+
+    fn element_states(h: &Harness, element_id: &str) -> Vec<String> {
+        h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id == element_id)
+            .map(|e| e.state)
+            .collect()
+    }
+
+    async fn broadcast_signal_with(h: &Harness, variables: Value) {
+        h.run("SIGNAL", "BROADCAST", serde_json::json!({ "signalName": "esp-signal", "variables": variables })).await;
+    }
+
+    /// Nothing is armed any more: no active timer, open message subscription or signal subscription.
+    fn assert_disarmed(h: &Harness, context: &str) {
+        assert!(h.backend.list_timers().iter().all(|t| t.state != "ACTIVE"),
+            "{context}: timers {:?}", h.backend.list_timers());
+        assert!(h.backend.list_message_subscriptions().iter().all(|s| s.state != "OPENED"),
+            "{context}: message subscriptions {:?}", h.backend.list_message_subscriptions());
+        assert!(h.backend.list_signal_subscriptions().is_empty(),
+            "{context}: signal subscriptions {:?}", h.backend.list_signal_subscriptions());
+    }
+
+    /// The scope completed: the sub-process and then the process, or the process.
+    fn assert_scope_completed(h: &Harness, in_sub: bool) {
+        if in_sub {
+            assert_eq!(element_state(h, "sub").as_deref(), Some("COMPLETED"));
+            assert!(h.visited("done"));
+        }
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_timer_event_subprocess_terminates_the_scope() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", true, ESP_TIMER)])).await;
+            let before = now(&h);
+            start_esp(&h).await;
+
+            let timers = timers_of(&h, "esp-start");
+            assert_eq!(timers.len(), 1, "the timer arms when the scope activates (in_sub: {in_sub})");
+            let minutes = if in_sub { 20 } else { 5 };
+            assert_eq!(timers[0].due_date - before, chrono::Duration::minutes(minutes),
+                "the duration is evaluated with FEEL against the scope (in_sub: {in_sub})");
+
+            fire_timer(&h, "esp-start").await;
+            assert_eq!(element_state(&h, "work").as_deref(), Some("TERMINATED"));
+            assert_eq!(job_state(&h, "work").as_deref(), Some("CANCELED"));
+            assert!(h.activatable_job("esp").is_some(), "the event sub-process runs");
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+                "the scope stays open while the event sub-process runs");
+            if in_sub {
+                assert_eq!(element_state(&h, "sub").as_deref(), Some("ACTIVATED"));
+            }
+
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+            assert!(!h.visited("s-end"));
+            assert_disarmed(&h, "after completion");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_a_token_on_its_way_into_an_interrupted_scope_goes_nowhere() {
+        let h = Harness::new();
+        h.deploy(&esp_scope(false, &[("esp", true, ESP_TIMER)])).await;
+        start_esp(&h).await;
+        let process = h.backend.list_element_instances().into_iter()
+            .find(|e| e.element_type == "PROCESS").expect("process element instance");
+        let timer = timers_of(&h, "esp-start").remove(0);
+
+        // The timer fires while a token is on its way to s-end (its command is next).
+        let trigger = h.submit("TIMER", "TRIGGER", serde_json::json!({ "timerKey": timer.key.to_string() })).await;
+        h.submit("PROCESS_INSTANCE", "ACTIVATE_ELEMENT", serde_json::json!({
+            "processInstanceKey": process.process_instance_key.to_string(),
+            "processDefinitionKey": process.process_definition_key.to_string(),
+            "bpmnProcessId": "proc",
+            "elementId": "s-end",
+            "flowScopeKey": process.key.to_string(),
+            "sequenceFlowId": "s2",
+            "tenantId": "<default>",
+        })).await;
+        h.drain(trigger).await;
+
+        assert!(!h.visited("s-end"), "the interrupted scope takes no more tokens");
+        h.complete_job("esp", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_cycle_timer_event_subprocess_repeats_alongside() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", false, ESP_CYCLE)])).await;
+            start_esp(&h).await;
+
+            let first = fire_timer(&h, "esp-start").await;
+            assert_eq!(first.repetitions, 2);
+            assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"), "the scope keeps running");
+            assert_eq!(jobs_of(&h, "esp").len(), 1);
+
+            let second = fire_timer(&h, "esp-start").await;
+            assert_eq!(second.due_date - first.due_date, chrono::Duration::minutes(10));
+            assert_eq!(jobs_of(&h, "esp").len(), 2, "a non-interrupting event sub-process runs once per firing");
+            assert!(timers_of(&h, "esp-start").iter().all(|t| t.state != "ACTIVE"), "R2 fires twice");
+
+            h.complete_job("work", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+                "the scope waits for its running event sub-processes (in_sub: {in_sub})");
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_message_event_subprocess_correlates_once_with_its_variables() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", true, ESP_MESSAGE)])).await;
+            start_esp(&h).await;
+
+            let subs = h.backend.list_message_subscriptions();
+            assert_eq!(subs.len(), 1);
+            assert_eq!((subs[0].message_name.as_str(), subs[0].correlation_key.as_str(), subs[0].state.as_str()),
+                ("esp-msg", esp_key(in_sub), "OPENED"),
+                "the correlation key is evaluated against the scope");
+
+            h.publish_message("esp-msg", esp_key(in_sub), serde_json::json!({ "reason": "cancelled" })).await;
+            assert_eq!(element_state(&h, "work").as_deref(), Some("TERMINATED"));
+            let job = h.activatable_job("esp").expect("the event sub-process runs");
+            assert_eq!(job.variables["reason"], "cancelled", "the message variables are visible inside");
+
+            h.publish_message("esp-msg", esp_key(in_sub), serde_json::json!({})).await;
+            assert_eq!(jobs_of(&h, "esp").len(), 1, "an interrupting event sub-process triggers once");
+
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+            assert_eq!(h.get_var("reason"), Some(serde_json::json!("cancelled")),
+                "without output mappings the message variables propagate like a catch event's");
+            assert_disarmed(&h, "after completion");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_message_event_subprocess_runs_for_every_message() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", false, ESP_MESSAGE)])).await;
+            start_esp(&h).await;
+
+            h.publish_message("esp-msg", esp_key(in_sub), serde_json::json!({ "n": 1 })).await;
+            h.publish_message("esp-msg", esp_key(in_sub), serde_json::json!({ "n": 2 })).await;
+            let mut seen: Vec<i64> = jobs_of(&h, "esp").iter().filter_map(|j| j.variables["n"].as_i64()).collect();
+            seen.sort();
+            assert_eq!(seen, vec![1, 2], "each message runs the event sub-process with its variables");
+            assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"));
+            assert!(h.backend.list_message_subscriptions().iter().any(|s| s.state == "OPENED"),
+                "the subscription stays open");
+
+            h.complete_job("work", serde_json::json!({})).await;
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+            assert_disarmed(&h, "after completion");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_signal_event_subprocess() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", true, ESP_SIGNAL)])).await;
+            start_esp(&h).await;
+            assert_eq!(h.backend.list_signal_subscriptions().len(), 1);
+
+            broadcast_signal_with(&h, serde_json::json!({ "level": 3 })).await;
+            assert_eq!(element_state(&h, "work").as_deref(), Some("TERMINATED"));
+            let job = h.activatable_job("esp").expect("the event sub-process runs");
+            assert_eq!(job.variables["level"], 3, "the signal variables are visible inside");
+            assert!(h.backend.list_signal_subscriptions().is_empty());
+
+            broadcast_signal_with(&h, serde_json::json!({})).await;
+            assert_eq!(jobs_of(&h, "esp").len(), 1);
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_signal_event_subprocess_stays_subscribed() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[("esp", false, ESP_SIGNAL)])).await;
+            start_esp(&h).await;
+
+            broadcast_signal_with(&h, serde_json::json!({})).await;
+            broadcast_signal_with(&h, serde_json::json!({})).await;
+            assert_eq!(jobs_of(&h, "esp").len(), 2);
+            assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"));
+            assert_eq!(h.backend.list_signal_subscriptions().len(), 1);
+
+            h.complete_job("esp", serde_json::json!({})).await;
+            h.complete_job("esp", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"), "work is still active");
+            h.complete_job("work", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+            assert_disarmed(&h, "after completion");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_event_subprocesses_are_disarmed_when_the_scope_completes() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&esp_scope(in_sub, &[
+                ("timer", false, ESP_TIMER),
+                ("message", true, ESP_MESSAGE),
+                ("signal", false, ESP_SIGNAL),
+            ])).await;
+            start_esp(&h).await;
+            assert_eq!(timers_of(&h, "timer-start").len(), 1);
+            assert_eq!(h.backend.list_message_subscriptions().len(), 1);
+            assert_eq!(h.backend.list_signal_subscriptions().len(), 1);
+
+            h.complete_job("work", serde_json::json!({})).await;
+            assert_scope_completed(&h, in_sub);
+            assert_disarmed(&h, "after completion");
+            assert!(!h.visited("timer") && !h.visited("message") && !h.visited("signal"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_event_subprocess_ends_the_non_interrupting_ones_and_disarms_them() {
+        let h = Harness::new();
+        h.deploy(&esp_scope(false, &[("remind", false, ESP_CYCLE), ("cancel", true, ESP_MESSAGE)])).await;
+        start_esp(&h).await;
+
+        fire_timer(&h, "remind-start").await;
+        assert_eq!(jobs_of(&h, "remind").len(), 1);
+
+        h.publish_message("esp-msg", "o-1", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "work").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_states(&h, "remind"), vec!["TERMINATED"],
+            "the running non-interrupting event sub-process is terminated too");
+        assert!(timers_of(&h, "remind-start").iter().all(|t| t.state != "ACTIVE"),
+            "the other event sub-processes are disarmed");
+
+        h.complete_job("cancel", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_disarmed(&h, "after completion");
+    }
+
+    #[tokio::test]
+    async fn test_event_subprocess_is_disarmed_when_its_sub_process_is_terminated() {
+        // A boundary on `sub` interrupts it: the event sub-process inside is disarmed.
+        let bpmn = esp_scope(true, &[("esp", false, ESP_SIGNAL)]).replace(
+            "<bpmn:endEvent id=\"done\">",
+            r#"<bpmn:boundaryEvent id="stop" attachedToRef="sub"><bpmn:outgoing>f9</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="stopped"><bpmn:incoming>f9</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f9" sourceRef="stop" targetRef="stopped"/>
+    <bpmn:endEvent id="done">"#,
+        );
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        start_esp(&h).await;
+        assert_eq!(h.backend.list_signal_subscriptions().len(), 1);
+
+        fire_timer(&h, "stop").await;
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_disarmed(&h, "after termination");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Inclusive gateways
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → split (to a, b, c when listed in `branches`; the default flow to d)
+    /// → a | b | c | d → join → after → end.
+    fn inclusive_split_and_join(with_default: bool) -> String {
+        let default_attr = if with_default { r#" default="to-d""# } else { "" };
+        let (d_out, d_task, d_flows, d_in) = if with_default {
+            (
+                "<bpmn:outgoing>to-d</bpmn:outgoing>",
+                task("d", "d", "to-d", "d-join"),
+                format!("{}{}", flow("to-d", "split", "d"), flow("d-join", "d", "join")),
+                "<bpmn:incoming>d-join</bpmn:incoming>",
+            )
+        } else {
+            ("", String::new(), String::new(), "")
+        };
+        let cond = |id: &str, branch: &str| format!(
+            r#"<bpmn:sequenceFlow id="{id}" sourceRef="split" targetRef="{branch}"><bpmn:conditionExpression>=list contains(branches, "{branch}")</bpmn:conditionExpression></bpmn:sequenceFlow>"#);
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:inclusiveGateway id="split"{default_attr}>
+      <bpmn:incoming>f0</bpmn:incoming>
+      <bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing><bpmn:outgoing>to-c</bpmn:outgoing>{d_out}
+    </bpmn:inclusiveGateway>
+    {a}{b}{c}{d_task}
+    <bpmn:inclusiveGateway id="join">
+      <bpmn:incoming>a-join</bpmn:incoming><bpmn:incoming>b-join</bpmn:incoming><bpmn:incoming>c-join</bpmn:incoming>{d_in}
+      <bpmn:outgoing>f-after</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    {f0}{to_a}{to_b}{to_c}{d_flows}{aj}{bj}{cj}{fa}{fe}
+"#,
+            a = task("a", "a", "to-a", "a-join"),
+            b = task("b", "b", "to-b", "b-join"),
+            c = task("c", "c", "to-c", "c-join"),
+            after = task("after", "after", "f-after", "f-end"),
+            f0 = flow("f0", "start", "split"),
+            to_a = cond("to-a", "a"), to_b = cond("to-b", "b"), to_c = cond("to-c", "c"),
+            aj = flow("a-join", "a", "join"), bj = flow("b-join", "b", "join"), cj = flow("c-join", "c", "join"),
+            fa = flow("f-after", "join", "after"), fe = flow("f-end", "after", "end"),
+        ))
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_waits_for_every_branch_the_split_took() {
+        for branches in [vec!["b"], vec!["a", "c"], vec!["a", "b", "c"]] {
+            let h = Harness::new();
+            h.deploy(&inclusive_split_and_join(false)).await;
+            h.start("proc", serde_json::json!({ "branches": branches })).await;
+
+            for id in ["a", "b", "c"] {
+                assert_eq!(h.activatable_job(id).is_some(), branches.contains(&id),
+                    "the split takes exactly the flows whose condition holds ({branches:?})");
+            }
+            for (i, id) in branches.iter().enumerate() {
+                assert!(h.activatable_job("after").is_none(),
+                    "the join waits while a taken branch is active ({branches:?}, {i} done)");
+                h.complete_job(id, serde_json::json!({})).await;
+            }
+            assert_eq!(element_states(&h, "join"), vec!["COMPLETED"], "the join activates once ({branches:?})");
+            let pi = h.process_instances()[0].key;
+            assert!(h.backend.get_join_tokens(pi).await.unwrap().is_empty(),
+                "the activation consumes the waiting tokens");
+            h.complete_job("after", serde_json::json!({})).await;
+            assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_split_takes_the_default_flow_only_when_no_condition_holds() {
+        let h = Harness::new();
+        h.deploy(&inclusive_split_and_join(true)).await;
+        h.start("proc", serde_json::json!({ "branches": ["a"] })).await;
+        assert!(h.activatable_job("a").is_some());
+        assert!(h.activatable_job("d").is_none(), "a condition holds: the default flow is not taken");
+        h.complete_job("a", serde_json::json!({})).await;
+        assert!(h.activatable_job("after").is_some());
+
+        let h = Harness::new();
+        h.deploy(&inclusive_split_and_join(true)).await;
+        h.start("proc", serde_json::json!({ "branches": [] })).await;
+        assert!(["a", "b", "c"].iter().all(|id| h.activatable_job(id).is_none()));
+        h.complete_job("d", serde_json::json!({})).await;
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_split_without_a_matching_condition_or_default_raises_an_incident() {
+        let h = Harness::new();
+        h.deploy(&inclusive_split_and_join(false)).await;
+        h.start("proc", serde_json::json!({ "branches": [] })).await;
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "CONDITION_ERROR");
+        // Zeebe's InclusiveGatewayProcessor.NO_OUTGOING_FLOW_CHOSEN_ERROR, word for word.
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected at least one condition to evaluate to true, or to have a default flow"),
+        );
+        assert_eq!(incidents[0].element_id, "split");
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+    }
+
+    /// start → split → (a → again → (=again: back to a | =skip: a-end | join)) and
+    /// (b → join) → join → after → end. `a` has an interrupting timer boundary event
+    /// `late-timer` → late → join.
+    fn inclusive_join_with_loop_and_boundary() -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:inclusiveGateway id="split">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:serviceTask id="a">
+      <bpmn:extensionElements><zeebe:taskDefinition type="a"/></bpmn:extensionElements>
+      <bpmn:incoming>to-a</bpmn:incoming><bpmn:incoming>loop</bpmn:incoming><bpmn:outgoing>a-check</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="late-timer" attachedToRef="a"><bpmn:outgoing>to-late</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    {late}
+    <bpmn:exclusiveGateway id="again" default="a-join">
+      <bpmn:incoming>a-check</bpmn:incoming>
+      <bpmn:outgoing>loop</bpmn:outgoing><bpmn:outgoing>a-join</bpmn:outgoing><bpmn:outgoing>a-skip</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="a-end"><bpmn:incoming>a-skip</bpmn:incoming></bpmn:endEvent>
+    {b}
+    <bpmn:inclusiveGateway id="join">
+      <bpmn:incoming>a-join</bpmn:incoming><bpmn:incoming>b-join</bpmn:incoming><bpmn:incoming>late-join</bpmn:incoming>
+      <bpmn:outgoing>f-after</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    {f0}{to_a}{to_b}{ac}{to_late}{lj}{bj}{fa}{fe}
+    <bpmn:sequenceFlow id="loop" sourceRef="again" targetRef="a"><bpmn:conditionExpression>=again</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="a-skip" sourceRef="again" targetRef="a-end"><bpmn:conditionExpression>=skip</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="a-join" sourceRef="again" targetRef="join"/>
+"#,
+            late = task("late", "late", "to-late", "late-join"),
+            b = task("b", "b", "to-b", "b-join"),
+            after = task("after", "after", "f-after", "f-end"),
+            f0 = flow("f0", "start", "split"),
+            to_a = flow("to-a", "split", "a"), to_b = flow("to-b", "split", "b"),
+            ac = flow("a-check", "a", "again"), to_late = flow("to-late", "late-timer", "late"),
+            lj = flow("late-join", "late", "join"), bj = flow("b-join", "b", "join"),
+            fa = flow("f-after", "join", "after"), fe = flow("f-end", "after", "end"),
+        ))
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_waits_for_a_branch_that_loops_before_reaching_it() {
+        let h = Harness::new();
+        h.deploy(&inclusive_join_with_loop_and_boundary()).await;
+        h.start("proc", serde_json::json!({ "again": false, "skip": false })).await;
+
+        h.complete_job("b", serde_json::json!({})).await;
+        assert!(h.activatable_job("after").is_none(), "a can still reach the join");
+
+        h.complete_job("a", serde_json::json!({ "again": true })).await;
+        assert!(h.activatable_job("a").is_some(), "a loops");
+        assert!(h.activatable_job("after").is_none(), "the looping branch can still reach the join");
+
+        h.complete_job("a", serde_json::json!({ "again": false })).await;
+        assert_eq!(element_states(&h, "join"), vec!["COMPLETED"]);
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_activates_when_a_branch_ends_elsewhere() {
+        let h = Harness::new();
+        h.deploy(&inclusive_join_with_loop_and_boundary()).await;
+        h.start("proc", serde_json::json!({ "again": false, "skip": true })).await;
+
+        h.complete_job("b", serde_json::json!({})).await;
+        assert!(h.activatable_job("after").is_none());
+        h.complete_job("a", serde_json::json!({})).await;
+        assert!(h.visited("a-end"));
+        assert_eq!(element_states(&h, "join"), vec!["COMPLETED"],
+            "once a's path ended, no token can reach the join's other flows");
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_waits_for_a_path_through_a_boundary_event() {
+        let h = Harness::new();
+        h.deploy(&inclusive_join_with_loop_and_boundary()).await;
+        h.start("proc", serde_json::json!({ "again": false, "skip": false })).await;
+
+        h.complete_job("b", serde_json::json!({})).await;
+        fire_timer(&h, "late-timer").await;
+        assert_eq!(element_state(&h, "a").as_deref(), Some("TERMINATED"));
+        assert!(h.activatable_job("after").is_none(), "the boundary path can still reach the join");
+
+        h.complete_job("late", serde_json::json!({})).await;
+        assert_eq!(element_states(&h, "join"), vec!["COMPLETED"]);
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_inside_a_multi_instance_sub_process_joins_per_instance() {
+        let inner = inclusive_split_and_join(false);
+        let body = &inner[inner.find("<bpmn:startEvent").unwrap()..inner.rfind("</bpmn:process>").unwrap()];
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="p-start"><bpmn:outgoing>p1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>p1</bpmn:incoming><bpmn:outgoing>p2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics>
+        <bpmn:extensionElements><zeebe:loopCharacteristics inputCollection="=[1, 2]" inputElement="item"/></bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+      {body}
+    </bpmn:subProcess>
+    <bpmn:endEvent id="p-end"><bpmn:incoming>p2</bpmn:incoming></bpmn:endEvent>
+    {p1}{p2}
+"#, p1 = flow("p1", "p-start", "sub"), p2 = flow("p2", "sub", "p-end")));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "branches": ["a", "b"] })).await;
+        assert_eq!(jobs_of(&h, "a").len(), 2);
+
+        // One instance's a and the other's b: neither join may activate.
+        let a = jobs_of(&h, "a").remove(0);
+        let b = jobs_of(&h, "b").into_iter().find(|j| j.variables["item"] != a.variables["item"]).unwrap();
+        complete_job_key(&h, a.key, serde_json::json!({})).await;
+        complete_job_key(&h, b.key, serde_json::json!({})).await;
+        assert!(h.activatable_job("after").is_none(), "tokens of different flow scopes do not join");
+
+        h.complete_job("a", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+        assert_eq!(jobs_of(&h, "after").len(), 2);
+        h.complete_job("after", serde_json::json!({})).await;
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // A token waiting at a join keeps its flow scope open
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → fork → (a → join) and (b → route → (=toJoin: join | end-b)) → join → end.
+    fn parallel_join_that_may_never_fire(in_sub: bool) -> String {
+        let body = format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    {a}{b}
+    <bpmn:exclusiveGateway id="route" default="b-end">
+      <bpmn:incoming>b-route</bpmn:incoming><bpmn:outgoing>b-join</bpmn:outgoing><bpmn:outgoing>b-end</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="end-b"><bpmn:incoming>b-end</bpmn:incoming></bpmn:endEvent>
+    <bpmn:parallelGateway id="join">
+      <bpmn:incoming>a-join</bpmn:incoming><bpmn:incoming>b-join</bpmn:incoming><bpmn:outgoing>f-end</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    {f0}{to_a}{to_b}{aj}{br}{be}{fe}
+    <bpmn:sequenceFlow id="b-join" sourceRef="route" targetRef="join"><bpmn:conditionExpression>=toJoin</bpmn:conditionExpression></bpmn:sequenceFlow>
+"#,
+            a = task("a", "a", "to-a", "a-join"),
+            b = task("b", "b", "to-b", "b-route"),
+            f0 = flow("f0", "start", "fork"),
+            to_a = flow("to-a", "fork", "a"), to_b = flow("to-b", "fork", "b"),
+            aj = flow("a-join", "a", "join"), br = flow("b-route", "b", "route"),
+            be = flow("b-end", "route", "end-b"), fe = flow("f-end", "join", "end"),
+        );
+        if !in_sub {
+            return wrap_process("proc", &body);
+        }
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="p-start"><bpmn:outgoing>p1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub"><bpmn:incoming>p1</bpmn:incoming><bpmn:outgoing>p2</bpmn:outgoing>{body}</bpmn:subProcess>
+    <bpmn:endEvent id="p-end"><bpmn:incoming>p2</bpmn:incoming></bpmn:endEvent>
+    {p1}{p2}
+"#, p1 = flow("p1", "p-start", "sub"), p2 = flow("p2", "sub", "p-end")))
+    }
+
+    #[tokio::test]
+    async fn test_a_token_waiting_at_a_parallel_join_keeps_the_scope_active() {
+        for in_sub in [false, true] {
+            let h = Harness::new();
+            h.deploy(&parallel_join_that_may_never_fire(in_sub)).await;
+            h.start("proc", serde_json::json!({ "toJoin": false })).await;
+
+            h.complete_job("a", serde_json::json!({})).await;
+            h.complete_job("b", serde_json::json!({})).await;
+            assert!(h.visited("end-b"));
+            assert!(!h.visited("join"), "the join can never activate");
+            assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+                "the waiting token keeps the instance active, as in Zeebe (in_sub: {in_sub})");
+            if in_sub {
+                assert_eq!(element_state(&h, "sub").as_deref(), Some("ACTIVATED"));
+            }
+        }
+
+        // The same model completes when both tokens reach the join.
+        let h = Harness::new();
+        h.deploy(&parallel_join_that_may_never_fire(false)).await;
+        h.start("proc", serde_json::json!({ "toJoin": true })).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_a_parallel_join_needs_a_token_on_every_incoming_flow() {
+        // A second flow from the fork to `a`: two tokens reach the join by a-join.
+        let h = Harness::new();
+        h.deploy(&parallel_join_that_may_never_fire(false)
+            .replace(
+                "<bpmn:outgoing>to-b</bpmn:outgoing>",
+                "<bpmn:outgoing>to-b</bpmn:outgoing><bpmn:outgoing>to-a2</bpmn:outgoing>",
+            )
+            .replace("</bpmn:process>", r#"<bpmn:sequenceFlow id="to-a2" sourceRef="fork" targetRef="a"/></bpmn:process>"#),
+        ).await;
+        h.start("proc", serde_json::json!({ "toJoin": true })).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        assert!(!h.visited("join"), "both tokens came by a-join");
+        h.complete_job("b", serde_json::json!({})).await;
+        assert_eq!(element_states(&h, "join"), vec!["COMPLETED"]);
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+            "the second token on a-join still waits");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Link events
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Deploy `xml` and return the error the deployment is rejected with.
+    async fn deploy_error(h: &Harness, xml: &str) -> String {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(xml.as_bytes());
+        let position = h.submit("DEPLOYMENT", "CREATE", serde_json::json!({
+            "resources": [{ "name": "resource.bpmn", "content": encoded }]
+        })).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        let mut writers = Writers::new();
+        match DeploymentProcessor.process(&record, &h.state, &mut writers).await {
+            Ok(()) => panic!("the deployment must be rejected"),
+            Err(e) => e.to_string(),
+        }
+    }
+
+    fn link_throw(id: &str, name: &str, incoming: &str) -> String {
+        format!(r#"<bpmn:intermediateThrowEvent id="{id}"><bpmn:incoming>{incoming}</bpmn:incoming>
+      <bpmn:linkEventDefinition name="{name}"/></bpmn:intermediateThrowEvent>"#)
+    }
+
+    fn link_catch(id: &str, name: &str, outgoing: &str) -> String {
+        format!(r#"<bpmn:intermediateCatchEvent id="{id}"><bpmn:outgoing>{outgoing}</bpmn:outgoing>
+      <bpmn:linkEventDefinition name="{name}"/></bpmn:intermediateCatchEvent>"#)
+    }
+
+    /// start → a → [throw A] ⇢ [catch A] → gw → (=again: [throw B] ⇢ [catch B] → a | end)
+    fn link_loop() -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="a">
+      <bpmn:extensionElements><zeebe:taskDefinition type="a"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:incoming>f-back</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    {throw_a}
+    {catch_a}
+    <bpmn:exclusiveGateway id="gw" default="f-end">
+      <bpmn:incoming>f3</bpmn:incoming><bpmn:outgoing>f-again</bpmn:outgoing><bpmn:outgoing>f-end</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    {throw_b}
+    {catch_b}
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}{fb}{fe}
+    <bpmn:sequenceFlow id="f-again" sourceRef="gw" targetRef="throw-b"><bpmn:conditionExpression>=again</bpmn:conditionExpression></bpmn:sequenceFlow>
+"#,
+            throw_a = link_throw("throw-a", "A", "f2"),
+            catch_a = link_catch("catch-a", "A", "f3"),
+            throw_b = link_throw("throw-b", "B", "f-again"),
+            catch_b = link_catch("catch-b", "B", "f-back"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "throw-a"), f3 = flow("f3", "catch-a", "gw"),
+            fb = flow("f-back", "catch-b", "a"), fe = flow("f-end", "gw", "end"),
+        ))
+    }
+
+    #[tokio::test]
+    async fn test_link_throw_continues_at_the_catch_event_of_its_name() {
+        let h = Harness::new();
+        h.deploy(&link_loop()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({ "again": true })).await;
+        assert_eq!(element_states(&h, "a"), vec!["COMPLETED", "ACTIVATED"], "the B link loops back to a");
+        h.complete_job("a", serde_json::json!({ "again": false })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "instances: {:?}", h.process_instances());
+        assert_eq!(element_states(&h, "throw-a"), vec!["COMPLETED", "COMPLETED"]);
+        assert_eq!(element_states(&h, "catch-a"), vec!["COMPLETED", "COMPLETED"]);
+        assert_eq!(element_states(&h, "catch-b"), vec!["COMPLETED"]);
+        let types: Vec<String> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id.starts_with("catch-") || e.element_id.starts_with("throw-"))
+            .map(|e| e.element_type)
+            .collect();
+        assert!(types.iter().all(|t| t == "INTERMEDIATE_CATCH_EVENT" || t == "INTERMEDIATE_THROW_EVENT"));
+    }
+
+    #[tokio::test]
+    async fn test_link_events_inside_a_sub_process() {
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {throw}
+      {catch}
+      {inner}
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s3</bpmn:incoming></bpmn:endEvent>
+      {s1}{s2}{s3}
+    </bpmn:subProcess>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}
+"#,
+            throw = link_throw("throw", "Jump", "s1"),
+            catch = link_catch("catch", "Jump", "s2"),
+            inner = task("inner", "inner", "s2", "s3"),
+            after = task("after", "after", "f2", "f3"),
+            s1 = flow("s1", "s-start", "throw"), s2 = flow("s2", "catch", "inner"), s3 = flow("s3", "inner", "s-end"),
+            f1 = flow("f1", "start", "sub"), f2 = flow("f2", "sub", "after"), f3 = flow("f3", "after", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        let sub_key = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "sub").unwrap().key;
+        let catch = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "catch").unwrap();
+        assert_eq!(catch.flow_scope_key, Some(sub_key), "the catch event runs in the throw event's scope");
+        h.complete_job("inner", serde_json::json!({})).await;
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_join_waits_for_a_path_through_a_link() {
+        // split → (a → [throw L] ⇢ [catch L] → join) and (b → join)
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:inclusiveGateway id="split">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    {a}{b}{throw}{catch}
+    <bpmn:inclusiveGateway id="join">
+      <bpmn:incoming>l-join</bpmn:incoming><bpmn:incoming>b-join</bpmn:incoming><bpmn:outgoing>f-end</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    {f0}{ta}{tb}{al}{lj}{bj}{fe}
+"#,
+            a = task("a", "a", "to-a", "a-link"), b = task("b", "b", "to-b", "b-join"),
+            throw = link_throw("throw", "L", "a-link"), catch = link_catch("catch", "L", "l-join"),
+            f0 = flow("f0", "start", "split"), ta = flow("to-a", "split", "a"), tb = flow("to-b", "split", "b"),
+            al = flow("a-link", "a", "throw"), lj = flow("l-join", "catch", "join"), bj = flow("b-join", "b", "join"),
+            fe = flow("f-end", "join", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+        assert!(!h.visited("join"), "a can still reach the join through the link");
+        h.complete_job("a", serde_json::json!({})).await;
+        assert_eq!(element_states(&h, "join"), vec!["COMPLETED"]);
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_link_events_that_do_not_pair_up_fail_deployment() {
+        let h = Harness::new();
+        let no_catch = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {throw}{f1}"#, throw = link_throw("throw", "Nowhere", "f1"), f1 = flow("f1", "start", "throw")));
+        let error = deploy_error(&h, &no_catch).await;
+        assert!(error.contains("Can't find an catch link event for the throw link event with the name 'Nowhere'"), "{error}");
+
+        let duplicate = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {throw}{c1}{c2}
+    <bpmn:endEvent id="e1"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="e2"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}"#,
+            throw = link_throw("throw", "L", "f1"), c1 = link_catch("c1", "L", "f2"), c2 = link_catch("c2", "L", "f3"),
+            f1 = flow("f1", "start", "throw"), f2 = flow("f2", "c1", "e1"), f3 = flow("f3", "c2", "e2")));
+        let error = deploy_error(&h, &duplicate).await;
+        assert!(error.contains("Multiple intermediate catch link event definitions with the same name 'L' are not allowed"), "{error}");
+
+        // A link cannot leave its scope: the catch event is outside the sub-process.
+        let across_scopes = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {throw}{s1}
+    </bpmn:subProcess>
+    {catch}
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}"#,
+            throw = link_throw("throw", "Out", "s1"), s1 = flow("s1", "s-start", "throw"),
+            catch = link_catch("catch", "Out", "f2"), f1 = flow("f1", "start", "sub"), f2 = flow("f2", "catch", "end")));
+        let error = deploy_error(&h, &across_scopes).await;
+        assert!(error.contains("with the name 'Out'"), "{error}");
+
+        let unnamed = link_loop().replace(r#"<bpmn:linkEventDefinition name="B"/>"#, r#"<bpmn:linkEventDefinition name=""/>"#);
+        let error = deploy_error(&h, &unnamed).await;
+        assert!(error.contains("Link name must be present and not empty"), "{error}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Compensation
+    // ─────────────────────────────────────────────────────────────────
+
+    /// A service task `id` with a compensation boundary event whose handler is the
+    /// service task `undo-{id}` (job type `undo-{id}`), linked by an association.
+    fn compensable(id: &str, incoming: &str, outgoing: &str, extra: &str) -> String {
+        format!(r#"<bpmn:serviceTask id="{id}">
+      <bpmn:extensionElements><zeebe:taskDefinition type="{id}"/>{extra}</bpmn:extensionElements>
+      <bpmn:incoming>{incoming}</bpmn:incoming><bpmn:outgoing>{outgoing}</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="comp-{id}" attachedToRef="{id}"><bpmn:compensateEventDefinition/></bpmn:boundaryEvent>
+    <bpmn:serviceTask id="undo-{id}" isForCompensation="true">
+      <bpmn:extensionElements><zeebe:taskDefinition type="undo-{id}"/></bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:association id="assoc-{id}" associationDirection="One" sourceRef="comp-{id}" targetRef="undo-{id}"/>"#)
+    }
+
+    fn compensation_throw(id: &str, incoming: &str, outgoing: &str, activity_ref: Option<&str>) -> String {
+        let activity_ref = activity_ref.map(|a| format!(r#" activityRef="{a}""#)).unwrap_or_default();
+        format!(r#"<bpmn:intermediateThrowEvent id="{id}">
+      <bpmn:incoming>{incoming}</bpmn:incoming><bpmn:outgoing>{outgoing}</bpmn:outgoing>
+      <bpmn:compensateEventDefinition{activity_ref}/>
+    </bpmn:intermediateThrowEvent>"#)
+    }
+
+    /// start → a → b → [compensate] → after → end; a and b are compensable.
+    fn compensate_two(activity_ref: Option<&str>) -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{b}{throw}{after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f5</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}{f4}{f5}
+"#,
+            a = compensable("a", "f1", "f2", r#"<zeebe:ioMapping><zeebe:input source="=amount * 2" target="charged"/></zeebe:ioMapping>"#),
+            b = compensable("b", "f2", "f3", ""),
+            throw = compensation_throw("compensate", "f3", "f4", activity_ref),
+            after = task("after", "after", "f4", "f5"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "b"), f3 = flow("f3", "b", "compensate"),
+            f4 = flow("f4", "compensate", "after"), f5 = flow("f5", "after", "end"),
+        ))
+    }
+
+    fn job_types_created(h: &Harness) -> Vec<String> {
+        let mut jobs = h.backend.list_jobs();
+        jobs.sort_by_key(|j| j.key);
+        jobs.into_iter().map(|j| j.job_type).collect()
+    }
+
+    #[tokio::test]
+    async fn test_compensation_throw_runs_the_handlers_of_completed_activities_and_waits() {
+        let h = Harness::new();
+        h.deploy(&compensate_two(None)).await;
+        h.start("proc", serde_json::json!({ "amount": 21 })).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+
+        // Both handlers at once, the most recently completed activity's first.
+        assert_eq!(job_types_created(&h), vec!["a", "b", "undo-b", "undo-a"]);
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("ACTIVATED"), "the throw event waits");
+        assert!(h.activatable_job("after").is_none());
+
+        // As in Zeebe, the handler of `a` does not get a's local variables; it sees
+        // those of the throw event's scope.
+        let undo_a = h.activatable_job("undo-a").unwrap();
+        assert_eq!(undo_a.variables.get("charged"), None);
+        assert_eq!(undo_a.variables["amount"], serde_json::json!(21));
+        let undo_a_ei = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "undo-a").unwrap();
+        let throw_ei = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "compensate").unwrap();
+        assert_eq!(undo_a_ei.flow_scope_key, throw_ei.flow_scope_key);
+
+        h.complete_job("undo-a", serde_json::json!({ "refunded": true })).await;
+        assert!(h.activatable_job("after").is_none(), "undo-b is still running");
+        h.complete_job("undo-b", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("refunded"), Some(serde_json::json!(true)), "a handler's result propagates");
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_compensation_with_activity_ref_runs_only_that_handler() {
+        let h = Harness::new();
+        h.deploy(&compensate_two(Some("a"))).await;
+        h.start("proc", serde_json::json!({ "amount": 1 })).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        h.complete_job("b", serde_json::json!({})).await;
+        assert_eq!(job_types_created(&h), vec!["a", "b", "undo-a"]);
+        h.complete_job("undo-a", serde_json::json!({})).await;
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(!h.visited("undo-b"));
+    }
+
+    #[tokio::test]
+    async fn test_compensation_without_completed_activities_continues_at_once() {
+        // fork → (a, never completed) and (c → [compensate] → end-c): a is active, so
+        // nothing is compensated and the throw event continues.
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-c</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    {a}{c}{throw}
+    <bpmn:endEvent id="end-a"><bpmn:incoming>a-end</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-c"><bpmn:incoming>t-end</bpmn:incoming></bpmn:endEvent>
+    {f0}{ta}{tc}{ae}{ct}{te}
+"#,
+            a = compensable("a", "to-a", "a-end", ""), c = task("c", "c", "to-c", "c-throw"),
+            throw = compensation_throw("compensate", "c-throw", "t-end", None),
+            f0 = flow("f0", "start", "fork"), ta = flow("to-a", "fork", "a"), tc = flow("to-c", "fork", "c"),
+            ae = flow("a-end", "a", "end-a"), ct = flow("c-throw", "c", "compensate"), te = flow("t-end", "compensate", "end-c"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("c", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-c"));
+        h.complete_job("a", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(!h.visited("undo-a"), "a was active when compensation was thrown");
+    }
+
+    #[tokio::test]
+    async fn test_compensation_end_event_compensates_a_completed_sub_process_once() {
+        // start → sub[ a ] → [compensate] → [compensate again] → end (compensation end event)
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {a}
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s2</bpmn:incoming></bpmn:endEvent>
+      {s1}{s2}
+    </bpmn:subProcess>
+    {throw}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming><bpmn:compensateEventDefinition/></bpmn:endEvent>
+    {f1}{f2}{f3}
+"#,
+            a = compensable("a", "s1", "s2", ""),
+            s1 = flow("s1", "s-start", "a"), s2 = flow("s2", "a", "s-end"),
+            throw = compensation_throw("compensate", "f2", "f3", None),
+            f1 = flow("f1", "start", "sub"), f2 = flow("f2", "sub", "compensate"), f3 = flow("f3", "compensate", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        assert!(h.activatable_job("undo-a").is_some(), "the handler inside the completed sub-process runs");
+        h.complete_job("undo-a", serde_json::json!({})).await;
+        // The end event compensates again, but a was compensated already.
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "instances: {:?}", h.process_instances());
+        assert_eq!(job_types_created(&h), vec!["a", "undo-a"]);
+    }
+
+    #[tokio::test]
+    async fn test_compensation_from_an_error_event_sub_process_compensates_the_outer_scope() {
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{b}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="undo-all"><bpmn:incoming>e1</bpmn:incoming><bpmn:compensateEventDefinition/></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="err-start" targetRef="undo-all"/>
+    </bpmn:subProcess>
+    {f1}{f2}{f3}
+"#,
+            a = compensable("a", "f1", "f2", ""), b = task("b", "b", "f2", "f3"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "b"), f3 = flow("f3", "b", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        let job = h.activatable_job("b").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({ "jobKey": job.key.to_string(), "errorCode": "OUT_OF_STOCK" })).await;
+
+        assert!(h.activatable_job("undo-a").is_some());
+        assert_eq!(element_state(&h, "undo-all").as_deref(), Some("ACTIVATED"));
+        h.complete_job("undo-a", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "instances: {:?}", h.process_instances());
+        assert_eq!(element_state(&h, "on-error").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_activities_of_a_terminated_sub_process_are_not_compensated() {
+        // sub[ a → b ] with an interrupting signal boundary event → [compensate] → end
+        let bpmn = wrap_definitions(r#"  <bpmn:signal id="Sig_stop" name="stop"/>"#, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {a}{b}
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s3</bpmn:incoming></bpmn:endEvent>
+      {s1}{s2}{s3}
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="stopped" attachedToRef="sub"><bpmn:outgoing>f-stop</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Sig_stop"/></bpmn:boundaryEvent>
+    {throw}
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-stop"><bpmn:incoming>f-done</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{fs}{fd}
+"#,
+            a = compensable("a", "s1", "s2", ""), b = task("b", "b", "s2", "s3"),
+            s1 = flow("s1", "s-start", "a"), s2 = flow("s2", "a", "b"), s3 = flow("s3", "b", "s-end"),
+            throw = compensation_throw("compensate", "f-stop", "f-done", None),
+            f1 = flow("f1", "start", "sub"), f2 = flow("f2", "sub", "end"),
+            fs = flow("f-stop", "stopped", "compensate"), fd = flow("f-done", "compensate", "end-stop"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        h.broadcast_signal("stop").await;
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("COMPLETED"));
+        assert!(!h.visited("undo-a"), "a's sub-process was terminated");
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_activity_is_compensated_once() {
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{throw}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}
+"#,
+            a = compensable("a", "f1", "f2", "").replace(
+                "</bpmn:extensionElements>\n      <bpmn:incoming>f1",
+                "</bpmn:extensionElements>\n      <bpmn:multiInstanceLoopCharacteristics><bpmn:extensionElements>\
+                 <zeebe:loopCharacteristics inputCollection=\"=[1,2]\"/></bpmn:extensionElements>\
+                 </bpmn:multiInstanceLoopCharacteristics>\n      <bpmn:incoming>f1",
+            ),
+            throw = compensation_throw("compensate", "f2", "f3", None),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "compensate"), f3 = flow("f3", "compensate", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        assert!(h.activatable_job("undo-a").is_none(), "not until every instance has completed");
+        h.complete_job("a", serde_json::json!({})).await;
+        assert_eq!(job_types_created(&h), vec!["a", "a", "undo-a"]);
+        h.complete_job("undo-a", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_invalid_compensation_models_fail_deployment() {
+        let h = Harness::new();
+        let error = deploy_error(&h, &compensate_two(Some("after"))).await;
+        assert!(error.contains("activityRef 'after'"), "{error}");
+
+        let esp = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="end"><bpmn:incoming>f1</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="end"/>
+    <bpmn:subProcess id="esp" triggeredByEvent="true">
+      <bpmn:startEvent id="c-start"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:compensateEventDefinition/></bpmn:startEvent>
+      <bpmn:endEvent id="c-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="c-start" targetRef="c-end"/>
+    </bpmn:subProcess>"#);
+        let error = deploy_error(&h, &esp).await;
+        assert!(error.contains("compensation start events are not supported"), "{error}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Gateways, incidents and element types as in Zeebe
+    // ─────────────────────────────────────────────────────────────────
+
+    async fn resolve_incident(h: &Harness, incident_key: i64) {
+        h.run("INCIDENT", "RESOLVE", serde_json::json!({ "incidentKey": incident_key.to_string() })).await;
+    }
+
+    async fn set_variables(h: &Harness, variables: Value) {
+        let pi = h.process_instances()[0].key;
+        h.run("VARIABLE_DOCUMENT", "UPDATE", serde_json::json!({
+            "processInstanceKey": pi.to_string(),
+            "variables": variables,
+        })).await;
+    }
+
+    /// start → gw → (=x > 5: high | =x < 0: low) → end-*; no default flow.
+    fn exclusive_without_default() -> String {
+        wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:exclusiveGateway id="gw">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f-high</bpmn:outgoing><bpmn:outgoing>f-low</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="end-high"><bpmn:incoming>f-high</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-low"><bpmn:incoming>f-low</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="gw"/>
+    <bpmn:sequenceFlow id="f-high" sourceRef="gw" targetRef="end-high"><bpmn:conditionExpression>=x &gt; 5</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f-low" sourceRef="gw" targetRef="end-low"><bpmn:conditionExpression>=x &lt; 0</bpmn:conditionExpression></bpmn:sequenceFlow>
+"#)
+    }
+
+    #[tokio::test]
+    async fn test_exclusive_gateway_without_a_match_raises_an_incident_that_retries_the_gateway() {
+        let h = Harness::new();
+        h.deploy(&exclusive_without_default()).await;
+        h.start("proc", serde_json::json!({ "x": 3 })).await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "CONDITION_ERROR");
+        assert_eq!(incidents[0].element_id, "gw");
+        // Zeebe's ExclusiveGatewayProcessor.NO_OUTGOING_FLOW_CHOSEN_ERROR, word for word.
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected at least one condition to evaluate to true, or to have a default flow"),
+        );
+        assert_eq!(element_states(&h, "gw"), vec!["ACTIVATING"]);
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+
+        set_variables(&h, serde_json::json!({ "x": 9 })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        assert_eq!(element_states(&h, "gw"), vec!["COMPLETED"], "the same gateway instance is retried");
+        assert!(h.visited("end-high"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_inclusive_split_incident_retries_the_split() {
+        let h = Harness::new();
+        h.deploy(&inclusive_split_and_join(false)).await;
+        h.start("proc", serde_json::json!({ "branches": [] })).await;
+        let incident = h.incidents().remove(0);
+        assert_eq!(incident.error_type, "CONDITION_ERROR");
+        assert_eq!(element_states(&h, "split"), vec!["ACTIVATING"]);
+
+        set_variables(&h, serde_json::json!({ "branches": ["a"] })).await;
+        resolve_incident(&h, incident.key).await;
+        assert_eq!(element_states(&h, "split"), vec!["COMPLETED"]);
+        assert!(h.activatable_job("a").is_some(), "the retried split takes the flow that now holds");
+    }
+
+    #[tokio::test]
+    async fn test_default_flows_are_marked_in_nested_sub_processes() {
+        // The default flow carries a condition that is false; Zeebe ignores conditions on
+        // default flows, so it is still taken — at any depth.
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="o-start"><bpmn:outgoing>o1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:subProcess id="inner">
+        <bpmn:incoming>o1</bpmn:incoming><bpmn:outgoing>o2</bpmn:outgoing>
+        <bpmn:startEvent id="i-start"><bpmn:outgoing>i1</bpmn:outgoing></bpmn:startEvent>
+        <bpmn:exclusiveGateway id="gw" default="i-default">
+          <bpmn:incoming>i1</bpmn:incoming><bpmn:outgoing>i-cond</bpmn:outgoing><bpmn:outgoing>i-default</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:endEvent id="i-cond-end"><bpmn:incoming>i-cond</bpmn:incoming></bpmn:endEvent>
+        <bpmn:endEvent id="i-default-end"><bpmn:incoming>i-default</bpmn:incoming></bpmn:endEvent>
+        <bpmn:sequenceFlow id="i1" sourceRef="i-start" targetRef="gw"/>
+        <bpmn:sequenceFlow id="i-cond" sourceRef="gw" targetRef="i-cond-end"><bpmn:conditionExpression>=false</bpmn:conditionExpression></bpmn:sequenceFlow>
+        <bpmn:sequenceFlow id="i-default" sourceRef="gw" targetRef="i-default-end"><bpmn:conditionExpression>=false</bpmn:conditionExpression></bpmn:sequenceFlow>
+      </bpmn:subProcess>
+      <bpmn:endEvent id="o-end"><bpmn:incoming>o2</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="o1" sourceRef="o-start" targetRef="inner"/>
+      <bpmn:sequenceFlow id="o2" sourceRef="inner" targetRef="o-end"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="outer"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="outer" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert!(h.incidents().is_empty(), "{:?}", h.incidents());
+        assert!(h.visited("i-default-end"));
+        assert!(!h.visited("i-cond-end"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_parallel_gateway_ignores_conditions_on_its_flows() {
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    {a}{b}
+    {f0}
+    <bpmn:sequenceFlow id="to-a" sourceRef="fork" targetRef="a"><bpmn:conditionExpression>=false</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="to-b" sourceRef="fork" targetRef="b"/>
+"#, a = task("a", "a", "to-a", ""), b = task("b", "b", "to-b", ""), f0 = flow("f0", "start", "fork")));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert!(h.activatable_job("a").is_some(), "the condition on a parallel gateway's flow is ignored");
+        assert!(h.activatable_job("b").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_io_mapping_incident_retries_the_same_element_instance() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="work"/>
+        <zeebe:ioMapping><zeebe:input source="=10 / divisor" target="share"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "divisor": 0 })).await;
+        let incident = h.incidents().remove(0);
+        assert_eq!(incident.error_type, "IO_MAPPING_ERROR");
+        assert_eq!(element_states(&h, "task"), vec!["ACTIVATING"]);
+
+        set_variables(&h, serde_json::json!({ "divisor": 2 })).await;
+        resolve_incident(&h, incident.key).await;
+        assert_eq!(element_states(&h, "task"), vec!["ACTIVATED"], "no second element instance, none left activating");
+        let task_key = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "task").unwrap().key;
+        assert_eq!(task_key, incident.element_instance_key);
+        let job = h.activatable_job("work").unwrap();
+        assert_eq!(job.variables["share"].as_f64(), Some(5.0));
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_input_collection_incident_retries_the_same_body() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:multiInstanceLoopCharacteristics><bpmn:extensionElements>
+        <zeebe:loopCharacteristics inputCollection="=items"/>
+      </bpmn:extensionElements></bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "items": "not a list" })).await;
+        let incident = h.incidents().remove(0);
+        assert_eq!(incident.error_type, "EXTRACT_VALUE_ERROR");
+        set_variables(&h, serde_json::json!({ "items": [1] })).await;
+        resolve_incident(&h, incident.key).await;
+        let bodies: Vec<_> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_type == "MULTI_INSTANCE_BODY").collect();
+        assert_eq!(bodies.len(), 1);
+        assert_eq!(bodies[0].state, "ACTIVATED");
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    /// start → work (job) → end; an error event sub-process catches FAILED, and an error
+    /// boundary event on `boundary-task` catches BOUNDARY.
+    fn error_catchers() -> String {
+        wrap_definitions(r#"  <bpmn:error id="Err_failed" errorCode="FAILED"/>"#, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="work">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="on-error" attachedToRef="work">
+      <bpmn:extensionElements><zeebe:ioMapping><zeebe:output source="=reason" target="boundaryReason"/></zeebe:ioMapping></bpmn:extensionElements>
+      <bpmn:outgoing>f-err</bpmn:outgoing><bpmn:errorEventDefinition/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="work"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="work" targetRef="end"/>
+    <bpmn:sequenceFlow id="f-err" sourceRef="on-error" targetRef="handled"/>
+"#)
+    }
+
+    #[tokio::test]
+    async fn test_error_boundary_event_receives_the_error_variables() {
+        let h = Harness::new();
+        h.deploy(&error_catchers()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("work").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "FAILED",
+            "variables": { "reason": "card declined" },
+        })).await;
+        assert!(h.visited("handled"));
+        assert_eq!(h.get_var("boundaryReason"), Some(serde_json::json!("card declined")));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_error_event_sub_process_receives_the_error_variables() {
+        let bpmn = wrap_definitions(r#"  <bpmn:error id="Err_failed" errorCode="FAILED"/>"#, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {work}
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:errorEventDefinition errorRef="Err_failed"/></bpmn:startEvent>
+      {handle}
+      <bpmn:endEvent id="err-end"><bpmn:incoming>e2</bpmn:incoming></bpmn:endEvent>
+      {e1}{e2}
+    </bpmn:subProcess>
+    {f1}{f2}
+"#,
+            work = task("work", "work", "f1", "f2"), handle = task("handle", "handle", "e1", "e2"),
+            e1 = flow("e1", "err-start", "handle"), e2 = flow("e2", "handle", "err-end"),
+            f1 = flow("f1", "start", "work"), f2 = flow("f2", "work", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("work").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "FAILED",
+            "variables": { "reason": "card declined" },
+        })).await;
+        let handle = h.activatable_job("handle").expect("the event sub-process runs");
+        assert_eq!(handle.variables["reason"], serde_json::json!("card declined"));
+
+        let esp = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "on-error").unwrap();
+        assert_eq!(esp.element_type, "EVENT_SUB_PROCESS");
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        let completed_type = h.backend.list_records().into_iter()
+            .find(|r| r.intent == "ELEMENT_COMPLETED" && r.payload["elementId"] == "on-error")
+            .map(|r| r.payload["elementType"].clone());
+        assert_eq!(completed_type, Some(serde_json::json!("EVENT_SUB_PROCESS")));
+    }
+
+    #[tokio::test]
+    async fn test_complex_gateway_fails_deployment_as_in_zeebe() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:complexGateway id="complex"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing></bpmn:complexGateway>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="complex"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="complex" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        let error = deploy_error(&h, &bpmn).await;
+        assert!(error.contains("Element 'complex'"), "{error}");
+        assert!(error.contains("Elements of type 'ComplexGateway' are currently not supported. Please refer to the documentation"), "{error}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Ad-hoc sub-process inner elements
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → tools[ t1, t2 → t2b, t3 ] → after → end, run by Zeebe with
+    /// `activeElementsCollection = toRun`, collecting `result` into `results`.
+    /// `attrs` go on the ad-hoc sub-process and `inner` inside it.
+    fn ad_hoc_tools(attrs: &str, inner: &str) -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="tools"{attrs}>
+      <bpmn:extensionElements>
+        <zeebe:adHoc activeElementsCollection="=toRun" outputCollection="results" outputElement="=result"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:serviceTask id="t1"><bpmn:extensionElements><zeebe:taskDefinition type="t1"/></bpmn:extensionElements></bpmn:serviceTask>
+      <bpmn:serviceTask id="t2"><bpmn:extensionElements><zeebe:taskDefinition type="t2"/></bpmn:extensionElements>
+        <bpmn:outgoing>t2-next</bpmn:outgoing></bpmn:serviceTask>
+      <bpmn:serviceTask id="t2b"><bpmn:extensionElements><zeebe:taskDefinition type="t2b"/></bpmn:extensionElements>
+        <bpmn:incoming>t2-next</bpmn:incoming></bpmn:serviceTask>
+      <bpmn:serviceTask id="t3"><bpmn:extensionElements><zeebe:taskDefinition type="t3"/></bpmn:extensionElements></bpmn:serviceTask>
+      <bpmn:sequenceFlow id="t2-next" sourceRef="t2" targetRef="t2b"/>
+      {inner}
+    </bpmn:adHocSubProcess>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}
+"#, after = task("after", "after", "f2", "f3"),
+            f1 = flow("f1", "start", "tools"), f2 = flow("f2", "tools", "after"), f3 = flow("f3", "after", "end")))
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_sub_process_activates_the_listed_elements_and_completes_after_them() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t2"] })).await;
+        assert!(h.activatable_job("t1").is_some());
+        assert!(h.activatable_job("t2").is_some());
+        assert!(h.activatable_job("t3").is_none(), "t3 is not listed");
+        assert!(h.activatable_job("t2b").is_none(), "t2b follows t2");
+
+        h.complete_job("t1", serde_json::json!({ "result": "one" })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert_eq!(root_var(&h, "result"), None, "what an activation writes stays in it");
+        h.complete_job("t2", serde_json::json!({ "result": "two" })).await;
+        h.complete_job("t2b", serde_json::json!({ "result": "two-b" })).await;
+
+        assert!(h.activatable_job("after").is_some(), "every activated element completed");
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["one", "two-b"])));
+        let inner: Vec<_> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_type == "AD_HOC_SUB_PROCESS_INNER_INSTANCE").collect();
+        assert_eq!(inner.len(), 2);
+        assert!(inner.iter().all(|e| e.state == "COMPLETED" && e.element_id == "tools"));
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_sub_process_without_elements_to_activate_stays_active() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": [] })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.incidents().is_empty());
+        assert!(h.backend.list_jobs().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_cancels_the_remaining_instances() {
+        // Evaluated in the ad-hoc sub-process's scope, which has the output collection.
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=list contains(results, "done")</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t2"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "not yet" })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        h.complete_job("t2", serde_json::json!({ "result": "done" })).await;
+        // t2's inner instance goes on to t2b; the condition is checked when a flow ends.
+        h.complete_job("t2b", serde_json::json!({ "result": "done" })).await;
+        assert!(h.activatable_job("after").is_some());
+
+        // cancelRemainingInstances (default true): the condition holding ends the rest.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t2"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "done" })).await;
+        assert_eq!(element_states(&h, "t2"), vec!["TERMINATED"]);
+        assert_eq!(job_state(&h, "t2").as_deref(), Some("CANCELED"));
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["done"])));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_waits_without_cancelling() {
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=list contains(results, "done")</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools(r#" cancelRemainingInstances="false""#, condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "done" })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"), "t3 still runs");
+        assert!(h.activatable_job("t3").is_some());
+        h.complete_job("t3", serde_json::json!({ "result": "later" })).await;
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["done", "later"])));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_that_is_not_a_boolean_raises_an_incident() {
+        // Zeebe's AdHocSubProcessProcessor evaluates the condition with
+        // evaluateBooleanExpression before the inner instance completes, prefixing the
+        // failure with "Failed to evaluate completion condition."
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=finished</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "one" })).await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Failed to evaluate completion condition. Expected result of the expression 'finished' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        let inner = h.backend.list_element_instances().into_iter()
+            .find(|e| e.key == incidents[0].element_instance_key).unwrap();
+        assert_eq!(inner.element_type, "AD_HOC_SUB_PROCESS_INNER_INSTANCE");
+        assert_eq!(inner.state, "COMPLETING");
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t3").is_some());
+
+        // Resolving it evaluates the condition again; the output is collected once.
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        let inner = h.backend.list_element_instances().into_iter().find(|e| e.key == inner.key).unwrap();
+        assert_eq!(inner.state, "COMPLETED");
+        assert_eq!(element_states(&h, "t3"), vec!["TERMINATED"], "cancelRemainingInstances");
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["one"])));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_is_evaluated_in_the_ad_hoc_sub_process_scope() {
+        // Zeebe's AdHocSubProcessProcessor evaluates the condition with the ad-hoc
+        // sub-process's element instance key: what an activation writes stays in its
+        // inner instance and is not seen.
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=result = "done"</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "done" })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t3").is_some(), "the condition did not hold");
+        assert!(h.incidents().is_empty());
+
+        // A variable of the ad-hoc sub-process's scope (here the process's) is seen.
+        set_variables(&h, serde_json::json!({ "result": "done" })).await;
+        h.complete_job("t3", serde_json::json!({ "result": "other" })).await;
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["done", "other"])));
+    }
+
+    /// `ad_hoc_tools` with a non-interrupting event sub-process `esp` started by the
+    /// signal `nudge`, and `completionCondition` `condition`.
+    fn ad_hoc_tools_with_event_sub_process(condition: &str) -> String {
+        ad_hoc_tools("", &format!(r#"
+      <bpmn:completionCondition xsi:type="bpmn:tFormalExpression">{condition}</bpmn:completionCondition>
+      <bpmn:subProcess id="esp" triggeredByEvent="true">
+        <bpmn:startEvent id="esp-start" isInterrupting="false"><bpmn:outgoing>e1</bpmn:outgoing>
+          <bpmn:signalEventDefinition signalRef="S_nudge"/></bpmn:startEvent>
+        <bpmn:endEvent id="esp-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+        <bpmn:sequenceFlow id="e1" sourceRef="esp-start" targetRef="esp-end"/>
+      </bpmn:subProcess>
+      <bpmn:signal id="S_nudge" name="nudge"/>"#))
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_after_an_event_sub_process_raises_an_incident_on_it() {
+        // In Zeebe, an event sub-process completing in an ad-hoc sub-process ends a path
+        // in it: BpmnStateTransitionBehavior.transitionToCompleted calls the ad-hoc
+        // sub-process's beforeExecutionPathCompleted, whose failure BpmnStreamProcessor
+        // turns into an incident on the completing event sub-process.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools_with_event_sub_process("=finished")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"] })).await;
+        h.broadcast_signal("nudge").await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1, "{incidents:?}");
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Failed to evaluate completion condition. Expected result of the expression 'finished' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        assert_eq!(incidents[0].element_id, "esp");
+        assert_eq!(element_states(&h, "esp"), vec!["COMPLETING"]);
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t1").is_some());
+
+        // Resolving it completes the event sub-process again; the condition now holds.
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        assert_eq!(element_states(&h, "esp"), vec!["COMPLETED"]);
+        assert_eq!(element_states(&h, "t1"), vec!["TERMINATED"], "cancelRemainingInstances");
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_holding_after_an_event_sub_process_completes_it() {
+        // Zeebe evaluates the condition each time a path in the ad-hoc sub-process
+        // ends, even while activations still run.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools_with_event_sub_process("=finished")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"], "finished": false })).await;
+        h.broadcast_signal("nudge").await;
+        assert!(h.incidents().is_empty());
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        h.broadcast_signal("nudge").await;
+        assert_eq!(element_states(&h, "t1"), vec!["TERMINATED"]);
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_active_elements_that_cannot_be_activated_raise_an_incident() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t2b"] })).await;
+        let incident = h.incidents().remove(0);
+        assert_eq!(incident.error_type, "EXTRACT_VALUE_ERROR");
+        assert!(incident.error_message.as_deref().unwrap_or("").contains("'t2b'"));
+        assert_eq!(element_states(&h, "tools"), vec!["ACTIVATING"]);
+
+        set_variables(&h, serde_json::json!({ "toRun": ["t3"] })).await;
+        resolve_incident(&h, incident.key).await;
+        assert_eq!(element_states(&h, "tools")[0], "ACTIVATED");
+        assert!(h.activatable_job("t3").is_some());
+    }
+
+    async fn complete_with_result(h: &Harness, job_type: &str, variables: Value, result: Value) {
+        let job = h.activatable_job(job_type).unwrap_or_else(|| panic!("no activatable job of type '{job_type}'"));
+        h.run("JOB", "COMPLETE", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "variables": variables,
+            "result": result,
+        })).await;
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_job_result_activates_elements_and_the_job_comes_back() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+        complete_with_result(&h, "agent-worker", serde_json::json!({ "agent": { "step": 1 } }), serde_json::json!({
+            "type": "adHocSubProcess",
+            "activateElements": [{ "elementId": "tool", "variables": { "toolCall": { "query": "weather" } } }],
+        })).await;
+
+        assert_eq!(element_state(&h, "agent").as_deref(), Some("ACTIVATED"), "activating elements does not complete it");
+        assert!(h.activatable_job("agent-worker").is_none(), "one job at a time");
+        let tool = h.activatable_job("tool").expect("the tool runs");
+        assert_eq!(tool.variables["toolCall"], serde_json::json!({ "query": "weather" }));
+        let tool_ei = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "tool").unwrap();
+        let inner = h.backend.list_element_instances().into_iter().find(|e| Some(e.key) == tool_ei.flow_scope_key).unwrap();
+        assert_eq!(inner.element_type, "AD_HOC_SUB_PROCESS_INNER_INSTANCE");
+
+        h.complete_job("tool", serde_json::json!({ "toolCallResult": "sunny" })).await;
+        let again = h.activatable_job("agent-worker").expect("the job is created again after the tool completes");
+        assert_eq!(again.variables["agent"], serde_json::json!({ "step": 1 }), "the job sees what the last job kept");
+
+        complete_with_result(&h, "agent-worker", serde_json::json!({ "agent": { "step": 2 } }), serde_json::json!({
+            "type": "adHocSubProcess",
+            "isCompletionConditionFulfilled": true,
+        })).await;
+        assert!(h.visited("done"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("agent"), Some(serde_json::json!({ "step": 2 })));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_job_result_fulfilling_the_condition_waits_for_or_cancels_active_elements() {
+        for cancel in [false, true] {
+            let h = Harness::new();
+            h.deploy(&ad_hoc_agent()).await;
+            h.start("proc", serde_json::json!({})).await;
+            complete_with_result(&h, "agent-worker", serde_json::json!({}), serde_json::json!({
+                "activateElements": [{ "elementId": "tool" }, { "elementId": "tool" }],
+            })).await;
+            h.complete_job("tool", serde_json::json!({})).await;
+            // One tool is still active when the worker decides to finish.
+            complete_with_result(&h, "agent-worker", serde_json::json!({}), serde_json::json!({
+                "isCompletionConditionFulfilled": true,
+                "isCancelRemainingInstances": cancel,
+            })).await;
+            if cancel {
+                assert_eq!(element_states(&h, "tool"), vec!["COMPLETED", "TERMINATED"]);
+            } else {
+                assert_eq!(element_state(&h, "agent").as_deref(), Some("ACTIVATED"));
+                assert!(h.activatable_job("agent-worker").is_none(), "the worker already decided");
+                h.complete_job("tool", serde_json::json!({})).await;
+            }
+            assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "cancel: {cancel}");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_job_result_that_cannot_apply_rejects_the_completion() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("agent-worker").unwrap();
+        for result in [
+            serde_json::json!({ "activateElements": [{ "elementId": "tool" }], "isCompletionConditionFulfilled": true }),
+            serde_json::json!({ "activateElements": [{ "elementId": "nope" }] }),
+        ] {
+            let position = h.submit("JOB", "COMPLETE", serde_json::json!({
+                "jobKey": job.key.to_string(), "variables": {}, "result": result,
+            })).await;
+            let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+            let processor = JobProcessor { job_notifier: Arc::new(JobNotifier::new()) };
+            let error = processor.process(&record, &h.state, &mut Writers::new()).await.unwrap_err().to_string();
+            assert!(error.contains("ad-hoc sub-process 'agent'"), "{error}");
+        }
+        assert_eq!(job_state(&h, "agent-worker").as_deref(), Some("ACTIVATABLE"), "a rejected completion changes nothing");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Conditions that do not evaluate to a boolean
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → gw → (`condition`: yes | default: no) → end-*; `inclusive` picks the gateway.
+    fn gateway_with_condition(inclusive: bool, condition: &str) -> String {
+        let kind = if inclusive { "inclusiveGateway" } else { "exclusiveGateway" };
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:{kind} id="gw" default="f-no">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f-yes</bpmn:outgoing><bpmn:outgoing>f-no</bpmn:outgoing>
+    </bpmn:{kind}>
+    <bpmn:endEvent id="end-yes"><bpmn:incoming>f-yes</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-no"><bpmn:incoming>f-no</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="gw"/>
+    <bpmn:sequenceFlow id="f-yes" sourceRef="gw" targetRef="end-yes"><bpmn:conditionExpression>{condition}</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f-no" sourceRef="gw" targetRef="end-no"/>
+"#))
+    }
+
+    #[tokio::test]
+    async fn test_a_condition_that_is_not_a_boolean_raises_an_incident_instead_of_counting_as_false() {
+        for inclusive in [false, true] {
+            // A missing variable is null, and `null > 5` is null: not a boolean.
+            let h = Harness::new();
+            h.deploy(&gateway_with_condition(inclusive, "=x &gt; 5")).await;
+            h.start("proc", serde_json::json!({})).await;
+            let incidents = h.incidents();
+            assert_eq!(incidents.len(), 1, "inclusive: {inclusive}");
+            assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+            assert_eq!(
+                incidents[0].error_message.as_deref(),
+                Some("Expected result of the expression 'x > 5' to be 'BOOLEAN', but was 'NULL'."),
+            );
+            assert_eq!(element_states(&h, "gw"), vec!["ACTIVATING"], "the default flow is not taken");
+            assert!(!h.visited("end-no"));
+
+            // Resolving the incident after fixing the variable retries the gateway.
+            set_variables(&h, serde_json::json!({ "x": 9 })).await;
+            resolve_incident(&h, incidents[0].key).await;
+            assert_eq!(element_states(&h, "gw"), vec!["COMPLETED"], "the same gateway instance is retried");
+            assert!(h.visited("end-yes"));
+            assert!(!h.visited("end-no"));
+            assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        }
+
+        // A value of another type, and an expression that fails, raise it too.
+        for (condition, message) in [
+            ("=\"yes\"", "Expected result of the expression '\"yes\"' to be 'BOOLEAN', but was 'STRING'."),
+            ("=no such function(1)", "Expected result of the expression 'no such function(1)' to be 'BOOLEAN', but it failed"),
+        ] {
+            let h = Harness::new();
+            h.deploy(&gateway_with_condition(false, condition)).await;
+            h.start("proc", serde_json::json!({})).await;
+            let incident = h.incidents().remove(0);
+            assert_eq!(incident.error_type, "EXTRACT_VALUE_ERROR");
+            assert!(incident.error_message.as_deref().unwrap_or("").starts_with(message), "{:?}", incident.error_message);
+        }
+
+        // A condition that holds or is false still decides as before.
+        let h = Harness::new();
+        h.deploy(&gateway_with_condition(false, "=x &gt; 5")).await;
+        h.start("proc", serde_json::json!({ "x": 1 })).await;
+        assert!(h.incidents().is_empty());
+        assert!(h.visited("end-no"));
+    }
+
+    #[tokio::test]
+    async fn test_conditions_on_an_activity_s_outgoing_flows_are_ignored_as_in_zeebe() {
+        // Zeebe takes every outgoing flow of an activity; it evaluates conditions only
+        // at exclusive and inclusive gateways.
+        let bpmn = wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {work}{a}{b}
+    <bpmn:endEvent id="end-a"><bpmn:incoming>fa</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-b"><bpmn:incoming>fb</bpmn:incoming></bpmn:endEvent>
+    {f1}
+    <bpmn:sequenceFlow id="to-a" sourceRef="work" targetRef="a"><bpmn:conditionExpression>=false</bpmn:conditionExpression></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="to-b" sourceRef="work" targetRef="b"><bpmn:conditionExpression>=missing &gt; 1</bpmn:conditionExpression></bpmn:sequenceFlow>
+    {fa}{fb}
+"#,
+            work = task("work", "work", "f1", "to-a</bpmn:outgoing><bpmn:outgoing>to-b"),
+            a = task("a", "a", "to-a", "fa"), b = task("b", "b", "to-b", "fb"),
+            f1 = flow("f1", "start", "work"), fa = flow("fa", "a", "end-a"), fb = flow("fb", "b", "end-b"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("work", serde_json::json!({})).await;
+        assert!(h.incidents().is_empty());
+        assert!(h.activatable_job("a").is_some());
+        assert!(h.activatable_job("b").is_some());
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // adHocSubProcessElements
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_tasks_and_manual_tasks_pass_through_even_as_empty_tags() {
+        // Zeebe completes an undefined task and a manual task as soon as they activate.
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"/>
+    <bpmn:task id="a"/>
+    <bpmn:manualTask id="b">
+      <bpmn:extensionElements>
+        <zeebe:ioMapping><zeebe:output source="=&quot;done&quot;" target="state"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:manualTask>
+    <bpmn:endEvent id="end"/>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="a"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="a" targetRef="b"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="b" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "{:?}", h.incidents());
+        let types: Vec<(String, String)> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id == "a" || e.element_id == "b")
+            .map(|e| (e.element_type, e.state))
+            .collect();
+        assert!(types.contains(&("TASK".to_string(), "COMPLETED".to_string())), "{types:?}");
+        assert!(types.contains(&("MANUAL_TASK".to_string(), "COMPLETED".to_string())), "{types:?}");
+        assert_eq!(root_var(&h, "state"), Some(serde_json::json!("done")));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_sub_process_describes_its_activatable_elements() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="agent">
+      <bpmn:extensionElements><zeebe:taskDefinition type="agent-worker"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:serviceTask id="lookup-order" name="Look up order">
+        <bpmn:documentation>Get an order.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="order-lookup"/>
+          <zeebe:properties>
+            <zeebe:property name="kind" value="read"/>
+            <zeebe:property name="empty" value=""/>
+            <zeebe:property name="blank" value="   "/>
+          </zeebe:properties>
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(toolCall.orderId, &quot;The order number&quot;)" target="orderId"/>
+            <zeebe:input source="=fromAi(value: toolCall.includeItems, description: &quot;Also list the items&quot;, type: &quot;boolean&quot;, options: { required: false })" target="includeItems"/>
+            <zeebe:input source="=&quot;static&quot;" target="source"/>
+            <zeebe:input source="=fromAi(customerId)" target="customer"/>
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:outgoing>then</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="follow-up"><bpmn:extensionElements><zeebe:taskDefinition type="follow-up"/></bpmn:extensionElements>
+        <bpmn:incoming>then</bpmn:incoming></bpmn:serviceTask>
+      <bpmn:userTask id="ask" name="Ask a person"><bpmn:extensionElements><zeebe:userTask/></bpmn:extensionElements></bpmn:userTask>
+      <bpmn:manualTask id="note" name=""><bpmn:documentation></bpmn:documentation></bpmn:manualTask>
+      <bpmn:sequenceFlow id="then" sourceRef="lookup-order" targetRef="follow-up"/>
+    </bpmn:adHocSubProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="agent"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        let expected = serde_json::json!([
+            {
+                "elementId": "lookup-order",
+                "elementName": "Look up order",
+                "documentation": "Get an order.",
+                "properties": { "kind": "read", "empty": null, "blank": "   " },
+                "parameters": [
+                    { "name": "toolCall.orderId", "description": "The order number" },
+                    { "name": "toolCall.includeItems", "description": "Also list the items", "type": "boolean", "options": { "required": false } },
+                    { "name": "customerId" },
+                ],
+            },
+            // Null and empty fields are left out, as Zeebe's `@JsonInclude(NON_EMPTY)` does.
+            { "elementId": "ask", "elementName": "Ask a person" },
+            { "elementId": "note" },
+        ]);
+        let agent = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "agent").unwrap();
+        let variable = h.backend.list_variables().into_iter()
+            .find(|v| v.name == "adHocSubProcessElements")
+            .expect("the variable is created");
+        assert_eq!(variable.scope_key, agent.key, "a local variable of the ad-hoc sub-process");
+        assert_eq!(variable.value, expected);
+        let job = h.activatable_job("agent-worker").unwrap();
+        assert_eq!(job.variables["adHocSubProcessElements"], expected, "the worker's job sees it");
+
+        // A tool's `fromAi()` input mapping returns the value the agent gave it.
+        let job = h.activatable_job("agent-worker").unwrap();
+        h.run("JOB", "COMPLETE", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "variables": {},
+            "result": { "activateElements": [{ "elementId": "lookup-order", "variables": { "toolCall": { "orderId": "7" } } }] },
+        })).await;
+        assert!(h.incidents().is_empty(), "{:?}", h.incidents());
+        let lookup = h.activatable_job("order-lookup").unwrap();
+        assert_eq!(lookup.variables["orderId"], serde_json::json!("7"));
+        assert_eq!(lookup.variables["includeItems"], Value::Null);
+    }
+
+    #[tokio::test]
+    async fn test_a_from_ai_call_zeebe_cannot_read_fails_deployment() {
+        // Zeebe's AdHocSubProcessTransformer wraps what FromAiTaggedParameterExtractor
+        // throws; the deployment names the resource.
+        let tools = |source: &str| wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="inner-start"><bpmn:outgoing>f2</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:adHocSubProcess id="agent"><bpmn:incoming>f2</bpmn:incoming>
+        <bpmn:serviceTask id="tool">
+          <bpmn:extensionElements>
+            <zeebe:taskDefinition type="tool"/>
+            <zeebe:ioMapping><zeebe:input source="{source}" target="x"/></zeebe:ioMapping>
+          </bpmn:extensionElements>
+        </bpmn:serviceTask>
+      </bpmn:adHocSubProcess>
+      <bpmn:sequenceFlow id="f2" sourceRef="inner-start" targetRef="agent"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="outer"/>
+"#));
+        let h = Harness::new();
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, 10)")).await;
+        assert!(error.ends_with(
+            "'resource.bpmn': Failed to extract ad-hoc activity parameters for element 'tool'. \
+             Expected fromAi() parameter 'description' to be a string, but received '10'."
+        ), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(&quot;toolCall.x&quot;)")).await;
+        assert!(error.ends_with("but received string 'toolCall.x'."), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, null)")).await;
+        assert!(error.ends_with("but received 'ConstNull'."), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, &quot;X&quot;, &quot;string&quot;, &quot;dummy&quot;)")).await;
+        assert!(error.ends_with("Expected fromAi() parameter 'schema' to be a context (map), but received 'dummy'."), "{error}");
+        assert!(h.backend.list_process_instances().is_empty());
+
+        // A valid call deploys.
+        h.deploy(&tools("=fromAi(toolCall.x, &quot;X&quot;)")).await;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Activating ad-hoc sub-process activities from outside
+    // ─────────────────────────────────────────────────────────────────
+
+    fn ad_hoc_key(h: &Harness, element_id: &str) -> i64 {
+        h.backend.list_element_instances().into_iter().find(|e| e.element_id == element_id).unwrap().key
+    }
+
+    /// Process an `AD_HOC_SUB_PROCESS_INSTRUCTION` `ACTIVATE` command and its follow-ups;
+    /// `Err` is the rejection.
+    async fn activate_ad_hoc(h: &Harness, key: &str, instruction: Value) -> Result<(), String> {
+        let mut payload = instruction;
+        payload["adHocSubProcessInstanceKey"] = serde_json::json!(key);
+        let position = h.submit("AD_HOC_SUB_PROCESS_INSTRUCTION", "ACTIVATE", payload).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        if let Err(e) = AdHocSubProcessInstructionProcessor.process(&record, &h.state, &mut Writers::new()).await {
+            return Err(format!("{e:?}"));
+        }
+        h.drain(position).await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_activating_ad_hoc_sub_process_activities_through_the_instruction() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"] })).await;
+        let key = ad_hoc_key(&h, "tools").to_string();
+
+        activate_ad_hoc(&h, &key, serde_json::json!({
+            "elements": [{ "elementId": "t3", "variables": { "query": "q" } }, { "elementId": "t2" }],
+        })).await.unwrap();
+        let t3 = h.activatable_job("t3").expect("t3 is activated");
+        assert_eq!(t3.variables["query"], serde_json::json!("q"), "the variables of its activation");
+        assert!(h.activatable_job("t2").is_some());
+        assert!(h.activatable_job("t1").is_some(), "what ran before keeps running");
+        let events = h.backend.list_records().into_iter()
+            .filter(|r| r.value_type == "AD_HOC_SUB_PROCESS_INSTRUCTION" && r.intent == "ACTIVATED")
+            .count();
+        assert_eq!(events, 1, "the instruction goes through the log");
+
+        // cancelRemainingInstances terminates what still runs before activating.
+        activate_ad_hoc(&h, &key, serde_json::json!({
+            "elements": [{ "elementId": "t1" }], "cancelRemainingInstances": true,
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "t2"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "t3"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "t1"), vec!["TERMINATED", "ACTIVATED"]);
+        h.complete_job("t1", serde_json::json!({ "result": "one" })).await;
+        assert!(h.activatable_job("after").is_some(), "every activated element has completed");
+    }
+
+    #[tokio::test]
+    async fn test_activating_ad_hoc_sub_process_activities_rejects_what_zeebe_rejects() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"] })).await;
+        let key = ad_hoc_key(&h, "tools");
+        let t1 = ad_hoc_key(&h, "t1");
+
+        let error = activate_ad_hoc(&h, "123", serde_json::json!({ "elements": [] })).await.unwrap_err();
+        assert!(error.starts_with("NotFound"), "{error}");
+        assert!(error.contains("no ad-hoc sub-process instance found with key '123'"), "{error}");
+
+        let error = activate_ad_hoc(&h, &t1.to_string(), serde_json::json!({ "elements": [] })).await.unwrap_err();
+        assert!(error.starts_with("NotFound"), "not an ad-hoc sub-process: {error}");
+
+        let error = activate_ad_hoc(&h, &key.to_string(), serde_json::json!({
+            "elements": [{ "elementId": "t2b" }, { "elementId": "nope" }, { "elementId": "t3" }],
+        })).await.unwrap_err();
+        assert!(error.starts_with("NotFound"), "{error}");
+        assert!(error.contains(&format!("with key '{key}', but the given elements [t2b, nope] do not exist.")), "{error}");
+        assert!(h.activatable_job("t3").is_none(), "a rejected instruction activates nothing");
+
+        h.complete_job("t1", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("COMPLETED"));
+        let error = activate_ad_hoc(&h, &key.to_string(), serde_json::json!({ "elements": [{ "elementId": "t3" }] })).await.unwrap_err();
+        assert!(error.starts_with("InvalidState"), "{error}");
+        assert!(error.contains("but it is not active."), "{error}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Compensation handler scope and termination
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_a_compensation_handler_runs_in_the_throw_event_s_scope() {
+        // The throw event is in an error event sub-process: its handler runs there,
+        // not in the process scope the compensated activity completed in.
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{b}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="undo-all"><bpmn:incoming>e1</bpmn:incoming><bpmn:compensateEventDefinition/></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="err-start" targetRef="undo-all"/>
+    </bpmn:subProcess>
+    {f1}{f2}{f3}
+"#,
+            a = compensable("a", "f1", "f2", ""), b = task("b", "b", "f2", "f3"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "b"), f3 = flow("f3", "b", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        let job = h.activatable_job("b").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({ "jobKey": job.key.to_string(), "errorCode": "OUT_OF_STOCK" })).await;
+        let handler = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "undo-a").unwrap();
+        let throw = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "undo-all").unwrap();
+        assert_eq!(handler.flow_scope_key, throw.flow_scope_key);
+        assert_eq!(handler.flow_scope_key, Some(ad_hoc_key(&h, "on-error")));
+    }
+
+    #[tokio::test]
+    async fn test_compensation_from_an_event_sub_process_includes_its_own_activities() {
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{b}
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:startEvent>
+      {c}
+      <bpmn:endEvent id="undo-all"><bpmn:incoming>e2</bpmn:incoming><bpmn:compensateEventDefinition/></bpmn:endEvent>
+      {e1}{e2}
+    </bpmn:subProcess>
+    {f1}{f2}{f3}
+"#,
+            a = compensable("a", "f1", "f2", ""), b = task("b", "b", "f2", "f3"), c = compensable("c", "e1", "e2", ""),
+            e1 = flow("e1", "err-start", "c"), e2 = flow("e2", "c", "undo-all"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "b"), f3 = flow("f3", "b", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        let job = h.activatable_job("b").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({ "jobKey": job.key.to_string(), "errorCode": "OUT_OF_STOCK" })).await;
+        h.complete_job("c", serde_json::json!({})).await;
+        assert!(h.activatable_job("undo-a").is_some(), "the scope around the event sub-process");
+        assert!(h.activatable_job("undo-c").is_some(), "the event sub-process itself");
+        h.complete_job("undo-a", serde_json::json!({})).await;
+        h.complete_job("undo-c", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_a_terminated_compensation_handler_keeps_its_throw_event_waiting() {
+        // undo-a has an interrupting error boundary event: when it catches, the handler
+        // is terminated. As in Zeebe, whose BpmnCompensationSubscriptionBehaviour releases
+        // a throw event only from `completeCompensationHandler` (called when a handler
+        // completes), the throw event keeps waiting.
+        let handler_boundary = r#"
+    <bpmn:boundaryEvent id="undo-failed" attachedToRef="undo-a"><bpmn:outgoing>fu</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/></bpmn:boundaryEvent>
+    <bpmn:endEvent id="undo-gave-up"><bpmn:incoming>fu</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="fu" sourceRef="undo-failed" targetRef="undo-gave-up"/>"#;
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}{throw}{after}{handler_boundary}
+    <bpmn:endEvent id="end"><bpmn:incoming>f4</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}{f4}
+"#,
+            a = compensable("a", "f1", "f2", ""),
+            throw = compensation_throw("compensate", "f2", "f3", None),
+            after = task("after", "after", "f3", "f4"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "compensate"),
+            f3 = flow("f3", "compensate", "after"), f4 = flow("f4", "after", "end"),
+        ));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("ACTIVATED"));
+        let job = h.activatable_job("undo-a").unwrap();
+        h.run("JOB", "THROW_ERROR", serde_json::json!({ "jobKey": job.key.to_string(), "errorCode": "OUT_OF_STOCK" })).await;
+
+        assert_eq!(element_states(&h, "undo-a"), vec!["TERMINATED"]);
+        assert_eq!(element_state(&h, "undo-gave-up").as_deref(), Some("COMPLETED"));
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("ACTIVATED"), "the throw event waits");
+        assert!(h.activatable_job("after").is_none());
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        let pi = h.process_instances()[0].key;
+        let subscriptions = h.backend.get_compensation_subscriptions(pi).await.unwrap();
+        assert_eq!(subscriptions.len(), 1, "the handler's subscription is not completed");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Process instance modification (cases of Zeebe's ModifyProcessInstance*Test)
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → a → sp[ sp-start → b → c ] (timer boundary `sp-timeout`) → after → end.
+    fn modification_process() -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}
+    <bpmn:subProcess id="sp"><bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:startEvent id="sp-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {b}{c}
+      <bpmn:sequenceFlow id="s1" sourceRef="sp-start" targetRef="b"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="b" targetRef="c"/>
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="sp-timeout" attachedToRef="sp"><bpmn:outgoing>f5</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition></bpmn:boundaryEvent>
+    <bpmn:endEvent id="timed-out"><bpmn:incoming>f5</bpmn:incoming></bpmn:endEvent>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f4</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}{f4}{f5}
+"#,
+            a = task("a", "a", "f1", "f2"), b = task("b", "b", "s1", "s2"), c = task("c", "c", "s2", ""),
+            after = task("after", "after", "f3", "f4"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "sp"), f3 = flow("f3", "sp", "after"),
+            f4 = flow("f4", "after", "end"), f5 = flow("f5", "sp-timeout", "timed-out")))
+    }
+
+    /// Process a `PROCESS_INSTANCE_MODIFICATION` `MODIFY` command (for the first process
+    /// instance unless it names one) and its follow-ups; `Err` is the rejection.
+    async fn modify(h: &Harness, instructions: Value) -> Result<(), String> {
+        let mut payload = instructions;
+        if payload.get("processInstanceKey").is_none() {
+            payload["processInstanceKey"] = serde_json::json!(h.process_instances()[0].key.to_string());
+        }
+        let position = h.submit("PROCESS_INSTANCE_MODIFICATION", "MODIFY", payload).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        let mut writers = Writers::new();
+        if let Err(e) = ProcessInstanceModificationProcessor.process(&record, &h.state, &mut writers).await {
+            return Err(e.to_string());
+        }
+        h.append_follow_ups(&record, &writers).await;
+        h.drain(position + 1).await;
+        Ok(())
+    }
+
+    fn keys_of(h: &Harness, element_id: &str) -> Vec<i64> {
+        h.backend.list_element_instances().into_iter().filter(|e| e.element_id == element_id).map(|e| e.key).collect()
+    }
+
+    fn local_var(h: &Harness, scope_key: i64, name: &str) -> Option<Value> {
+        h.backend.list_variables().into_iter().find(|v| v.scope_key == scope_key && v.name == name).map(|v| v.value)
+    }
+
+    #[tokio::test]
+    async fn test_modification_activates_an_element_and_terminates_another() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let a = keys_of(&h, "a")[0];
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementInstanceKey": a.to_string() }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "a"), vec!["TERMINATED"]);
+        assert_eq!(job_state(&h, "a").as_deref(), Some("CANCELED"));
+        assert!(h.activatable_job("after").is_some());
+        assert!(h.backend.list_records().iter().any(|r| r.value_type == "PROCESS_INSTANCE_MODIFICATION" && r.intent == "MODIFIED"));
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_creates_the_flow_scope_without_starting_it_and_sets_variables() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let pi = h.process_instances()[0].key;
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{
+                "elementId": "c",
+                "variableInstructions": [
+                    { "variables": { "global": 1 } },
+                    { "elementId": "sp", "variables": { "inSp": 2 } },
+                    { "elementId": "c", "variables": { "inC": 3 } },
+                ],
+            }],
+        })).await.unwrap();
+        // The sub-process is activated (with its boundary timer armed), not started.
+        let sp = keys_of(&h, "sp");
+        assert_eq!(sp.len(), 1);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        assert!(!h.visited("sp-start") && !h.visited("b"), "its start event does not run");
+        assert!(h.backend.list_timers().iter().any(|t| t.element_instance_key == Some(sp[0]) && t.state == "ACTIVE"));
+        let c = keys_of(&h, "c")[0];
+        let c_ei = h.backend.list_element_instances().into_iter().find(|e| e.key == c).unwrap();
+        assert_eq!(c_ei.flow_scope_key, Some(sp[0]));
+        assert_eq!(local_var(&h, pi, "global"), Some(serde_json::json!(1)));
+        assert_eq!(local_var(&h, sp[0], "inSp"), Some(serde_json::json!(2)));
+        assert_eq!(local_var(&h, c, "inC"), Some(serde_json::json!(3)));
+        assert!(h.activatable_job("a").is_some(), "a still runs");
+
+        // c completing completes the sub-process, whose outgoing flow is taken.
+        h.complete_job("c", serde_json::json!({})).await;
+        assert_eq!(element_states(&h, "sp"), vec!["COMPLETED"]);
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_terminates_flow_scopes_left_with_nothing_to_do() {
+        // Zeebe's terminateFlowScopes: the sub-process and then the process instance.
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        let b = keys_of(&h, "b")[0];
+        modify(&h, serde_json::json!({ "terminateInstructions": [{ "elementInstanceKey": b.to_string() }] })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["TERMINATED"]);
+        assert_eq!(h.process_state("proc").as_deref(), Some("TERMINATED"));
+        assert!(h.backend.list_timers().iter().all(|t| t.state != "ACTIVE"), "the boundary timer is cancelled");
+
+        // Terminating by element id, while an activation needs the flow scope, keeps it.
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "c" }],
+            "terminateInstructions": [{ "elementId": "b" }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        assert!(h.activatable_job("c").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_resolves_the_incidents_of_what_it_terminates() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.fail_job("a", 0, "boom").await;
+        assert_eq!(h.incidents()[0].state, "ACTIVE");
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementId": "a" }],
+        })).await.unwrap();
+        assert_eq!(h.incidents()[0].state, "RESOLVED");
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_selects_the_flow_scope_instance_by_ancestor() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        // A second instance of the sub-process.
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "sp" }] })).await.unwrap();
+        let sp = keys_of(&h, "sp");
+        assert_eq!(sp.len(), 2);
+
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate instructions \
+             for an element that has a flow scope with more than one active instance: 'sp'. Can't decide \
+             in which instance of the flow scope the element should be activated. Please specify an \
+             ancestor element instance key for this activate instruction."
+        ), "{error}");
+
+        // The selected instance is reused ...
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c", "ancestorScopeKey": sp[1].to_string() }] })).await.unwrap();
+        let c = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "c").unwrap();
+        assert_eq!(c.flow_scope_key, Some(sp[1]));
+        // ... and selecting the process instance, an ancestor of both, creates another.
+        let pi = h.process_instances()[0].key;
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c", "ancestorScopeKey": pi.to_string() }] })).await.unwrap();
+        assert_eq!(keys_of(&h, "sp").len(), 3);
+        assert_eq!(element_states(&h, "c"), vec!["ACTIVATED", "ACTIVATED"]);
+    }
+
+    #[tokio::test]
+    async fn test_modification_moves_element_instances() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        // By id, into the source's own flow scope.
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{
+                "sourceElementId": "b", "targetElementId": "c", "useSourceParentKeyAsAncestorScopeKey": true,
+                "variableInstructions": [{ "elementId": "c", "variables": { "moved": true } }],
+            }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        let c = keys_of(&h, "c")[0];
+        assert_eq!(local_var(&h, c, "moved"), Some(serde_json::json!(true)));
+        // With a direct ancestor: c again, in the sub-process instance named.
+        let sp = keys_of(&h, "sp")[0];
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementId": "c", "targetElementId": "c", "ancestorScopeKey": sp.to_string() }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "c"), vec!["TERMINATED", "ACTIVATED"]);
+        let c = keys_of(&h, "c")[1];
+        let moved = h.backend.list_element_instances().into_iter().find(|e| e.key == c).unwrap();
+        assert_eq!(moved.flow_scope_key, Some(sp));
+        // By key, out of the sub-process, which is then left with nothing to do.
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementInstanceKey": c.to_string(), "targetElementId": "after", "inferAncestorScopeFromSourceHierarchy": true }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "c"), vec!["TERMINATED", "TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["TERMINATED"]);
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_rejects_what_zeebe_rejects() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let pi = h.process_instances()[0].key;
+        let a = keys_of(&h, "a")[0];
+        let before = h.backend.list_element_instances().len();
+        let prefix = "Expected to modify instance of process 'proc' but it contains one or more";
+
+        let error = modify(&h, serde_json::json!({ "processInstanceKey": "123", "activateInstructions": [] })).await.unwrap_err();
+        assert!(error.ends_with("Expected to modify process instance but no process instance found with key '123'"), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "nope" }, { "elementId": "nada" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} activate instructions with an element that could not be found: 'nope', 'nada'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "sp-start" }, { "elementId": "f1" }, { "elementId": "sp-timeout" }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions for elements that are unsupported: 'sp-start', 'f1', 'sp-timeout'. \
+             The activation of elements with type 'START_EVENT', 'SEQUENCE_FLOW', 'BOUNDARY_EVENT' is not supported. \
+             Supported element types are: [PROCESS, SUB_PROCESS, EVENT_SUB_PROCESS, AD_HOC_SUB_PROCESS, \
+             AD_HOC_SUB_PROCESS_INNER_INSTANCE, INTERMEDIATE_CATCH_EVENT, INTERMEDIATE_THROW_EVENT, END_EVENT, \
+             SERVICE_TASK, RECEIVE_TASK, USER_TASK, MANUAL_TASK, TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, \
+             EVENT_BASED_GATEWAY, INCLUSIVE_GATEWAY, MULTI_INSTANCE_BODY, CALL_ACTIVITY, BUSINESS_RULE_TASK, \
+             SCRIPT_TASK, SEND_TASK]."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({ "terminateInstructions": [{ "elementInstanceKey": "42" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} terminate instructions with an element instance that could not be found: '42'")), "{error}");
+        let error = modify(&h, serde_json::json!({ "terminateInstructions": [{}] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} terminate instructions with neither an element instance key nor element id: '(-1, )'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "b", "variableInstructions": [{ "elementId": "ghost", "variables": { "x": 1 } }] }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} variable instructions with a scope element id that could not be found: 'ghost'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "b", "variableInstructions": [{ "elementId": "after", "variables": { "x": 1 } }] }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} variable instructions with a scope element that doesn't belong to the activating element's flow scope. \
+             These variables should be set before or after the modification."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "b", "ancestorScopeKey": "99" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} activate instructions with an ancestor scope key that does not exist, or is not in an active state: '99'")), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "b", "ancestorScopeKey": a.to_string() }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions with an ancestor scope key that is not an ancestor of the element to activate:\n\
+             - instance '{a}' of element 'a' is not an ancestor of element 'b'"
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementInstanceKey": pi.to_string() }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions for elements whose required flow scope instance is also being terminated: \
+             element 'after' requires flow scope instance '{pi}' which is being terminated. \
+             Please provide a valid ancestor scope key for the activation or avoid terminating the required flow scope."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementId": "a", "targetElementId": "b" }, { "sourceElementId": "a", "targetElementId": "c" }],
+        })).await.unwrap_err();
+        assert!(error.ends_with("Expected to modify instance of process 'proc' but it contains multiple move instructions with identical source element ids: 'a'"), "{error}");
+        let error = modify(&h, serde_json::json!({ "moveInstructions": [{ "sourceElementInstanceKey": "77", "targetElementId": "b" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} move instructions with a source element instance that could not be found: '77'")), "{error}");
+        // Nothing changed.
+        assert!(h.activatable_job("a").is_some());
+        assert_eq!(h.backend.list_element_instances().len(), before);
+    }
+
+    #[tokio::test]
+    async fn test_modification_rejects_activating_inside_a_multi_instance_or_after_an_event_based_gateway() {
+        let roots = r#"  <bpmn:message id="M" name="m"><bpmn:extensionElements><zeebe:subscription correlationKey="=&quot;k&quot;"/></bpmn:extensionElements></bpmn:message>"#;
+        let bpmn = wrap_definitions(roots, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}
+    <bpmn:subProcess id="each"><bpmn:incoming>f2</bpmn:incoming>
+      <bpmn:multiInstanceLoopCharacteristics><bpmn:extensionElements>
+        <zeebe:loopCharacteristics inputCollection="=[1]"/></bpmn:extensionElements></bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="each-start"><bpmn:outgoing>e1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:manualTask id="inside"><bpmn:incoming>e1</bpmn:incoming></bpmn:manualTask>
+      <bpmn:sequenceFlow id="e1" sourceRef="each-start" targetRef="inside"/>
+    </bpmn:subProcess>
+    <bpmn:eventBasedGateway id="gw"><bpmn:incoming>g0</bpmn:incoming><bpmn:outgoing>g1</bpmn:outgoing></bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="wait-m"><bpmn:incoming>g1</bpmn:incoming><bpmn:messageEventDefinition messageRef="M"/></bpmn:intermediateCatchEvent>
+    <bpmn:startEvent id="other-start"><bpmn:outgoing>g0</bpmn:outgoing></bpmn:startEvent>
+    {f1}{f2}{g0}{g1}
+"#, a = task("a", "a", "f1", "f2"), f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "each"),
+            g0 = flow("g0", "other-start", "gw"), g1 = flow("g1", "gw", "wait-m")));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "inside" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate \
+             instructions that would result in the activation of multi-instance element \
+             'each', which is currently unsupported."
+        ), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "wait-m" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate instructions \
+             for elements that are unsupported: 'wait-m'. The activation of events belonging to an event-based gateway is not supported."
+        ), "{error}");
+        // The multi-instance activity itself can be activated.
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "each" }] })).await.unwrap();
+        assert!(h.visited("inside"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_does_not_terminate_a_called_process_instance() {
+        let child = wrap_process("child", &format!(r#"
+    <bpmn:startEvent id="c-start"><bpmn:outgoing>c1</bpmn:outgoing></bpmn:startEvent>
+    {work}{c1}"#, work = task("work", "work", "c1", ""), c1 = flow("c1", "c-start", "work")));
+        let parent = wrap_process("parent", r#"
+    <bpmn:startEvent id="p-start"><bpmn:outgoing>p1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:callActivity id="call"><bpmn:extensionElements><zeebe:calledElement processId="child"/></bpmn:extensionElements>
+      <bpmn:incoming>p1</bpmn:incoming></bpmn:callActivity>
+    <bpmn:sequenceFlow id="p1" sourceRef="p-start" targetRef="call"/>"#);
+        let h = Harness::new();
+        h.deploy(&child).await;
+        h.deploy(&parent).await;
+        h.start("parent", serde_json::json!({})).await;
+        let child_pi = h.process_instances().into_iter().find(|p| p.bpmn_process_id == "child").unwrap().key;
+        let work = keys_of(&h, "work")[0];
+        let error = modify(&h, serde_json::json!({
+            "processInstanceKey": child_pi.to_string(),
+            "terminateInstructions": [{ "elementInstanceKey": work.to_string() }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'child' but the given instructions would terminate \
+             the instance. The instance was created by a call activity in the parent process. \
+             To terminate this instance please modify the parent process instead."
+        ), "{error}");
+        assert_eq!(element_states(&h, "work"), vec!["ACTIVATED"]);
+    }
+
+    #[tokio::test]
+    async fn test_modification_activates_elements_inside_an_ad_hoc_sub_process() {
+        // Zeebe's ModifyProcessInstanceWithAdHocSubProcessTest: both land in one inner instance.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": [] })).await;
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "t1" }, { "elementId": "t3" }] })).await.unwrap();
+        assert!(h.activatable_job("t1").is_some() && h.activatable_job("t3").is_some());
+        let inner: Vec<_> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_type == "AD_HOC_SUB_PROCESS_INNER_INSTANCE").collect();
+        assert_eq!(inner.len(), 1);
+        let t1 = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "t1").unwrap();
+        assert_eq!(t1.flow_scope_key, Some(inner[0].key));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // DMN versions and decision evaluation (Zeebe's DmnResourceTransformer and
+    // DecisionEvaluationEvaluateProcessor)
+    // ─────────────────────────────────────────────────────────────────
+
+    /// A DRG `greetings` with the literal decision `greet`, which says `{greeting} {name}`.
+    fn greeting_dmn(greeting: &str) -> String {
+        format!(r#"<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="greetings" name="Greetings" namespace="t">
+  <decision id="greet" name="Greet">
+    <literalExpression><text>"{greeting} " + name</text></literalExpression>
+  </decision>
+</definitions>"#)
+    }
+
+    /// Deploy resources `(name, xml)` as one deployment; the response.
+    async fn deploy_resources(h: &Harness, resources: &[(&str, &str)]) -> Value {
+        let resources: Vec<Value> = resources.iter().map(|(name, xml)| serde_json::json!({
+            "name": name, "content": base64::engine::general_purpose::STANDARD.encode(xml.as_bytes()),
+        })).collect();
+        h.run("DEPLOYMENT", "CREATE", serde_json::json!({ "resources": resources })).await.expect("a response")
+    }
+
+    /// Evaluate a decision; `Err` is the rejection.
+    async fn evaluate(h: &Harness, command: Value) -> Result<Value, String> {
+        let position = h.submit("DECISION_EVALUATION", "EVALUATE", command).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        let mut writers = Writers::new();
+        DecisionEvaluationProcessor.process(&record, &h.state, &mut writers).await.map_err(|e| e.to_string())?;
+        h.append_follow_ups(&record, &writers).await;
+        Ok(writers.response.unwrap())
+    }
+
+    #[tokio::test]
+    async fn test_redeploying_a_dmn_versions_it_as_zeebe_does() {
+        let h = Harness::new();
+        let first = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(first["decisions"][0]["version"], 1);
+        assert_eq!(first["decisionRequirements"][0]["version"], 1);
+        assert_eq!(first["decisionRequirements"][0]["decisionRequirementsId"], "greetings");
+        let v1_key = first["decisions"][0]["decisionKey"].clone();
+
+        // The same resource again: a duplicate, with the same keys and versions.
+        let again = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(again["decisions"][0]["version"], 1);
+        assert_eq!(again["decisions"][0]["decisionKey"], v1_key);
+        assert_eq!(again["decisions"][0]["duplicate"], true);
+        assert_eq!(again["decisionRequirements"][0]["decisionRequirementsKey"], first["decisionRequirements"][0]["decisionRequirementsKey"]);
+
+        // Changed content: version 2 of the DRG and of the decision.
+        let changed = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hi"))]).await;
+        assert_eq!(changed["decisions"][0]["version"], 2);
+        assert_eq!(changed["decisionRequirements"][0]["version"], 2);
+        assert_ne!(changed["decisions"][0]["decisionKey"], v1_key);
+        let v2_key = changed["decisions"][0]["decisionKey"].clone();
+
+        // Evaluation by id picks the latest version; by key, the version with the key.
+        let by_id = evaluate(&h, serde_json::json!({ "decisionId": "greet", "variables": { "name": "Ada" } })).await.unwrap();
+        assert_eq!(by_id["decisionOutput"], r#""Hi Ada""#);
+        assert_eq!(by_id["decisionVersion"], 2);
+        assert_eq!(by_id["decisionKey"], v2_key);
+        assert_eq!(by_id["decisionRequirementsId"], "greetings");
+        let by_key = evaluate(&h, serde_json::json!({ "decisionKey": v1_key, "variables": { "name": "Ada" } })).await.unwrap();
+        assert_eq!(by_key["decisionOutput"], r#""Hello Ada""#);
+        assert_eq!(by_key["decisionVersion"], 1);
+        assert_eq!(by_key["decisionName"], "Greet");
+
+        // The first content again is not a duplicate of the latest version: version 3.
+        let back = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(back["decisions"][0]["version"], 3);
+        // Under another resource name, the same content is a new version too.
+        let renamed = deploy_resources(&h, &[("other.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(renamed["decisions"][0]["version"], 4);
+    }
+
+    #[tokio::test]
+    async fn test_a_duplicate_dmn_deployed_with_a_new_resource_gets_a_new_version() {
+        // Zeebe's DmnResourceTransformer.writeRecords: all resources of a deployment
+        // that is not all duplicates are versioned together.
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        let bpmn = wrap_process("proc", r#"<bpmn:startEvent id="start"/>"#);
+        let both = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello")), ("proc.bpmn", &bpmn)]).await;
+        assert_eq!(both["decisions"][0]["version"], 2);
+        assert_eq!(both["decisions"][0]["duplicate"], false);
+        assert_eq!(both["deployments"][0]["bpmnProcessId"], "proc");
+    }
+
+    #[tokio::test]
+    async fn test_a_business_rule_task_evaluates_the_latest_decision_version() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:businessRuleTask id="decide">
+      <bpmn:extensionElements><zeebe:calledDecision decisionId="greet" resultVariable="greeting"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="decide"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="decide" targetRef="end"/>"#);
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hi"))]).await;
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "name": "Ada" })).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("greeting"), Some(serde_json::json!("Hi Ada")));
+    }
+
+    #[tokio::test]
+    async fn test_decision_evaluation_rejects_as_zeebe_does() {
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(
+            evaluate(&h, serde_json::json!({ "decisionId": "nope" })).await.unwrap_err(),
+            "Not found: Expected to evaluate decision 'nope', but no decision found for id 'nope'",
+        );
+        assert_eq!(
+            evaluate(&h, serde_json::json!({ "decisionKey": "77" })).await.unwrap_err(),
+            "Not found: Expected to evaluate decision '77', but no decision found for key '77'",
+        );
+        assert_eq!(
+            evaluate(&h, serde_json::json!({})).await.unwrap_err(),
+            "Invalid argument: Expected either a decision id or a valid decision key, but none provided",
+        );
+        // A decision that fails to evaluate is a result with the failure, not a rejection.
+        let failed = evaluate(&h, serde_json::json!({ "decisionId": "greet", "variables": { "name": 1 } })).await.unwrap();
+        assert_eq!(failed["failedDecisionId"], "greet");
+        assert_ne!(failed["failureMessage"], "");
+        assert!(h.backend.list_records().iter().any(|r| r.value_type == "DECISION_EVALUATION" && r.intent == "FAILED"));
     }
 }

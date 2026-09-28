@@ -1,11 +1,18 @@
 import type {
 	BpmnDefinitions,
+	BpmnDiLabel,
 	BpmnFlowElement,
 	BpmnLane,
 	BpmnParticipant,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
 } from "./bpmn-model.js"
+import {
+	type LabelFontCss,
+	collectLabelStyles,
+	labelFontCss,
+	resolveLabelFont,
+} from "./label-style.js"
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -83,6 +90,11 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 
 	// Build model index for name/type lookups
 	const idx = buildIndex(defs)
+	const labelStyles = collectLabelStyles(defs)
+	const fontOf = (label: BpmnDiLabel | undefined): LabelFontCss | undefined => {
+		const font = resolveLabelFont(label, labelStyles)
+		return font ? labelFontCss(font, DEFAULT_FAMILY, DEFAULT_SIZE) : undefined
+	}
 
 	// ── Bounding box ──────────────────────────────────────────────────────────
 	let minX = Number.POSITIVE_INFINITY
@@ -162,7 +174,9 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 		// Edge label
 		if (flow?.name && edge.label?.bounds) {
 			const { x, y, width, height } = edge.label.bounds
-			edgeParts.push(labelSvg(flow.name, x + width / 2, y + height / 2, width - 4, t))
+			edgeParts.push(
+				labelSvg(flow.name, x + width / 2, y + height / 2, width - 4, t, false, fontOf(edge.label)),
+			)
 		}
 	}
 
@@ -177,6 +191,7 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 		const { x, y, width, height } = shape.bounds
 		const el = idx.elements.get(shape.bpmnElement)
 		const type = el?.type ?? ""
+		const font = fontOf(shape.label)
 
 		let inner: string
 		let isContainer = false
@@ -189,12 +204,12 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 			// Pool, lane, or annotation
 			const annotation = idx.annotations.get(shape.bpmnElement)
 			if (annotation !== undefined) {
-				inner = renderAnnotation(annotation.text, width, height, t)
+				inner = renderAnnotation(annotation.text, width, height, t, font)
 			} else if (idx.participants.has(shape.bpmnElement)) {
-				inner = renderPool(idx.participants.get(shape.bpmnElement), width, height, t)
+				inner = renderPool(idx.participants.get(shape.bpmnElement), width, height, t, font)
 				isContainer = true
 			} else if (idx.lanes.has(shape.bpmnElement)) {
-				inner = renderLane(idx.lanes.get(shape.bpmnElement), width, height, t)
+				inner = renderLane(idx.lanes.get(shape.bpmnElement), width, height, t, font)
 				isContainer = true
 			} else {
 				inner = ""
@@ -210,7 +225,7 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 					type === "eventSubProcess" ||
 					type === "transaction") &&
 				shape.isExpanded === true
-			inner = renderTask(el, width, height, t, { expanded: isExpandedContainer })
+			inner = renderTask(el, width, height, t, { expanded: isExpandedContainer, font })
 			if (isExpandedContainer) isContainer = true
 		}
 
@@ -233,7 +248,7 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 				height: 20,
 			}
 			labelParts.push(
-				labelSvg(el.name, lb.x + lb.width / 2, lb.y + lb.height / 2, lb.width - 4, t, true),
+				labelSvg(el.name, lb.x + lb.width / 2, lb.y + lb.height / 2, lb.width - 4, t, true, font),
 			)
 		}
 	}
@@ -287,15 +302,24 @@ function isGateway(type: string): boolean {
 // ── Text ──────────────────────────────────────────────────────────────────────
 
 const AVG_CHAR_PX = 6.5
+const DEFAULT_FAMILY = "system-ui,-apple-system,sans-serif"
+const DEFAULT_SIZE = 11
+const DEFAULT_LINE_H = 14
 
-function wrapText(text: string, maxPx: number): string[] {
+/** Estimated glyph width for a label font — scaled from the 11px default. */
+function charPx(font: LabelFontCss | undefined): number {
+	if (!font) return AVG_CHAR_PX
+	return AVG_CHAR_PX * (font.fontSize / DEFAULT_SIZE) * (font.fontWeight === "bold" ? 1.1 : 1)
+}
+
+function wrapText(text: string, maxPx: number, charW = AVG_CHAR_PX): string[] {
 	if (!text.trim()) return []
 	const words = text.split(/\s+/)
 	const lines: string[] = []
 	let line = ""
 	for (const word of words) {
 		const candidate = line ? `${line} ${word}` : word
-		if (candidate.length * AVG_CHAR_PX <= maxPx) {
+		if (candidate.length * charW <= maxPx) {
 			line = candidate
 		} else if (line) {
 			lines.push(line)
@@ -316,8 +340,20 @@ function esc(s: string): string {
 		.replace(/"/g, "&quot;")
 }
 
-function textStyle(t: Theme): string {
-	return `fill:${t.text};font-family:system-ui,-apple-system,sans-serif;font-size:11px;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:${t.textHalo};stroke-width:4px;stroke-linejoin:round`
+function fontStyle(font: LabelFontCss | undefined): string {
+	if (!font) return `font-family:${DEFAULT_FAMILY};font-size:${DEFAULT_SIZE}px`
+	let out = `font-family:${font.fontFamily};font-size:${font.fontSize}px`
+	if (font.fontWeight !== "normal") out += `;font-weight:${font.fontWeight}`
+	if (font.fontStyle !== "normal") out += `;font-style:${font.fontStyle}`
+	if (font.textDecoration !== "none") out += `;text-decoration:${font.textDecoration}`
+	return out
+}
+
+/** A label's inline style, XML-escaped for a double-quoted attribute. */
+function textStyle(t: Theme, font?: LabelFontCss): string {
+	return esc(
+		`fill:${t.text};${fontStyle(font)};text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:${t.textHalo};stroke-width:4px;stroke-linejoin:round`,
+	)
 }
 
 /**
@@ -332,10 +368,11 @@ function labelSvg(
 	maxWidth: number,
 	t: Theme,
 	topAlign = false,
+	font?: LabelFontCss,
 ): string {
-	const lines = wrapText(text, maxWidth)
-	const lineH = 14
-	const style = textStyle(t)
+	const lines = wrapText(text, maxWidth, charPx(font))
+	const lineH = font ? (font.fontSize * DEFAULT_LINE_H) / DEFAULT_SIZE : DEFAULT_LINE_H
+	const style = textStyle(t, font)
 	if (lines.length === 1) {
 		return `<text style="${style}" x="${cx}" y="${cy}">${esc(lines[0] ?? text)}</text>`
 	}
@@ -555,7 +592,7 @@ function renderTask(
 	width: number,
 	height: number,
 	t: Theme,
-	options?: { expanded?: boolean },
+	options?: { expanded?: boolean; font?: LabelFontCss | undefined },
 ): string {
 	const type = el?.type ?? ""
 	let sw = 1.5
@@ -581,9 +618,9 @@ function renderTask(
 		// subprocess header, so it doesn't collide with the child shapes drawn
 		// inside it (a centered label would land right where children are placed).
 		if (options?.expanded) {
-			out += labelSvg(el.name, width / 2, 14, width - 16, t, true)
+			out += labelSvg(el.name, width / 2, 14, width - 16, t, true, options.font)
 		} else {
-			out += labelSvg(el.name, width / 2, height / 2, width - 16, t)
+			out += labelSvg(el.name, width / 2, height / 2, width - 16, t, false, options?.font)
 		}
 	}
 
@@ -624,6 +661,7 @@ function renderPool(
 	width: number,
 	height: number,
 	t: Theme,
+	font?: LabelFontCss,
 ): string {
 	const bodyStyle = `fill:${t.shapeFill};stroke:${t.shapeStroke};stroke-width:1.5`
 	const headerStyle = `fill:${t.poolHeader};stroke:${t.shapeStroke};stroke-width:1.5`
@@ -632,13 +670,19 @@ function renderPool(
 		`<rect x="0" y="0" width="30" height="${height}" style="${headerStyle}"/>`
 
 	if (participant?.name) {
-		out += `<text style="${textStyle(t)}" transform="translate(15 ${height / 2}) rotate(-90)">${esc(participant.name)}</text>`
+		out += `<text style="${textStyle(t, font)}" transform="translate(15 ${height / 2}) rotate(-90)">${esc(participant.name)}</text>`
 	}
 
 	return out
 }
 
-function renderLane(lane: BpmnLane | undefined, width: number, height: number, t: Theme): string {
+function renderLane(
+	lane: BpmnLane | undefined,
+	width: number,
+	height: number,
+	t: Theme,
+	font?: LabelFontCss,
+): string {
 	const bodyStyle = `fill:${t.shapeFill};stroke:${t.shapeStroke};stroke-width:1.5`
 	const headerStyle = `fill:${t.poolHeader};stroke:${t.shapeStroke};stroke-width:1.5`
 	let out =
@@ -646,7 +690,7 @@ function renderLane(lane: BpmnLane | undefined, width: number, height: number, t
 		`<rect x="0" y="0" width="30" height="${height}" style="${headerStyle}"/>`
 
 	if (lane?.name) {
-		out += `<text style="${textStyle(t)}" transform="translate(15 ${height / 2}) rotate(-90)">${esc(lane.name)}</text>`
+		out += `<text style="${textStyle(t, font)}" transform="translate(15 ${height / 2}) rotate(-90)">${esc(lane.name)}</text>`
 	}
 
 	return out
@@ -657,11 +701,12 @@ function renderAnnotation(
 	width: number,
 	height: number,
 	t: Theme,
+	font?: LabelFontCss,
 ): string {
 	const pathStyle = `fill:none;stroke:${t.shapeStroke};stroke-width:1.5`
 	let out = `<path d="M${width} 0 L0 0 L0 ${height} L${width} ${height}" style="${pathStyle}"/>`
 	if (text) {
-		out += labelSvg(text, width / 2, height / 2, width - 8, t)
+		out += labelSvg(text, width / 2, height / 2, width - 8, t, false, font)
 	}
 	return out
 }

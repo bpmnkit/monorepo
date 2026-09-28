@@ -1,19 +1,62 @@
 import { readFile, writeFile } from "node:fs/promises"
-import { applyConnectorTemplate } from "@bpmnkit/connectors"
-import { Bpmn, compactify, detectExecutionPlatform, lintCategories, optimize } from "@bpmnkit/core"
-import type { BpmnOperation, OptimizationCategory } from "@bpmnkit/core"
+import {
+	type ElementTemplate,
+	applyConnectorTemplate,
+	applyElementTemplate,
+} from "@bpmnkit/connectors"
+import { discoverElementTemplates } from "@bpmnkit/connectors/node"
+import {
+	Bpmn,
+	applyBpmnlintConfig,
+	applyCamundaCompatConfig,
+	compactify,
+	detectExecutionPlatform,
+	lintCategories,
+	optimize,
+	splitCamundaCompatConfig,
+} from "@bpmnkit/core"
+import type {
+	BpmnDefinitions,
+	BpmnOperation,
+	DetectedPlatform,
+	OptimizationCategory,
+	OptimizationFinding,
+	OptimizationSeverity,
+	UnsupportedBpmnlintRule,
+} from "@bpmnkit/core"
+import { type BpmnlintReport, prepareBpmnlint } from "@bpmnkit/core/node"
 import type { Command, CommandGroup } from "../types.js"
 
 /** Resolves a connector template's missing required keys via @bpmnkit/connectors, for the `connector/*` lint rule. */
 export function resolveConnectorRequirements(templateId: string, boundKeys: string[]): string[] {
-	const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
-	const result = applyConnectorTemplate(templateId, values)
-	// Only "missing-required" problems mean something is actually unset — an "unknown-key"
-	// problem here just means a bound key doesn't match propertyKey()'s lookup key (e.g. a
-	// property whose `id` differs from its zeebe:input binding name), not a missing value.
-	return result.problems
-		.filter((p) => p.kind === "missing-required" && p.key !== undefined)
-		.map((p) => p.key as string)
+	return connectorRequirementsResolver(new Map())(templateId, boundKeys)
+}
+
+/**
+ * {@link resolveConnectorRequirements} against one diagram's own templates
+ * first, then the bundled catalogue — so a project template, including one
+ * that shadows a bundled id, is checked as the project wrote it.
+ *
+ * Scoped to the call rather than registered globally: `casen dev` lints many
+ * diagrams in one process, and one folder's templates must not decide how
+ * another folder's diagram is judged.
+ */
+export function connectorRequirementsResolver(
+	workspace: ReadonlyMap<string, ElementTemplate>,
+): (templateId: string, boundKeys: string[]) => string[] {
+	return (templateId, boundKeys) => {
+		const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
+		const own = workspace.get(templateId)
+		const result = own
+			? applyElementTemplate(own, values)
+			: applyConnectorTemplate(templateId, values)
+		// Only "missing-required" problems mean something is actually unset — an "unknown-key"
+		// problem here just means a bound key doesn't match propertyKey()'s lookup key (e.g. a
+		// property whose `id` differs from its zeebe:input binding name), not a missing value.
+		return result.problems
+			.filter((p) => p.kind === "missing-required" && p.key !== undefined)
+			.map((p) => p.key as string)
+	}
 }
 
 const SEVERITY_SYMBOL: Record<string, string> = {
@@ -23,6 +66,167 @@ const SEVERITY_SYMBOL: Record<string, string> = {
 }
 
 const DEFAULT_SERVER = "http://localhost:3033"
+
+/** Real bpmnlint's findings are listed under this category, and selected by it in `--categories`. */
+const BPMNLINT_CATEGORY = "bpmnlint"
+
+/** One line of `casen lint` output — a BPMN Kit finding or a report from real bpmnlint. */
+export interface LintRow {
+	id: string
+	category: string
+	severity: OptimizationSeverity
+	message: string
+	suggestion: string
+	processId: string
+	elementIds: string[]
+	bpmnlintRule?: string
+}
+
+function reportRow(report: BpmnlintReport): LintRow {
+	return {
+		id: `${BPMNLINT_CATEGORY}/${report.rule}`,
+		category: BPMNLINT_CATEGORY,
+		severity: report.severity,
+		message: report.message,
+		suggestion: report.documentationUrl ?? "",
+		processId: "",
+		elementIds: report.elementId !== undefined ? [report.elementId] : [],
+		bpmnlintRule: report.rule,
+	}
+}
+
+function describeUnsupported(rule: UnsupportedBpmnlintRule): string {
+	switch (rule.reason) {
+		case "unresolved-extends":
+			return `${rule.name} (a plugin config — install bpmnlint in the project to use it)`
+		case "plugin-rule":
+			return `${rule.name} (a plugin rule — install bpmnlint in the project to run it)`
+		case "unknown-rule":
+			return `${rule.name} (not a bpmnlint built-in rule)`
+	}
+}
+
+/** What `casen lint` needs to decide on a file, before any of it is printed. */
+export interface LintOutcome {
+	defs: BpmnDefinitions
+	findings: (OptimizationFinding | LintRow)[]
+	/** What the project's `.bpmnlintrc` did, or could not do — one sentence each. */
+	notices: string[]
+	platform: DetectedPlatform
+}
+
+export interface LintBpmnOptions {
+	/** Categories to run; `undefined` runs all of them. */
+	categories?: string[]
+	/** The deploy-readiness gate: every category, error-severity findings only. */
+	deployProfile?: boolean
+	/** Honour the nearest `.bpmnlintrc`. Default `true`. */
+	bpmnlintrc?: boolean
+	/**
+	 * Where the element-template search stops walking up from the file — the
+	 * project root. Default: the current directory. Templates are resolved per
+	 * file, as Desktop Modeler does: `.camunda/element-templates/` from the
+	 * file's folder up to here, nearest winning.
+	 */
+	templateRoot?: string
+}
+
+/**
+ * Lints one BPMN document the way `casen lint` does — shared with `casen dev`,
+ * which re-lints on every save and must not disagree with the command.
+ *
+ * @param filePath - Where the document lives; the `.bpmnlintrc` search starts here.
+ * @param xml - The document's text.
+ */
+export async function lintBpmn(
+	filePath: string,
+	xml: string,
+	options: LintBpmnOptions = {},
+): Promise<LintOutcome> {
+	const defs = Bpmn.parse(xml)
+	const categories = options.categories as OptimizationCategory[] | undefined
+	const deployProfile = options.deployProfile === true
+
+	// A .bpmnlintrc governs the findings that stand in for bpmnlint rules. When
+	// the project has bpmnlint installed, it runs the configured rules itself
+	// (plugins included) and BPMN Kit's equivalents step aside. Its findings
+	// sit in their own category, so narrowing --categories away from it also
+	// keeps it from taking BPMN Kit's equivalents with it.
+	const setup =
+		options.bpmnlintrc === false
+			? undefined
+			: await prepareBpmnlint(filePath, xml, {
+					runBpmnlint:
+						categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
+				})
+	// Extending `plugin:camunda-compat/camunda-cloud-X-Y` pins the Camunda version
+	// the `compat/…` findings check; BPMN Kit's own check stands in for the plugin.
+	const split = setup === undefined ? undefined : splitCamundaCompatConfig(setup.config)
+	const camundaVersion = split?.compat?.version
+
+	// A model that names no execution platform is not judged against Camunda 8
+	// deployability — otherwise a diagram authored in a neutral tool opens
+	// covered in errors about extensions it was never going to have. Asking for
+	// the deploy gate is asking for those rules anyway, so the profile forces
+	// them back on. The canvas plugin asks `lintCategories` the same question.
+	const platform = detectExecutionPlatform(defs)
+	const resolvedCategories = lintCategories(defs, {
+		...(categories !== undefined ? { categories } : {}),
+		forceEngineRules: deployProfile,
+		...(camundaVersion !== undefined ? { camundaVersion } : {}),
+	})
+
+	// The templates this diagram sees. A broken template file is `casen connector
+	// validate`'s to report; here it simply is not one of the diagram's templates.
+	const discovered = await discoverElementTemplates({
+		from: filePath,
+		root: options.templateRoot ?? process.cwd(),
+	})
+	const workspace = new Map(discovered.templates.map((t) => [t.id, t]))
+
+	const report = optimize(defs, {
+		categories: resolvedCategories,
+		resolveConnectorRequirements: connectorRequirementsResolver(workspace),
+		...(camundaVersion !== undefined ? { camundaVersion } : {}),
+	})
+
+	const compat =
+		setup === undefined || split?.compat === undefined
+			? undefined
+			: applyCamundaCompatConfig(report.findings, split.compat, { delegated: setup.delegated })
+	const applied =
+		setup === undefined || split === undefined
+			? undefined
+			: applyBpmnlintConfig(defs, compat?.findings ?? report.findings, split.rest, {
+					delegated: setup.delegated,
+					categories: resolvedCategories,
+				})
+	const unsupported = [...(applied?.unsupported ?? []), ...(compat?.unsupported ?? [])]
+	const governed: (OptimizationFinding | LintRow)[] = [
+		...(applied?.findings ?? report.findings),
+		...(setup?.reports.map(reportRow) ?? []),
+	]
+	const findings = deployProfile ? governed.filter((f) => f.severity === "error") : governed
+
+	const notices: string[] = []
+	if (setup !== undefined) {
+		const how = setup.delegated
+			? `bpmnlint ${setup.version ?? ""}`.trimEnd()
+			: "BPMN Kit's equivalents of its rules"
+		notices.push(`Using ${setup.path} (${how}).`)
+		if (setup.failure !== undefined) {
+			notices.push(
+				`The project's bpmnlint could not run (${setup.failure}); BPMN Kit's equivalents were used instead.`,
+			)
+		}
+		if (unsupported.length > 0) {
+			notices.push(
+				`Not applied — no BPMN Kit equivalent: ${unsupported.map(describeUnsupported).join(", ")}.`,
+			)
+		}
+	}
+	return { defs, findings, notices, platform }
+}
 
 const lintCmd: Command = {
 	name: "lint",
@@ -50,6 +254,13 @@ const lintCmd: Command = {
 			description: "Auto-apply all fixable findings and write the result back to the file",
 			type: "boolean",
 		},
+		{
+			name: "bpmnlintrc",
+			description:
+				"Honour the nearest .bpmnlintrc (file's directory and up), running the project's own bpmnlint when installed. --no-bpmnlintrc ignores it.",
+			type: "boolean",
+			default: true,
+		},
 	],
 	examples: [
 		{ description: "Lint a file", command: "casen lint lint order-process.bpmn" },
@@ -57,43 +268,33 @@ const lintCmd: Command = {
 			description: "Deploy-readiness gate (errors only)",
 			command: "casen lint lint order-process.bpmn --profile deploy",
 		},
+		{
+			description: "Ignore the project's .bpmnlintrc",
+			command: "casen lint lint order-process.bpmn --no-bpmnlintrc",
+		},
 	],
 	async run(ctx) {
 		const filePath = ctx.positional[0]
 		if (!filePath) throw new Error("Missing required argument: <file>")
 
 		const xml = await readFile(filePath, "utf-8")
-		const defs = Bpmn.parse(xml)
-
 		const categoriesFlag = ctx.flags.categories
 		const categories =
 			typeof categoriesFlag === "string" && categoriesFlag.length > 0
-				? (categoriesFlag.split(",").map((s) => s.trim()) as OptimizationCategory[])
+				? categoriesFlag.split(",").map((s) => s.trim())
 				: undefined
 		const deployProfile = ctx.flags.profile === "deploy"
-
-		// A model that names no execution platform is not judged against Camunda 8
-		// deployability — otherwise a diagram authored in a neutral tool opens
-		// covered in errors about extensions it was never going to have. Asking for
-		// the deploy gate is asking for those rules anyway, so the profile forces
-		// them back on. The canvas plugin asks `lintCategories` the same question.
-		const platform = detectExecutionPlatform(defs)
-		const resolvedCategories = lintCategories(defs, {
+		const { defs, findings, notices, platform } = await lintBpmn(filePath, xml, {
 			...(categories !== undefined ? { categories } : {}),
-			forceEngineRules: deployProfile,
+			deployProfile,
+			bpmnlintrc: ctx.flags.bpmnlintrc !== false,
 		})
-
-		const report = optimize(defs, {
-			categories: resolvedCategories,
-			resolveConnectorRequirements,
-		})
-		const findings = deployProfile
-			? report.findings.filter((f) => f.severity === "error")
-			: report.findings
 
 		// --fix: apply all auto-fixable findings and write back
 		if (ctx.flags.fix) {
-			const fixable = findings.filter((f) => f.applyFix)
+			const fixable = findings.filter(
+				(f): f is OptimizationFinding => "applyFix" in f && f.applyFix !== undefined,
+			)
 			for (const f of fixable) f.applyFix?.(defs)
 			if (fixable.length === 0) {
 				ctx.output.ok("No auto-fixable issues found.")
@@ -108,9 +309,13 @@ const lintCmd: Command = {
 
 		const formatFlag = ctx.flags.format
 		if (formatFlag === "json") {
+			// stdout stays a JSON array; what the config did (or could not do) goes to stderr.
+			for (const notice of notices) process.stderr.write(`${notice}\n`)
 			ctx.output.print(findings)
 			return
 		}
+
+		for (const notice of notices) ctx.output.info(notice)
 
 		if (findings.length === 0) {
 			ctx.output.ok("No issues found.")
@@ -125,7 +330,8 @@ const lintCmd: Command = {
 		for (const f of findings) {
 			const symbol = SEVERITY_SYMBOL[f.severity] ?? "·"
 			const elIds = f.elementIds.length > 0 ? ` [${f.elementIds.join(", ")}]` : ""
-			ctx.output.info(`${symbol} [${f.category}]${elIds} ${f.message}`)
+			const rule = f.bpmnlintRule !== undefined ? ` (${f.bpmnlintRule})` : ""
+			ctx.output.info(`${symbol} [${f.category}]${elIds} ${f.message}${rule}`)
 		}
 
 		const total = findings.length

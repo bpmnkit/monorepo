@@ -1,22 +1,24 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
   <h1>@bpmnkit/plugins</h1>
-  <p>22 composable canvas plugins — minimap, AI chat, process simulation, storage, and more</p>
+  <p>34 composable canvas plugins — minimap, AI chat, process simulation, storage, and more</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/plugins?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/plugins)
   [![license](https://img.shields.io/npm/l/@bpmnkit/plugins?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: core](https://img.shields.io/badge/tier-core-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/plugins/CHANGELOG.md)
 </div>
+
+> **Core tier.** Semver at 1.0: nothing breaks without a major release. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
 ## Overview
 
-`@bpmnkit/plugins` is a single package containing 22 ready-made `CanvasPlugin` add-ons for `@bpmnkit/canvas` and `@bpmnkit/editor`. Each plugin is imported individually via subpath exports so you only bundle what you use.
+`@bpmnkit/plugins` is a single package containing 34 ready-made `CanvasPlugin` add-ons for `@bpmnkit/canvas` and `@bpmnkit/editor`. Each plugin is imported individually via subpath exports so you only bundle what you use.
 
 ## Installation
 
@@ -56,6 +58,9 @@ npm install @bpmnkit/plugins
 | `/history` | `createHistoryPlugin()` | Visual undo/redo history panel |
 | `/config-panel` | `createConfigPanelPlugin(options)` | Properties panel for selected elements |
 | `/config-panel-bpmn` | `createConfigPanelBpmnPlugin(options)` | BPMN-specific properties panel |
+| `/connector-catalog` | `createConnectorCatalogPlugin(options)` | Import API connectors from OpenAPI specs via a catalog panel; register a project's element templates, per diagram (`diagramPath`, `setDiagramPath`) or project-wide |
+| `/pattern-advisor` | `createPatternAdvisorPlugin(options)` | Side panel flagging production-failure patterns, with fixes |
+| `/variable-flow` | `createVariableFlowPlugin(options)` | Overlay showing which elements read and write each variable |
 
 ### DMN & Forms
 
@@ -74,6 +79,8 @@ npm install @bpmnkit/plugins
 | `/process-runner` | `createProcessRunnerPlugin(options)` | Run BPMN instances with play/step/stop UI |
 | `/token-highlight` | `createTokenHighlightPlugin()` | Highlight active/visited elements during execution |
 | `/optimize` | `createOptimizePlugin()` | Show optimizer findings overlay |
+| `/live-mode` | `createLiveModePlugin(options)` | Keep a dev instance on a cluster in sync with the diagram as you edit |
+| `/deploy` | `createDeployPlugin(options)` | One-click deploy through the local proxy |
 
 ### AI & Navigation
 
@@ -82,6 +89,8 @@ npm install @bpmnkit/plugins
 | `/ai-bridge` | `createAiBridgePlugin(options)` | AI chat panel with diagram apply/checkpoint |
 | `/element-docs` | `createElementDocsPlugin(options)` | Built-in BPMN element reference docs |
 | `/main-menu` | `createMainMenuPlugin(options)` | File/Edit top-level menu |
+| `/story-view` | `createStoryViewPlugin(options)` | Read a process as a top-to-bottom story of cards |
+| `/presentation` | `createPresentationPlugin(options)` | Walk a process flow by flow, picking branches from the keyboard |
 
 ## Usage Examples
 
@@ -147,10 +156,11 @@ const ai = createAiBridgePlugin({
 | [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

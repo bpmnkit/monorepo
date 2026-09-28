@@ -25,7 +25,7 @@
 		"tck:run": "vitest run tests/tck.test.ts"
 	},
 	"dependencies": {},
-	"description": "Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
+	"description": "FEEL (Friendly Enough Expression Language) parser, evaluator, formatter and highlighter — 94% DMN TCK conformance",
 	"keywords": ["feel", "dmn", "expression", "camunda", "bpmn", "typescript", "evaluator"],
 	"license": "MIT",
 	"repository": {

@@ -265,8 +265,8 @@ describe("compilePlan", () => {
 		const result = compilePlan(plan)
 		expect(result.problems).toEqual([])
 		const reparsed = Bpmn.parse(result.xml as string)
-		const wait = reparsed.processes[0]?.flowElements.find((e) => e.id === "wait_for_payment")
-		const sub = wait?.extensionElements.find((e) => e.name === "zeebe:subscription")
+		const message = reparsed.messages.find((m) => m.name === "payment-confirmed")
+		const sub = message?.extensionElements?.find((e) => e.name === "zeebe:subscription")
 		expect(sub?.attributes).toEqual({ correlationKey: "=orderId" })
 	})
 

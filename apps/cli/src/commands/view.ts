@@ -18,14 +18,18 @@ interface Panel {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-function openBrowser(url: string): void {
+export function openBrowser(url: string): void {
 	const [cmd, args]: [string, string[]] =
 		process.platform === "darwin"
 			? ["open", [url]]
 			: process.platform === "win32"
 				? ["cmd", ["/c", "start", "", url]]
 				: ["xdg-open", [url]]
-	spawn(cmd, args, { detached: true, stdio: "ignore" }).unref()
+	const child = spawn(cmd, args, { detached: true, stdio: "ignore" })
+	// No opener installed (a bare container, say) is not an error: every caller
+	// prints the URL as well.
+	child.on("error", () => {})
+	child.unref()
 }
 
 function escapeHtml(s: string): string {

@@ -21,7 +21,7 @@
 		{
 			"id": "cli.casen",
 			"file": "chunks/cli.casen.md",
-			"tokens": 677,
+			"tokens": 732,
 			"tags": [
 				"cli",
 				"casen"
@@ -31,7 +31,7 @@
 		{
 			"id": "cli.casen.generate-bpmn-files",
 			"file": "chunks/cli.casen.generate-bpmn-files.md",
-			"tokens": 205,
+			"tokens": 195,
 			"tags": [
 				"cli",
 				"casen",
@@ -42,14 +42,42 @@
 			"entities": []
 		},
 		{
-			"id": "cli.casen.connection-profiles",
-			"file": "chunks/cli.casen.connection-profiles.md",
-			"tokens": 279,
+			"id": "cli.casen.start-from-a-gallery-template",
+			"file": "chunks/cli.casen.start-from-a-gallery-template.md",
+			"tokens": 151,
 			"tags": [
 				"cli",
 				"casen",
-				"connection",
-				"profiles"
+				"start",
+				"gallery",
+				"template"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.view-bpmn-dmn-and-form-files",
+			"file": "chunks/cli.casen.view-bpmn-dmn-and-form-files.md",
+			"tokens": 186,
+			"tags": [
+				"cli",
+				"casen",
+				"view",
+				"bpmn",
+				"dmn",
+				"form",
+				"files"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.common-workflows",
+			"file": "chunks/cli.casen.common-workflows.md",
+			"tokens": 191,
+			"tags": [
+				"cli",
+				"casen",
+				"common",
+				"workflows"
 			],
 			"entities": []
 		},
@@ -67,7 +95,7 @@
 		{
 			"id": "cli.casen.bpmn-generation-pipeline",
 			"file": "chunks/cli.casen.bpmn-generation-pipeline.md",
-			"tokens": 280,
+			"tokens": 341,
 			"tags": [
 				"cli",
 				"casen",
@@ -94,7 +122,7 @@
 		{
 			"id": "cli.casen.worker-commands",
 			"file": "chunks/cli.casen.worker-commands.md",
-			"tokens": 272,
+			"tokens": 342,
 			"tags": [
 				"cli",
 				"casen",
@@ -106,9 +134,33 @@
 			]
 		},
 		{
+			"id": "cli.casen.local-proxy",
+			"file": "chunks/cli.casen.local-proxy.md",
+			"tokens": 305,
+			"tags": [
+				"cli",
+				"casen",
+				"local",
+				"proxy"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.local-proxy-who-can-use-the-proxy",
+			"file": "chunks/cli.casen.local-proxy-who-can-use-the-proxy.md",
+			"tokens": 769,
+			"tags": [
+				"cli",
+				"casen",
+				"local",
+				"proxy"
+			],
+			"entities": []
+		},
+		{
 			"id": "cli.casen.mcp-server-mode",
 			"file": "chunks/cli.casen.mcp-server-mode.md",
-			"tokens": 140,
+			"tokens": 204,
 			"tags": [
 				"cli",
 				"casen",
@@ -231,6 +283,53 @@
 			]
 		},
 		{
+			"id": "cli.dev",
+			"file": "chunks/cli.dev.md",
+			"tokens": 185,
+			"tags": [
+				"cli",
+				"dev"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.dev.what-you-get",
+			"file": "chunks/cli.dev.what-you-get.md",
+			"tokens": 491,
+			"tags": [
+				"cli",
+				"dev",
+				"get"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "cli.dev.flags",
+			"file": "chunks/cli.dev.flags.md",
+			"tokens": 158,
+			"tags": [
+				"cli",
+				"dev",
+				"flags"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "cli.dev.deploying-and-ai",
+			"file": "chunks/cli.dev.deploying-and-ai.md",
+			"tokens": 205,
+			"tags": [
+				"cli",
+				"dev",
+				"deploying"
+			],
+			"entities": []
+		},
+		{
 			"id": "cli.diff",
 			"file": "chunks/cli.diff.md",
 			"tokens": 412,
@@ -274,7 +373,7 @@
 		{
 			"id": "cli.generate",
 			"file": "chunks/cli.generate.md",
-			"tokens": 508,
+			"tokens": 529,
 			"tags": [
 				"cli",
 				"generate"
@@ -326,14 +425,116 @@
 		{
 			"id": "cli.generate.typical-ai-workflow",
 			"file": "chunks/cli.generate.typical-ai-workflow.md",
-			"tokens": 106,
+			"tokens": 493,
 			"tags": [
 				"cli",
 				"generate",
 				"typical",
 				"workflow"
 			],
+			"entities": [
+				"processIds",
+				"ProcessId",
+				"jobTypes",
+				"JobType",
+				"messageNames",
+				"MessageName",
+				"signalNames",
+				"SignalName",
+				"errorCodes",
+				"ErrorCode",
+				"escalationCodes",
+				"EscalationCode"
+			]
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-keep-the-file-current-in-ci",
+			"file": "chunks/cli.generate.typical-ai-workflow-keep-the-file-current-in-ci.md",
+			"tokens": 77,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"keep",
+				"file",
+				"current"
+			],
 			"entities": []
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-check-workers-against-the-bpmn",
+			"file": "chunks/cli.generate.typical-ai-workflow-check-workers-against-the-bpmn.md",
+			"tokens": 275,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"check",
+				"workers",
+				"against",
+				"bpmn"
+			],
+			"entities": [
+				"@camunda8/sdk",
+				"@camunda8/orchestration-cluster-api",
+				"@bpmnkit/worker-client",
+				"io.camunda"
+			]
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-flags",
+			"file": "chunks/cli.generate.typical-ai-workflow-flags.md",
+			"tokens": 152,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"flags"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.migrate",
+			"file": "chunks/cli.migrate.md",
+			"tokens": 231,
+			"tags": [
+				"cli",
+				"migrate"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.migrate.where-the-output-goes",
+			"file": "chunks/cli.migrate.where-the-output-goes.md",
+			"tokens": 139,
+			"tags": [
+				"cli",
+				"migrate",
+				"output",
+				"goes"
+			],
+			"entities": [
+				"name.bpmn",
+				"name.c8.bpmn"
+			]
+		},
+		{
+			"id": "cli.migrate.flags",
+			"file": "chunks/cli.migrate.flags.md",
+			"tokens": 267,
+			"tags": [
+				"cli",
+				"migrate",
+				"flags"
+			],
+			"entities": [
+				"elementId",
+				"elementType",
+				"processId"
+			]
 		},
 		{
 			"id": "cli.plugin-authoring",
@@ -604,12 +805,26 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 687,
+			"tokens": 116,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"parsing",
 				"serializing"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.parsing-and-serializing-round-trip-fidelity",
+			"file": "chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md",
+			"tokens": 801,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"parsing",
+				"serializing",
+				"round-trip",
+				"fidelity"
 			],
 			"entities": [
 				"Bpmn.parse()",
@@ -619,8 +834,11 @@
 				"unknownChildren",
 				"extensionElements",
 				"XmlElement",
+				"BPMNLabelStyle",
+				"bpmnElement",
 				"packages/core/tests/roundtrip-corpus.test.ts",
-				"packages/core/tests/descriptor-coverage.test.ts"
+				"packages/core/tests/descriptor-coverage.test.ts",
+				"isExecutable"
 			]
 		},
 		{
@@ -650,6 +868,161 @@
 				"extensions"
 			],
 			"entities": []
+		},
+		{
+			"id": "getting-started.conformance",
+			"file": "chunks/getting-started.conformance.md",
+			"tokens": 523,
+			"tags": [
+				"getting-started",
+				"conformance"
+			],
+			"entities": [
+				"@bpmnkit/feel",
+				"packages/feel/tasks/extract-tck-tests.mjs",
+				"packages/feel/tests/tck.test.ts",
+				"fromAi",
+				"packages/feel/tests/camunda-parity.test.ts",
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-2.0-model-and-round-trip",
+			"file": "chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md",
+			"tokens": 241,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"2.0",
+				"model",
+				"round",
+				"trip"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"DataAssociation",
+				"FormalExpression",
+				"DataState",
+				"ItemAwareElement",
+				"ImplicitThrowEvent",
+				"packages/core/tests/descriptor-coverage.test.ts"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-model-interchange-miwg",
+			"file": "chunks/getting-started.conformance.bpmn-model-interchange-miwg.md",
+			"tokens": 508,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"model",
+				"interchange",
+				"miwg"
+			],
+			"entities": [
+				"exportPreserving",
+				"packages/core/tests/roundtrip-corpus.test.ts",
+				"bpmnElement",
+				"textFormat"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-elements-by-component",
+			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
+			"tokens": 1916,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"elements",
+				"component"
+			],
+			"entities": [
+				"packages/engine/tests/semantics.test.ts",
+				"@bpmnkit/engine/wasm-runner",
+				"activityRef",
+				"inputElement",
+				"loopCounter",
+				"completionCondition",
+				"activeElementsCollection",
+				"adHocSubProcessElements",
+				"fromAi()",
+				"toolCall.orderId",
+				"ModifyProcessInstance"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-elements-by-component-2",
+			"file": "chunks/getting-started.conformance.bpmn-elements-by-component-2.md",
+			"tokens": 96,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"elements",
+				"component"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.conformance.zeebe-extensions",
+			"file": "chunks/getting-started.conformance.zeebe-extensions.md",
+			"tokens": 226,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"zeebe",
+				"extensions"
+			],
+			"entities": [
+				"packages/core/src/bpmn/zeebe-placement.ts",
+				"applyTemplateToElement",
+				"convertCamunda7()"
+			]
+		},
+		{
+			"id": "getting-started.conformance.linting-bpmnlint-compatibility",
+			"file": "chunks/getting-started.conformance.linting-bpmnlint-compatibility.md",
+			"tokens": 140,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"linting",
+				"bpmnlint",
+				"compatibility"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.conformance.dmn-1.3",
+			"file": "chunks/getting-started.conformance.dmn-1.3.md",
+			"tokens": 135,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"dmn",
+				"1.3"
+			],
+			"entities": [
+				"typeRef"
+			]
+		},
+		{
+			"id": "getting-started.conformance.camunda-forms",
+			"file": "chunks/getting-started.conformance.camunda-forms.md",
+			"tokens": 253,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"camunda",
+				"forms"
+			],
+			"entities": [
+				"activeElementsCollection",
+				"evaluatedDecisions"
+			]
 		},
 		{
 			"id": "getting-started.installation",
@@ -715,7 +1088,7 @@
 		{
 			"id": "getting-started.quick-start.step-2-simulate-locally",
 			"file": "chunks/getting-started.quick-start.step-2-simulate-locally.md",
-			"tokens": 157,
+			"tokens": 217,
 			"tags": [
 				"getting-started",
 				"quick-start",
@@ -723,7 +1096,9 @@
 				"simulate",
 				"locally"
 			],
-			"entities": []
+			"entities": [
+				"hello.bpmn"
+			]
 		},
 		{
 			"id": "getting-started.quick-start.step-3-deploy-to-camunda-8",
@@ -760,6 +1135,31 @@
 			],
 			"entities": [
 				"package.json"
+			]
+		},
+		{
+			"id": "getting-started.stability.product-tiers",
+			"file": "chunks/getting-started.stability.product-tiers.md",
+			"tokens": 419,
+			"tags": [
+				"getting-started",
+				"stability",
+				"product",
+				"tiers"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/canvas",
+				"@bpmnkit/editor",
+				"@bpmnkit/plugins",
+				"@bpmnkit/engine",
+				"@bpmnkit/feel",
+				"@bpmnkit/api",
+				"@bpmnkit/ascii",
+				"@bpmnkit/docspack",
+				"@bpmnkit/connector-gen",
+				"@bpmnkit/connectors",
+				"@bpmnkit/cli"
 			]
 		},
 		{
@@ -851,7 +1251,7 @@
 		{
 			"id": "getting-started.stability.support-window",
 			"file": "chunks/getting-started.stability.support-window.md",
-			"tokens": 497,
+			"tokens": 510,
 			"tags": [
 				"getting-started",
 				"stability",
@@ -1090,7 +1490,7 @@
 		{
 			"id": "guides.ai.previewing-while-the-model-writes",
 			"file": "chunks/guides.ai.previewing-while-the-model-writes.md",
-			"tokens": 687,
+			"tokens": 356,
 			"tags": [
 				"guides",
 				"ai",
@@ -1102,21 +1502,350 @@
 			"entities": [
 				"JSON.parse",
 				"createCompactStream",
-				"keepViewport",
+				"keepViewport"
+			]
+		},
+		{
+			"id": "guides.ai.previewing-while-the-model-writes-frames-are-advisory",
+			"file": "chunks/guides.ai.previewing-while-the-model-writes-frames-are-advisory.md",
+			"tokens": 112,
+			"tags": [
+				"guides",
+				"ai",
+				"previewing",
+				"while",
+				"model",
+				"writes",
+				"frames",
+				"advisory"
+			],
+			"entities": [
 				"isDefault"
 			]
 		},
 		{
+			"id": "guides.ai.previewing-while-the-model-writes-where-the-frames-come-from",
+			"file": "chunks/guides.ai.previewing-while-the-model-writes-where-the-frames-come-from.md",
+			"tokens": 257,
+			"tags": [
+				"guides",
+				"ai",
+				"previewing",
+				"while",
+				"model",
+				"writes",
+				"frames",
+				"come"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai.previewing-while-the-model-writes-what-the-model-can-do",
+			"file": "chunks/guides.ai.previewing-while-the-model-writes-what-the-model-can-do.md",
+			"tokens": 290,
+			"tags": [
+				"guides",
+				"ai",
+				"previewing",
+				"while",
+				"model",
+				"writes"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.ai.mcp-server",
 			"file": "chunks/guides.ai.mcp-server.md",
-			"tokens": 151,
+			"tokens": 322,
 			"tags": [
 				"guides",
 				"ai",
 				"mcp",
 				"server"
 			],
+			"entities": [
+				"io.github.bpmnkit/bpmnkit",
+				"@bpmnkit/patterns"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown",
+			"file": "chunks/guides.bpmn-in-markdown.md",
+			"tokens": 660,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown"
+			],
+			"entities": [
+				"@bpmnkit/markdown"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.what-goes-in-a-block",
+			"file": "chunks/guides.bpmn-in-markdown.what-goes-in-a-block.md",
+			"tokens": 247,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"goes",
+				"block"
+			],
+			"entities": [
+				"compactify()"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.astro",
+			"file": "chunks/guides.bpmn-in-markdown.astro.md",
+			"tokens": 185,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"astro"
+			],
+			"entities": [
+				"@astrojs/mdx",
+				"docusaurus.config.js"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.vitepress",
+			"file": "chunks/guides.bpmn-in-markdown.vitepress.md",
+			"tokens": 291,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"vitepress"
+			],
+			"entities": [
+				"remarkBpmn"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.plain-html-pipelines",
+			"file": "chunks/guides.bpmn-in-markdown.plain-html-pipelines.md",
+			"tokens": 488,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"plain",
+				"html",
+				"pipelines"
+			],
+			"entities": [
+				"renderBpmnInHtml",
+				"file.svg"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.options",
+			"file": "chunks/guides.bpmn-in-markdown.options.md",
+			"tokens": 231,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"options"
+			],
+			"entities": [
+				"renderBpmnInHtml",
+				"renderBpmnBlock",
+				"maxWidth",
+				"onError"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.theming",
+			"file": "chunks/guides.bpmn-in-markdown.theming.md",
+			"tokens": 179,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"theming"
+			],
+			"entities": [
+				"light-dark()"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.accessibility",
+			"file": "chunks/guides.bpmn-in-markdown.accessibility.md",
+			"tokens": 201,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"accessibility"
+			],
+			"entities": [
+				"file.messages"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.output-is-deterministic",
+			"file": "chunks/guides.bpmn-in-markdown.output-is-deterministic.md",
+			"tokens": 79,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"output",
+				"deterministic"
+			],
 			"entities": []
+		},
+		{
+			"id": "guides.bpmnlint",
+			"file": "chunks/guides.bpmnlint.md",
+			"tokens": 518,
+			"tags": [
+				"guides",
+				"bpmnlint"
+			],
+			"entities": [
+				"acme/no-foo",
+				"import()"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.casen-lint",
+			"file": "chunks/guides.bpmnlint.casen-lint.md",
+			"tokens": 433,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"casen",
+				"lint"
+			],
+			"entities": [
+				"bpmnlintRule",
+				"moddleExtensions"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.vs-code",
+			"file": "chunks/guides.bpmnlint.vs-code.md",
+			"tokens": 162,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"code"
+			],
+			"entities": [
+				"bpmnkit.lint.bpmnlintrc"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.rule-mapping",
+			"file": "chunks/guides.bpmnlint.rule-mapping.md",
+			"tokens": 983,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"rule",
+				"mapping"
+			],
+			"entities": [
+				"flow/unreachable",
+				"flow/ad-hoc-start-end-event",
+				"flow/conditional-event-no-condition",
+				"feel/missing-condition",
+				"feel/empty-condition",
+				"flow/no-end-event",
+				"flow/sub-process-no-end-event",
+				"flow/event-gateway-invalid",
+				"flow/event-sub-process-untyped-start",
+				"flow/multi-incoming-task",
+				"pattern/global-element",
+				"naming/missing-label"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.rule-mapping-2",
+			"file": "chunks/guides.bpmnlint.rule-mapping-2.md",
+			"tokens": 200,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"rule",
+				"mapping"
+			],
+			"entities": [
+				"bpmnlint/label-required"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility.md",
+			"tokens": 888,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility"
+			],
+			"entities": [
+				"@camunda/linting",
+				"optimize()",
+				"formId",
+				"bindingType",
+				"beforeAll",
+				"timeDate",
+				"uuid()",
+				"trim()",
+				"@camunda/feel-builtins",
+				"secrets.X",
+				"camunda.secrets.X",
+				"messageTtl"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility-with-a-.bpmnlintrc",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility-with-a-.bpmnlintrc.md",
+			"tokens": 154,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility",
+				"bpmnlintrc"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.bpmnlint.camunda-version-compatibility-what-is-covered",
+			"file": "chunks/guides.bpmnlint.camunda-version-compatibility-what-is-covered.md",
+			"tokens": 504,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"camunda",
+				"version",
+				"compatibility",
+				"covered"
+			],
+			"entities": [
+				"flow/link-event-mismatch",
+				"deploy/process-not-executable",
+				"feel-syntax/parse-error",
+				"agentic/tool-no-description",
+				"@bpmnkit/patterns"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.from-your-own-code",
+			"file": "chunks/guides.bpmnlint.from-your-own-code.md",
+			"tokens": 233,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"own",
+				"code"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"bpmnlintRule",
+				"@bpmnkit/core/node"
+			]
 		},
 		{
 			"id": "guides.building-processes.service-tasks",
@@ -1325,7 +2054,7 @@
 		{
 			"id": "guides.drop",
 			"file": "chunks/guides.drop.md",
-			"tokens": 163,
+			"tokens": 177,
 			"tags": [
 				"guides",
 				"drop"
@@ -1376,7 +2105,7 @@
 		{
 			"id": "guides.drop.reviewing-it-together",
 			"file": "chunks/guides.drop.reviewing-it-together.md",
-			"tokens": 634,
+			"tokens": 975,
 			"tags": [
 				"guides",
 				"drop",
@@ -1386,6 +2115,34 @@
 			"entities": [
 				"@bpmnkit/plugins"
 			]
+		},
+		{
+			"id": "guides.drop.reviewing-it-together-2",
+			"file": "chunks/guides.drop.reviewing-it-together-2.md",
+			"tokens": 242,
+			"tags": [
+				"guides",
+				"drop",
+				"reviewing",
+				"together"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.drop.reviewing-it-together-rate-limiting-the-edit-baton",
+			"file": "chunks/guides.drop.reviewing-it-together-rate-limiting-the-edit-baton.md",
+			"tokens": 139,
+			"tags": [
+				"guides",
+				"drop",
+				"reviewing",
+				"together",
+				"rate",
+				"limiting",
+				"edit",
+				"baton"
+			],
+			"entities": []
 		},
 		{
 			"id": "guides.drop.running-your-own",
@@ -1406,7 +2163,7 @@
 		{
 			"id": "guides.drop.what-drop-is-not",
 			"file": "chunks/guides.drop.what-drop-is-not.md",
-			"tokens": 136,
+			"tokens": 180,
 			"tags": [
 				"guides",
 				"drop",
@@ -1479,6 +2236,130 @@
 			"entities": []
 		},
 		{
+			"id": "guides.migrate-from-camunda-7",
+			"file": "chunks/guides.migrate-from-camunda-7.md",
+			"tokens": 224,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.who-this-is-for",
+			"file": "chunks/guides.migrate-from-camunda-7.who-this-is-for.md",
+			"tokens": 290,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7"
+			],
+			"entities": [
+				"sourceXml"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.what-is-converted",
+			"file": "chunks/guides.migrate-from-camunda-7.what-is-converted.md",
+			"tokens": 758,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"converted"
+			],
+			"entities": [
+				"com.acme.ShipOrderDelegate",
+				"shipOrderDelegate",
+				"delegateExpression",
+				"resultVariable",
+				"conditionExpression",
+				"asyncAfter",
+				"jobPriority",
+				"R5/PT5M",
+				"candidateUsers",
+				"candidateGroups",
+				"followUpDate",
+				"formRefBinding"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.what-is-not-converted-and-why",
+			"file": "chunks/guides.migrate-from-camunda-7.what-is-not-converted-and-why.md",
+			"tokens": 491,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"not",
+				"converted"
+			],
+			"entities": [
+				"correlationKey",
+				"singleEntry",
+				"candidateStarterGroups",
+				"candidateStarterUsers"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.juel-to-feel",
+			"file": "chunks/guides.migrate-from-camunda-7.juel-to-feel.md",
+			"tokens": 397,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"juel",
+				"feel"
+			],
+			"entities": [
+				"order.customer.vip",
+				"authenticatedUserId"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.before-and-after",
+			"file": "chunks/guides.migrate-from-camunda-7.before-and-after.md",
+			"tokens": 249,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"before",
+				"after"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.camunda-s-own-tools",
+			"file": "chunks/guides.migrate-from-camunda-7.camunda-s-own-tools.md",
+			"tokens": 233,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"camunda",
+				"own",
+				"tools"
+			],
+			"entities": [
+				"delegateExpression"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.sources",
+			"file": "chunks/guides.migrate-from-camunda-7.sources.md",
+			"tokens": 274,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"sources"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack",
+				"formId",
+				"bindingType",
+				"externalReference",
+				"businessId",
+				"propagateAllChildVariables",
+				"resultVariable"
+			]
+		},
+		{
 			"id": "guides.patterns",
 			"file": "chunks/guides.patterns.md",
 			"tokens": 304,
@@ -1520,13 +2401,15 @@
 		{
 			"id": "guides.patterns.using-patterns-from-the-cli",
 			"file": "chunks/guides.patterns.using-patterns-from-the-cli.md",
-			"tokens": 139,
+			"tokens": 225,
 			"tags": [
 				"guides",
 				"patterns",
 				"cli"
 			],
-			"entities": []
+			"entities": [
+				"@bpmnkit/patterns/templates"
+			]
 		},
 		{
 			"id": "guides.patterns.pattern-schema",
@@ -1556,6 +2439,56 @@
 			],
 			"entities": [
 				"@bpmnkit/patterns"
+			]
+		},
+		{
+			"id": "guides.process-documentation",
+			"file": "chunks/guides.process-documentation.md",
+			"tokens": 488,
+			"tags": [
+				"guides",
+				"process-documentation"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.process-documentation.from-the-editor",
+			"file": "chunks/guides.process-documentation.from-the-editor.md",
+			"tokens": 246,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"editor"
+			],
+			"entities": [
+				"initEditorHud"
+			]
+		},
+		{
+			"id": "guides.process-documentation.from-drop",
+			"file": "chunks/guides.process-documentation.from-drop.md",
+			"tokens": 273,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"drop"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.process-documentation.from-code",
+			"file": "chunks/guides.process-documentation.from-code.md",
+			"tokens": 344,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"code"
+			],
+			"entities": [
+				"documentationToHtml",
+				"documentationToMarkdown",
+				"documentationToDocx",
+				"exportSvg"
 			]
 		},
 		{
@@ -1600,6 +2533,19 @@
 			]
 		},
 		{
+			"id": "guides.simulation.time-travel-in-the-editor",
+			"file": "chunks/guides.simulation.time-travel-in-the-editor.md",
+			"tokens": 230,
+			"tags": [
+				"guides",
+				"simulation",
+				"time",
+				"travel",
+				"editor"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.simulation.dmn-decision-evaluation",
 			"file": "chunks/guides.simulation.dmn-decision-evaluation.md",
 			"tokens": 251,
@@ -1624,6 +2570,455 @@
 			],
 			"entities": [
 				"engine.getDeployedProcesses()"
+			]
+		},
+		{
+			"id": "guides.templates",
+			"file": "chunks/guides.templates.md",
+			"tokens": 136,
+			"tags": [
+				"guides",
+				"templates"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/patterns/templates",
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "guides.templates.what-is-in-the-gallery",
+			"file": "chunks/guides.templates.what-is-in-the-gallery.md",
+			"tokens": 261,
+			"tags": [
+				"guides",
+				"templates",
+				"gallery"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.templates.use-a-template",
+			"file": "chunks/guides.templates.use-a-template.md",
+			"tokens": 213,
+			"tags": [
+				"guides",
+				"templates",
+				"template"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.templates.run-the-scenarios",
+			"file": "chunks/guides.templates.run-the-scenarios.md",
+			"tokens": 619,
+			"tags": [
+				"guides",
+				"templates",
+				"run",
+				"scenarios"
+			],
+			"entities": [
+				"runScenario",
+				"@bpmnkit/engine",
+				"userTask",
+				"signatureStatus"
+			]
+		},
+		{
+			"id": "guides.templates.ai-templates-model-and-secrets",
+			"file": "chunks/guides.templates.ai-templates-model-and-secrets.md",
+			"tokens": 143,
+			"tags": [
+				"guides",
+				"templates",
+				"model",
+				"secrets"
+			],
+			"entities": [
+				"provider.anthropic.model.model",
+				"errorExpression"
+			]
+		},
+		{
+			"id": "guides.templates.from-code",
+			"file": "chunks/guides.templates.from-code.md",
+			"tokens": 137,
+			"tags": [
+				"guides",
+				"templates",
+				"code"
+			],
+			"entities": [
+				"build()",
+				"Bpmn.continueProcess"
+			]
+		},
+		{
+			"id": "guides.templates.add-a-template",
+			"file": "chunks/guides.templates.add-a-template.md",
+			"tokens": 103,
+			"tags": [
+				"guides",
+				"templates",
+				"add",
+				"template"
+			],
+			"entities": [
+				"packages/patterns/src/templates/",
+				"ProcessTemplate",
+				"index.ts",
+				"llms.txt"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents",
+			"file": "chunks/guides.testing-ai-agents.md",
+			"tokens": 145,
+			"tags": [
+				"guides",
+				"testing-ai-agents"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing",
+				"fromAi()",
+				"createProcessTest"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.how-the-mock-plays-the-connector",
+			"file": "chunks/guides.testing-ai-agents.how-the-mock-plays-the-connector.md",
+			"tokens": 451,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"mock",
+				"plays",
+				"connector"
+			],
+			"entities": [
+				"adHocSubProcessElements",
+				"fromAi()",
+				"mockAiAgent",
+				"toolCalls",
+				"adHocSubProcess",
+				"toolCall",
+				"toolCall.",
+				"run.completeJob",
+				"outputElement",
+				"toolCallResults",
+				"responseText",
+				"responseJson"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.a-worked-example",
+			"file": "chunks/guides.testing-ai-agents.a-worked-example.md",
+			"tokens": 695,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"worked",
+				"example"
+			],
+			"entities": [
+				"agent.responseJson.resolved",
+				"toHaveCalledTools",
+				"toolCalls",
+				"remainingTurns",
+				"cassette()",
+				"restore()"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.when-the-test-must-fail",
+			"file": "chunks/guides.testing-ai-agents.when-the-test-must-fail.md",
+			"tokens": 303,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"test",
+				"must",
+				"fail"
+			],
+			"entities": [
+				"run.error",
+				"toHaveCompleted()",
+				"fromAi()",
+				"fromAi",
+				"toolCall.",
+				"data.limits.maxModelCalls"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.record-and-replay",
+			"file": "chunks/guides.testing-ai-agents.record-and-replay.md",
+			"tokens": 440,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"record",
+				"replay"
+			],
+			"entities": [
+				"AgentCassette",
+				"mockAiAgent",
+				"request.tools",
+				"request.toolCallResults"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.tool-coverage",
+			"file": "chunks/guides.testing-ai-agents.tool-coverage.md",
+			"tokens": 154,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"tool",
+				"coverage"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.testing-ai-agents.limits",
+			"file": "chunks/guides.testing-ai-agents.limits.md",
+			"tokens": 152,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"limits"
+			],
+			"entities": [
+				"buildAiAgentSubProcess",
+				"activeElementsCollection",
+				"mockJob",
+				"errorExpression",
+				"agent.context",
+				"metrics.modelCalls"
+			]
+		},
+		{
+			"id": "guides.testing-processes",
+			"file": "chunks/guides.testing-processes.md",
+			"tokens": 282,
+			"tags": [
+				"guides",
+				"testing-processes"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing",
+				"resultVariable",
+				"resultExpression",
+				"toHaveCompleted()"
+			]
+		},
+		{
+			"id": "guides.testing-processes.install",
+			"file": "chunks/guides.testing-processes.install.md",
+			"tokens": 693,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"install"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing/vitest",
+				"createProcessTest",
+				"start()",
+				"completeJob",
+				"publishMessage",
+				"advanceTime",
+				"expect.extend",
+				"@types/jest"
+			]
+		},
+		{
+			"id": "guides.testing-processes.jobs",
+			"file": "chunks/guides.testing-processes.jobs.md",
+			"tokens": 355,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"jobs"
+			],
+			"entities": [
+				"userTask"
+			]
+		},
+		{
+			"id": "guides.testing-processes.connectors",
+			"file": "chunks/guides.testing-processes.connectors.md",
+			"tokens": 204,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"connectors"
+			],
+			"entities": [
+				"mockConnector",
+				"resultVariable",
+				"resultExpression",
+				"errorExpression"
+			]
+		},
+		{
+			"id": "guides.testing-processes.ai-agents",
+			"file": "chunks/guides.testing-processes.ai-agents.md",
+			"tokens": 235,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"agents"
+			],
+			"entities": [
+				"mockAiAgent",
+				"mockJob"
+			]
+		},
+		{
+			"id": "guides.testing-processes.messages",
+			"file": "chunks/guides.testing-processes.messages.md",
+			"tokens": 357,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"messages"
+			],
+			"entities": [
+				"publishMessage",
+				"ProcessTest",
+				"advanceTime",
+				"startTime",
+				"timeDate",
+				"vi.useFakeTimers()",
+				"dispose()",
+				"afterAll"
+			]
+		},
+		{
+			"id": "guides.testing-processes.coverage",
+			"file": "chunks/guides.testing-processes.coverage.md",
+			"tokens": 221,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"coverage"
+			],
+			"entities": [
+				"t.coverage()"
+			]
+		},
+		{
+			"id": "guides.testing-processes.matchers",
+			"file": "chunks/guides.testing-processes.matchers.md",
+			"tokens": 231,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"matchers"
+			],
+			"entities": [
+				"toHaveCompleted()",
+				"RegExp",
+				"mockAiAgent"
+			]
+		},
+		{
+			"id": "guides.testing-processes.what-the-simulator-does-not-execute",
+			"file": "chunks/guides.testing-processes.what-the-simulator-does-not-execute.md",
+			"tokens": 353,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"simulator",
+				"not",
+				"execute"
+			],
+			"entities": [
+				"run.throwError",
+				"ProcessTest",
+				"beforeAll",
+				"@bpmnkit/engine/wasm-runner",
+				"createProcessTest"
+			]
+		},
+		{
+			"id": "guides.testing-processes.see-also",
+			"file": "chunks/guides.testing-processes.see-also.md",
+			"tokens": 55,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"see",
+				"also"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.typed-workers",
+			"file": "chunks/guides.typed-workers.md",
+			"tokens": 413,
+			"tags": [
+				"guides",
+				"typed-workers"
+			],
+			"entities": [
+				"ProcessId",
+				"JobType",
+				"MessageName",
+				"SignalName",
+				"ErrorCode",
+				"EscalationCode",
+				"jobTypes",
+				"errorCodes"
+			]
+		},
+		{
+			"id": "guides.typed-workers.use-the-types-with-bpmnkit-worker-client",
+			"file": "chunks/guides.typed-workers.use-the-types-with-bpmnkit-worker-client.md",
+			"tokens": 196,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"bpmnkit",
+				"worker-client"
+			],
+			"entities": [
+				"JobTypes",
+				"createWorkerClient"
+			]
+		},
+		{
+			"id": "guides.typed-workers.use-the-types-with-another-client",
+			"file": "chunks/guides.typed-workers.use-the-types-with-another-client.md",
+			"tokens": 314,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"another",
+				"client"
+			],
+			"entities": [
+				"@camunda8/orchestration-cluster-api",
+				"JobTypes",
+				"io.camunda"
+			]
+		},
+		{
+			"id": "guides.typed-workers.how-the-types-are-derived",
+			"file": "chunks/guides.typed-workers.how-the-types-are-derived.md",
+			"tokens": 533,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"derived"
+			],
+			"entities": [
+				"ShipOrder",
+				"ShipOrder2"
 			]
 		},
 		{
@@ -1794,13 +3189,15 @@
 		{
 			"id": "guides.vscode.installing",
 			"file": "chunks/guides.vscode.installing.md",
-			"tokens": 140,
+			"tokens": 185,
 			"tags": [
 				"guides",
 				"vscode",
 				"installing"
 			],
-			"entities": []
+			"entities": [
+				"bpmnkit.bpmnkit"
+			]
 		},
 		{
 			"id": "guides.vscode.what-it-does-preview-beside-the-source",
@@ -1838,7 +3235,7 @@
 		{
 			"id": "guides.vscode.what-it-does-findings-in-the-problems-panel",
 			"file": "chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md",
-			"tokens": 150,
+			"tokens": 311,
 			"tags": [
 				"guides",
 				"vscode",
@@ -1847,7 +3244,9 @@
 				"panel"
 			],
 			"entities": [
-				"bpmnkit.lint.forceEngineRules"
+				"bpmnkit.lint.forceEngineRules",
+				"a/",
+				"b/"
 			]
 		},
 		{
@@ -1933,7 +3332,7 @@
 		{
 			"id": "guides.vscode.settings",
 			"file": "chunks/guides.vscode.settings.md",
-			"tokens": 241,
+			"tokens": 268,
 			"tags": [
 				"guides",
 				"vscode",
@@ -1945,6 +3344,7 @@
 				"onType",
 				"onSave",
 				"bpmnkit.lint.forceEngineRules",
+				"bpmnkit.lint.bpmnlintrc",
 				"bpmnkit.viewer.grid",
 				"bpmnkit.viewer.minimap",
 				"bpmnkit.simulation.enabled",
@@ -2455,7 +3855,7 @@
 		{
 			"id": "packages.connectors.applying-a-template",
 			"file": "chunks/packages.connectors.applying-a-template.md",
-			"tokens": 432,
+			"tokens": 503,
 			"tags": [
 				"packages",
 				"connectors",
@@ -2463,13 +3863,42 @@
 				"template"
 			],
 			"entities": [
-				"@bpmnkit/core"
+				"@bpmnkit/core",
+				"message.name"
+			]
+		},
+		{
+			"id": "packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources",
+			"file": "chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md",
+			"tokens": 667,
+			"tags": [
+				"packages",
+				"connectors",
+				"applying",
+				"element",
+				"inbound",
+				"linked",
+				"resources"
+			],
+			"entities": [
+				"applyTemplateToElement",
+				"correlationKey",
+				"inbound.type",
+				"linkName",
+				"applyElementTemplate",
+				"elementType",
+				"elementType.eventDefinition",
+				"appliesTo",
+				"message.name",
+				"message.correlationKey",
+				"linkedResource.RPAScript.resourceId",
+				"listConnectors"
 			]
 		},
 		{
 			"id": "packages.connectors.workspace-templates",
 			"file": "chunks/packages.connectors.workspace-templates.md",
-			"tokens": 189,
+			"tokens": 710,
 			"tags": [
 				"packages",
 				"connectors",
@@ -2483,7 +3912,12 @@
 				"listConnectors",
 				"searchConnectors",
 				"getTemplate",
-				"clearRegisteredTemplates"
+				"clearRegisteredTemplates",
+				"a/",
+				"a/.camunda/element-templates/",
+				"b/",
+				"workspaceRoot",
+				"diagramPath"
 			]
 		},
 		{
@@ -2504,7 +3938,7 @@
 		{
 			"id": "packages.connectors.api-reference",
 			"file": "chunks/packages.connectors.api-reference.md",
-			"tokens": 230,
+			"tokens": 262,
 			"tags": [
 				"packages",
 				"connectors",
@@ -3193,9 +4627,33 @@
 			]
 		},
 		{
+			"id": "packages.editor.internationalisation",
+			"file": "chunks/packages.editor.internationalisation.md",
+			"tokens": 837,
+			"tags": [
+				"packages",
+				"editor",
+				"internationalisation"
+			],
+			"entities": [
+				"@bpmnkit/editor/locales/de",
+				"@bpmnkit/editor/locales/es",
+				"@bpmnkit/editor/locales/fr",
+				"@bpmnkit/editor/locales/it",
+				"@bpmnkit/editor/locales/nl",
+				"@bpmnkit/editor/locales/pl",
+				"@bpmnkit/editor/locales/pt-BR",
+				"@bpmnkit/editor/locales/ja",
+				"@bpmnkit/editor/locales/zh-CN",
+				"import()",
+				"@bpmnkit/ui",
+				"createTranslate"
+			]
+		},
+		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
-			"tokens": 140,
+			"tokens": 955,
 			"tags": [
 				"packages",
 				"engine",
@@ -3203,13 +4661,34 @@
 			],
 			"entities": [
 				"@bpmnkit/engine",
-				"@bpmnkit/core"
+				"broadcastSignal",
+				"propagateAllParentVariables",
+				"propagateAllChildVariables",
+				"inputCollection",
+				"inputElement",
+				"outputCollection",
+				"outputElement",
+				"loopCardinality",
+				"completionCondition",
+				"numberOfInstances",
+				"numberOfActiveInstances"
 			]
+		},
+		{
+			"id": "packages.engine.overview-2",
+			"file": "chunks/packages.engine.overview-2.md",
+			"tokens": 22,
+			"tags": [
+				"packages",
+				"engine",
+				"overview"
+			],
+			"entities": []
 		},
 		{
 			"id": "packages.engine.installation",
 			"file": "chunks/packages.engine.installation.md",
-			"tokens": 346,
+			"tokens": 446,
 			"tags": [
 				"packages",
 				"engine",
@@ -3224,7 +4703,7 @@
 		{
 			"id": "packages.engine.processinstance",
 			"file": "chunks/packages.engine.processinstance.md",
-			"tokens": 161,
+			"tokens": 331,
 			"tags": [
 				"packages",
 				"engine",
@@ -3233,13 +4712,15 @@
 			"entities": [
 				"activeElements",
 				"beforeComplete",
-				"instance.cancel()"
+				"instance.cancel()",
+				"correlationKey",
+				"onChange"
 			]
 		},
 		{
 			"id": "packages.engine.variable-scoping",
 			"file": "chunks/packages.engine.variable-scoping.md",
-			"tokens": 148,
+			"tokens": 190,
 			"tags": [
 				"packages",
 				"engine",
@@ -3247,7 +4728,22 @@
 				"scoping"
 			],
 			"entities": [
-				"setLocal",
+				"inputElement",
+				"loopCounter",
+				"outputCollection"
+			]
+		},
+		{
+			"id": "packages.engine.timer-scheduling",
+			"file": "chunks/packages.engine.timer-scheduling.md",
+			"tokens": 89,
+			"tags": [
+				"packages",
+				"engine",
+				"timer",
+				"scheduling"
+			],
+			"entities": [
 				"setTimeout",
 				"@bpmnkit/engine"
 			]
@@ -3255,7 +4751,7 @@
 		{
 			"id": "packages.feel.overview",
 			"file": "chunks/packages.feel.overview.md",
-			"tokens": 152,
+			"tokens": 230,
 			"tags": [
 				"packages",
 				"feel",
@@ -3263,6 +4759,8 @@
 			],
 			"entities": [
 				"@bpmnkit/feel",
+				"packages/feel/tests/tck.test.ts",
+				"packages/feel/tests/camunda-parity.test.ts",
 				"@bpmnkit/core",
 				"@bpmnkit/engine"
 			]
@@ -3283,7 +4781,7 @@
 		{
 			"id": "packages.feel.unary-tests",
 			"file": "chunks/packages.feel.unary-tests.md",
-			"tokens": 425,
+			"tokens": 434,
 			"tags": [
 				"packages",
 				"feel",
@@ -3291,6 +4789,23 @@
 				"tests"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.feel.camunda-parity",
+			"file": "chunks/packages.feel.camunda-parity.md",
+			"tokens": 583,
+			"tags": [
+				"packages",
+				"feel",
+				"camunda",
+				"parity"
+			],
+			"entities": [
+				"fromAi",
+				"packages/feel/tests/camunda-parity.test.ts",
+				"@bpmnkit/camunda-docspack",
+				"now()"
+			]
 		},
 		{
 			"id": "packages.feel.formatting-and-highlighting",
@@ -3344,6 +4859,99 @@
 			],
 			"entities": [
 				"@bpmnkit/feel"
+			]
+		},
+		{
+			"id": "packages.operate",
+			"file": "chunks/packages.operate.md",
+			"tokens": 186,
+			"tags": [
+				"packages",
+				"operate"
+			],
+			"entities": [
+				"@bpmnkit/operate",
+				"@bpmnkit/proxy"
+			]
+		},
+		{
+			"id": "packages.operate.what-it-does-and-what-it-does-not-do",
+			"file": "chunks/packages.operate.what-it-does-and-what-it-does-not-do.md",
+			"tokens": 484,
+			"tags": [
+				"packages",
+				"operate",
+				"not"
+			],
+			"entities": [
+				"@bpmnkit/operate"
+			]
+		},
+		{
+			"id": "packages.operate.installation",
+			"file": "chunks/packages.operate.installation.md",
+			"tokens": 488,
+			"tags": [
+				"packages",
+				"operate",
+				"installation"
+			],
+			"entities": [
+				"application.yaml"
+			]
+		},
+		{
+			"id": "packages.operate.connection-cors-and-security-notes",
+			"file": "chunks/packages.operate.connection-cors-and-security-notes.md",
+			"tokens": 384,
+			"tags": [
+				"packages",
+				"operate",
+				"connection",
+				"cors",
+				"security",
+				"notes"
+			],
+			"entities": [
+				"proxyUrl"
+			]
+		},
+		{
+			"id": "packages.operate.api-reference",
+			"file": "chunks/packages.operate.api-reference.md",
+			"tokens": 494,
+			"tags": [
+				"packages",
+				"operate",
+				"api",
+				"reference"
+			],
+			"entities": [
+				"localStorage",
+				"options.theme",
+				"ProcessInstanceResult",
+				"IncidentResult",
+				"JobSearchResult",
+				"UserTaskResult",
+				"VariableResult",
+				"ProcessDefinitionResult",
+				"ProfileInfo",
+				"DashboardData",
+				"createInstanceDetailView",
+				"createDefinitionDetailView"
+			]
+		},
+		{
+			"id": "packages.operate.limits",
+			"file": "chunks/packages.operate.limits.md",
+			"tokens": 126,
+			"tags": [
+				"packages",
+				"operate",
+				"limits"
+			],
+			"entities": [
+				"pollInterval"
 			]
 		},
 		{
@@ -3447,7 +5055,7 @@
 		{
 			"id": "packages.worker-client.client.poll-jobtype-options",
 			"file": "chunks/packages.worker-client.client.poll-jobtype-options.md",
-			"tokens": 265,
+			"tokens": 462,
 			"tags": [
 				"packages",
 				"worker-client",
@@ -3456,6 +5064,8 @@
 				"options"
 			],
 			"entities": [
+				"requestTimeout",
+				"onError",
 				"maxJobs",
 				"ActivatedJob"
 			]
@@ -3463,7 +5073,7 @@
 		{
 			"id": "packages.worker-client.job.complete-variables",
 			"file": "chunks/packages.worker-client.job.complete-variables.md",
-			"tokens": 171,
+			"tokens": 159,
 			"tags": [
 				"packages",
 				"worker-client",
@@ -3471,6 +5081,22 @@
 				"variables"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.worker-client.job.throwerror-errorcode-message-variables",
+			"file": "chunks/packages.worker-client.job.throwerror-errorcode-message-variables.md",
+			"tokens": 213,
+			"tags": [
+				"packages",
+				"worker-client",
+				"job.throwerror",
+				"errorcode",
+				"message",
+				"variables"
+			],
+			"entities": [
+				"throwError"
+			]
 		},
 		{
 			"id": "packages.worker-client.oauth2-camunda-saas",

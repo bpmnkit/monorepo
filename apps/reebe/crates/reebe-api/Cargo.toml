@@ -28,7 +28,6 @@ metrics-exporter-prometheus = { workspace = true }
 reebe-protocol = { workspace = true }
 reebe-engine = { workspace = true, default-features = false }
 reebe-db = { workspace = true, default-features = false }
-reebe-dmn = { workspace = true }
 reebe-feel = { workspace = true }
 
 [features]

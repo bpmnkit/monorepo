@@ -9,20 +9,13 @@ await job.complete({ approved: true, reviewedAt: new Date().toISOString() })
 
 ## `job.fail(message, retries?)`
 
-Marks the job as failed. Zeebe will retry (or raise an incident if retries reach zero).
-`retries` defaults to `0` if not provided — pass `job.retries - 1` to decrement.
+Marks the job as failed. `retries` is how many retries the job has left afterwards. It
+defaults to `job.retries - 1` (never below `0`), so Zeebe retries until the task's retries are
+used up and then raises an incident. Pass `0` to raise the incident at once.
 
 ```typescript
-await job.fail("External API returned 503", job.retries - 1)
-```
-
-
-## `job.throwError(errorCode, message, variables?)`
-
-Throws a BPMN error that can be caught by an error boundary event on the task in the diagram.
-
-```typescript
-await job.throwError("PAYMENT_DECLINED", "Card declined by issuer", { code: "05" })
+await job.fail("External API returned 503")        // one retry fewer
+await job.fail("Invalid customer record", 0)       // incident now: retrying will not help
 ```
 
 ---

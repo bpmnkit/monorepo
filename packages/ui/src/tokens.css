@@ -173,3 +173,20 @@
 	--bpmnkit-ds-panel-width: 340px;
 	--bpmnkit-ds-topbar-height: 46px;
 }
+
+/* CJK fallback, keyed off the lang attribute on the page or any container.
+   Neither brand face has CJK glyphs, and Japanese and Chinese draw the same Han
+   characters differently — so each script names its own faces before the
+   generic family picks one. */
+:lang(ja) {
+	--bpmnkit-ds-font-sans: "Space Grotesk", "Helvetica Neue", Helvetica, "Hiragino Sans",
+		"Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif;
+	--bpmnkit-ds-font-mono: "Space Mono", "JetBrains Mono", ui-monospace, SFMono-Regular,
+		"Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", monospace;
+}
+:lang(zh) {
+	--bpmnkit-ds-font-sans: "Space Grotesk", "Helvetica Neue", Helvetica, "PingFang SC",
+		"Microsoft YaHei", "Noto Sans SC", sans-serif;
+	--bpmnkit-ds-font-mono: "Space Mono", "JetBrains Mono", ui-monospace, SFMono-Regular,
+		"PingFang SC", "Microsoft YaHei", "Noto Sans SC", monospace;
+}

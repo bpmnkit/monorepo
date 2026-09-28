@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "../../proxy-rs/target/release/ai-server.exe": "ai-server.exe",
+      "../../proxy-rs/target/release/bpmn-mcp.exe": "bpmn-mcp.exe"
+    }
+  }
+}

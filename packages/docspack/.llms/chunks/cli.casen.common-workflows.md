@@ -1,22 +1,4 @@
-# casen CLI — Connection Profiles
-
-A profile stores the connection details for a Camunda cluster:
-
-```sh
-# Add a new profile
-casen profile add
-
-# You'll be prompted for:
-# Name: my-saas-cluster
-# Base URL: https://api.cloud.camunda.io
-# Auth type: oauth2 | bearer | none
-# Client ID, Client Secret, Audience, Token URL (for oauth2)
-```
-
-Profiles are saved to `~/.casen/profiles.json`.
-
-
-## Common Workflows
+# casen CLI — Common Workflows
 
 ### List process definitions
 

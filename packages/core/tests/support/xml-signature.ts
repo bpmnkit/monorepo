@@ -18,7 +18,8 @@ export type XmlSignature = Map<string, number>
 
 interface XmlTag {
 	name: string
-	attributes: string[]
+	/** Attribute names and values, in document order. */
+	attributes: Array<[name: string, value: string]>
 	selfClosing: boolean
 	closing: boolean
 }
@@ -26,19 +27,67 @@ interface XmlTag {
 /** Namespace prefixes whose elements are diagram interchange, not model content. */
 export const DI_PREFIXES = new Set(["bpmndi", "dc", "di", "bioc", "color"])
 
+/**
+ * The prefix every signature uses for a well-known namespace, whatever prefix the
+ * document itself declared.
+ *
+ * A prefix is a local alias, not content: `<process>` under a default BPMN
+ * namespace, `<semantic:process>` and `<bpmn:process>` are the same element, and a
+ * writer that settles on one spelling has lost nothing. Names in any other
+ * namespace are keyed by the URI itself, so a rename there is invisible too.
+ */
+const CANONICAL_PREFIXES: Record<string, string> = {
+	"http://www.omg.org/spec/BPMN/20100524/MODEL": "bpmn",
+	"http://www.omg.org/spec/BPMN/20100524/DI": "bpmndi",
+	"http://www.omg.org/spec/DD/20100524/DC": "dc",
+	"http://www.omg.org/spec/DD/20100524/DI": "di",
+	"http://www.w3.org/2001/XMLSchema-instance": "xsi",
+	"http://camunda.org/schema/zeebe/1.0": "zeebe",
+	"http://camunda.org/schema/modeler/1.0": "modeler",
+	"http://bpmn.io/schema/bpmn/biocolor/1.0": "bioc",
+	"http://www.omg.org/spec/BPMN/non-normative/color/1.0": "color",
+}
+
+type Scope = Map<string, string>
+
+/** The namespace URI a prefix (`""` for the default namespace) resolves to. */
+function resolvePrefix(scopes: Scope[], prefix: string): string | undefined {
+	for (let index = scopes.length - 1; index >= 0; index--) {
+		const uri = scopes[index]?.get(prefix)
+		if (uri !== undefined) return uri
+	}
+	return undefined
+}
+
+/**
+ * Rewrites a qualified name to its canonical spelling. Unprefixed attributes are
+ * in no namespace and stay as they are; an element or prefixed name whose prefix
+ * is not declared also stays as written, so a malformed document still diffs.
+ */
+function canonicalName(scopes: Scope[], name: string, isAttribute: boolean): string {
+	const colon = name.indexOf(":")
+	if (colon === -1 && isAttribute) return name
+	const prefix = colon === -1 ? "" : name.slice(0, colon)
+	const local = colon === -1 ? name : name.slice(colon + 1)
+	const uri = resolvePrefix(scopes, prefix)
+	if (uri === undefined) return name
+	const canonical = CANONICAL_PREFIXES[uri]
+	return canonical === undefined ? `{${uri}}${local}` : `${canonical}:${local}`
+}
+
 function prefixOf(qualifiedName: string): string {
 	const colon = qualifiedName.indexOf(":")
 	return colon === -1 ? "" : qualifiedName.slice(0, colon)
 }
 
 /**
- * Splits an element's attribute section into attribute names.
+ * Splits an element's attribute section into names and values.
  *
  * Values may contain `>`, `/`, whitespace and the other quote character, so the
  * scan tracks quoting rather than splitting on whitespace.
  */
-function readAttributeNames(source: string): string[] {
-	const names: string[] = []
+function readAttributes(source: string): Array<[string, string]> {
+	const names: Array<[string, string]> = []
 	let index = 0
 
 	while (index < source.length) {
@@ -51,21 +100,23 @@ function readAttributeNames(source: string): string[] {
 		while (index < source.length && /\s/.test(source[index] as string)) index++
 		if (source[index] !== "=") {
 			// Valueless attribute: not legal in XML, but do not lose the name.
-			names.push(name)
+			names.push([name, ""])
 			continue
 		}
 		index++
 		while (index < source.length && /\s/.test(source[index] as string)) index++
 
 		const quote = source[index]
+		const valueStart = quote === '"' || quote === "'" ? index + 1 : index
 		if (quote === '"' || quote === "'") {
 			index++
 			while (index < source.length && source[index] !== quote) index++
+			names.push([name, source.slice(valueStart, index)])
 			index++
 		} else {
 			while (index < source.length && !/\s/.test(source[index] as string)) index++
+			names.push([name, source.slice(valueStart, index)])
 		}
-		names.push(name)
 	}
 
 	return names
@@ -140,7 +191,7 @@ function scan(xml: string, onTag: (tag: XmlTag) => void, onText: (text: string) 
 		if (name.length > 0) {
 			onTag({
 				name,
-				attributes: closing ? [] : readAttributeNames(nameEnd === -1 ? "" : body.slice(nameEnd)),
+				attributes: closing ? [] : readAttributes(nameEnd === -1 ? "" : body.slice(nameEnd)),
 				selfClosing,
 				closing,
 			})
@@ -170,6 +221,7 @@ export interface SignatureOptions {
 export function xmlSignature(xml: string, options: SignatureOptions = {}): XmlSignature {
 	const signature: XmlSignature = new Map()
 	const stack: string[] = []
+	const scopes: Scope[] = []
 	let pendingText: { name: string; text: string } | null = null
 
 	const bump = (key: string): void => {
@@ -194,23 +246,35 @@ export function xmlSignature(xml: string, options: SignatureOptions = {}): XmlSi
 
 			if (tag.closing) {
 				stack.pop()
+				scopes.pop()
 				return
 			}
 
-			if (!ignored(tag.name)) {
-				bump(`element:${tag.name}`)
-				for (const attribute of tag.attributes) {
-					if (attribute.startsWith("xmlns")) continue
-					bump(`attr:${tag.name}@${attribute}`)
+			const scope: Scope = new Map()
+			for (const [attribute, value] of tag.attributes) {
+				if (attribute === "xmlns") scope.set("", value)
+				else if (attribute.startsWith("xmlns:")) scope.set(attribute.slice(6), value)
+			}
+			scopes.push(scope)
+			const name = canonicalName(scopes, tag.name, false)
+
+			if (!ignored(name)) {
+				bump(`element:${name}`)
+				for (const [attribute] of tag.attributes) {
+					if (attribute === "xmlns" || attribute.startsWith("xmlns:")) continue
+					bump(`attr:${name}@${canonicalName(scopes, attribute, true)}`)
 				}
 				const parent = stack[stack.length - 1]
-				if (parent !== undefined) bump(`child:${parent} > ${tag.name}`)
+				if (parent !== undefined) bump(`child:${parent} > ${name}`)
 			}
 
-			if (tag.selfClosing) return
+			if (tag.selfClosing) {
+				scopes.pop()
+				return
+			}
 
-			stack.push(tag.name)
-			pendingText = { name: tag.name, text: "" }
+			stack.push(name)
+			pendingText = { name, text: "" }
 		},
 		(text) => {
 			if (pendingText !== null) pendingText.text += text

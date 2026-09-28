@@ -1,4 +1,5 @@
 import type { BpmnSequenceFlow } from "../../bpmn/bpmn-model.js"
+import { type Port, routeOrthogonal, sidePorts } from "../orthogonal.js"
 import type { Bounds, LayoutEdge, Waypoint } from "../types.js"
 import type { BandLayout } from "./bands.js"
 import type { SemanticGraph } from "./graph.js"
@@ -173,7 +174,10 @@ export function routeFlows(
 		// Going around costs bends and length, so it has to save more than one
 		// crossing to be worth taking.
 		const cost = crossingCount(around, ctx) + DETOUR_PENALTY
-		const waypoints = item.direct && item.direct.crossings <= cost ? item.direct.waypoints : around
+		const chosen = item.direct && item.direct.crossings <= cost ? item.direct.waypoints : around
+		const waypoints = blocked(ctx, chosen, item.flow.sourceRef, item.flow.targetRef)
+			? (searchRoute(ctx, item.flow, item.source, item.target) ?? chosen)
+			: chosen
 		commit(ctx, routed, item.flow.id, waypoints)
 	}
 
@@ -193,6 +197,45 @@ export function routeFlows(
 	}
 
 	return edges
+}
+
+/**
+ * Last resort for an edge every candidate route runs through a shape: a full
+ * obstacle-aware search. Leaving right and entering left stay preferred, so the
+ * result still reads left to right where the diagram has room for it.
+ */
+function searchRoute(
+	ctx: RouteContext,
+	flow: BpmnSequenceFlow,
+	source: Bounds,
+	target: Bounds,
+): Waypoint[] | null {
+	const fromBoundary = ctx.graph.byId.get(flow.sourceRef)?.type === "boundaryEvent"
+	let from: Port[]
+	if (fromBoundary) {
+		// A boundary event never leaves into its host: only the outward side.
+		const host = ctx.bounds.get(hostOf(ctx.graph, flow.sourceRef))
+		const onTop = host !== undefined && source.y + source.height / 2 <= host.y + 1
+		from = sidePorts(source, {
+			top: onTop ? 0 : Number.POSITIVE_INFINITY,
+			bottom: onTop ? Number.POSITIVE_INFINITY : 0,
+			left: Number.POSITIVE_INFINITY,
+			right: Number.POSITIVE_INFINITY,
+		})
+	} else {
+		from = sidePorts(source, { right: 0, top: 20, bottom: 20, left: 80 })
+	}
+	const to = sidePorts(target, { left: 0, top: 20, bottom: 20, right: 80 })
+	const obstacles: Bounds[] = []
+	for (const [id, b] of ctx.bounds) {
+		if (id !== flow.sourceRef && id !== flow.targetRef) obstacles.push(b)
+	}
+	return routeOrthogonal({
+		from,
+		to,
+		obstacles,
+		crossings: (a, b) => crossingCount([a, b], ctx),
+	})
 }
 
 /** Record a chosen route so later edges can steer around it. */
@@ -494,8 +537,11 @@ function detour(
 	const goesDown = base > middle
 	const corridorY = reserve(ctx, left, right, base, goesDown ? 1 : -1)
 
-	const exitY = goesDown ? source.y + source.height : source.y
-	const entryY = goesDown ? target.y + target.height : target.y
+	// Each end faces the corridor on its own: a corridor between the two runs
+	// below one shape and above the other, and docking on the far side would
+	// cut straight across the shape.
+	const exitY = corridorY > from.y ? source.y + source.height : source.y
+	const entryY = corridorY > to.y ? target.y + target.height : target.y
 
 	// Leaving through the source's own top or bottom keeps the route out of the
 	// horizontal corridor its neighbours flow along; the gutter variant is the

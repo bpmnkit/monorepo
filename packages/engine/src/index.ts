@@ -3,7 +3,15 @@ export type { StartOptions, EngineOptions } from "./engine.js"
 export { EnvSecretResolver, resolveSecretString } from "./secrets.js"
 export type { SecretResolver } from "./secrets.js"
 export { ProcessInstance } from "./instance.js"
-export type { ProcessEvent, Job, JobHandler } from "./types.js"
+export type {
+	AdHocActivateElement,
+	AdHocSubProcessJobResult,
+	Job,
+	JobHandler,
+	JobResult,
+	ProcessEvent,
+} from "./types.js"
+export type { AdHocSubProcessElement, AdHocToolParameter } from "./ad-hoc.js"
 export { VariableStore } from "./variables.js"
 export { evaluateDecision } from "./dmn.js"
 export { scheduleTimer, parseDurationMs } from "./timers.js"

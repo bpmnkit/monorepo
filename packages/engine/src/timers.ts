@@ -1,6 +1,33 @@
 import type { BpmnTimerEventDefinition } from "@bpmnkit/core"
 
 /**
+ * The time source every engine timer is scheduled on. The default is the real
+ * clock; `@bpmnkit/engine/testing` swaps in a virtual one so tests can advance
+ * time instead of waiting for it.
+ */
+export interface TimerClock {
+	now(): number
+	setTimeout(callback: () => void, ms: number): unknown
+	clearTimeout(handle: unknown): void
+}
+
+const realClock: TimerClock = {
+	now: () => Date.now(),
+	setTimeout: (callback, ms) => setTimeout(callback, ms),
+	clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+}
+
+let clock: TimerClock = realClock
+
+/**
+ * Route timers scheduled from now on through `next` (or back to the real clock
+ * with `undefined`). Timers already scheduled stay on the clock they started on.
+ */
+export function setTimerClock(next: TimerClock | undefined): void {
+	clock = next ?? realClock
+}
+
+/**
  * Schedule a timer from a BPMN timer event definition.
  * Supports ISO 8601 durations (PT2M), dates (2025-06-01T00:00:00Z),
  * and cycles (R3/PT5S — fires N times or indefinitely when R/...).
@@ -17,21 +44,24 @@ export function scheduleTimer(def: BpmnTimerEventDefinition, callback: () => voi
 		return scheduleCycle(def.timeCycle, callback)
 	}
 	// No timer definition — fire immediately
-	const id = setTimeout(callback, 0)
-	return () => clearTimeout(id)
+	const c = clock
+	const id = c.setTimeout(callback, 0)
+	return () => c.clearTimeout(id)
 }
 
 function scheduleAfterDuration(duration: string, cb: () => void): () => void {
 	const ms = parseDurationMs(duration)
-	const id = setTimeout(cb, ms)
-	return () => clearTimeout(id)
+	const c = clock
+	const id = c.setTimeout(cb, ms)
+	return () => c.clearTimeout(id)
 }
 
 function scheduleAtDate(dateStr: string, cb: () => void): () => void {
 	const target = new Date(dateStr).getTime()
-	const ms = Math.max(0, target - Date.now())
-	const id = setTimeout(cb, ms)
-	return () => clearTimeout(id)
+	const c = clock
+	const ms = Math.max(0, target - c.now())
+	const id = c.setTimeout(cb, ms)
+	return () => c.clearTimeout(id)
 }
 
 function scheduleCycle(cycle: string, cb: () => void): () => void {
@@ -46,23 +76,24 @@ function scheduleCycle(cycle: string, cb: () => void): () => void {
 		countStr === "" || countStr === undefined ? Number.POSITIVE_INFINITY : Number(countStr)
 	const ms = parseDurationMs(durationStr)
 
+	const c = clock
 	let fired = 0
 	let cancelled = false
-	let timerId: ReturnType<typeof setTimeout> | undefined
+	let timerId: unknown
 
 	const fire = (): void => {
 		if (cancelled) return
 		cb()
 		fired++
 		if (fired < maxFires) {
-			timerId = setTimeout(fire, ms)
+			timerId = c.setTimeout(fire, ms)
 		}
 	}
 
-	timerId = setTimeout(fire, ms)
+	timerId = c.setTimeout(fire, ms)
 	return () => {
 		cancelled = true
-		if (timerId !== undefined) clearTimeout(timerId)
+		if (timerId !== undefined) c.clearTimeout(timerId)
 	}
 }
 

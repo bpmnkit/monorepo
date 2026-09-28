@@ -211,11 +211,11 @@ mod tests {
     }
 
     #[test]
-    fn test_evaluate_feel_returns_error_on_undefined_variable() {
+    fn test_evaluate_feel_undefined_variable_is_null() {
         let vars = serde_json::json!({});
-        // Accessing an undefined variable with strict evaluation should return an error
-        let result = crate::evaluate_feel("=nonexistent + 1", &vars);
-        assert!(result.is_err(), "Should return error for undefined variable");
+        // As in Zeebe, a variable that does not exist is null, and so is arithmetic on it.
+        let result = crate::evaluate_feel("=nonexistent + 1", &vars).unwrap();
+        assert_eq!(result, serde_json::Value::Null);
     }
 
     // ---- FEEL integration tests (direct API) ----

@@ -25,6 +25,7 @@ import { computeDiagramBounds } from "@bpmnkit/canvas"
 import type { CanvasApi, CanvasPlugin, Theme } from "@bpmnkit/canvas"
 import { Bpmn } from "@bpmnkit/core"
 import type { BpmnDefinitions } from "@bpmnkit/core"
+import { type Translate, defaultTranslate } from "@bpmnkit/editor"
 import { injectCommandPaletteStyles } from "./css.js"
 
 export {
@@ -67,6 +68,11 @@ export interface CommandPaletteOptions {
 	 * Defaults to `https://bpmnkit.com/docs`.
 	 */
 	docsBaseUrl?: string
+	/**
+	 * Translation hook for the palette's own commands and chrome — pass the
+	 * editor's. Commands registered through `addCommands` are shown as given.
+	 */
+	translate?: Translate
 }
 
 /**
@@ -298,6 +304,7 @@ function resolveTheme(theme: Theme): "dark" | "light" {
 export function createCommandPalettePlugin(
 	options: CommandPaletteOptions = {},
 ): CommandPalettePlugin {
+	const t = options.translate ?? defaultTranslate
 	let _api: CanvasApi | null = null
 	let _overlayEl: HTMLDivElement | null = null
 	let _inputEl: HTMLInputElement | null = null
@@ -330,8 +337,8 @@ export function createCommandPalettePlugin(
 		return [
 			{
 				id: "toggle-theme",
-				title: "Toggle Theme",
-				description: "Cycle: dark → light → auto",
+				title: t("Toggle Theme"),
+				description: t("Cycle: dark → light → auto"),
 				action() {
 					const cur = api.getTheme()
 					const next: Theme = cur === "dark" ? "light" : cur === "light" ? "auto" : "dark"
@@ -341,7 +348,7 @@ export function createCommandPalettePlugin(
 			},
 			{
 				id: "zoom-100",
-				title: "Zoom to 100%",
+				title: t("Zoom to 100%"),
 				action() {
 					const vp = api.getViewport()
 					const rect = api.svg.getBoundingClientRect()
@@ -353,7 +360,7 @@ export function createCommandPalettePlugin(
 			},
 			{
 				id: "zoom-fit",
-				title: "Zoom to Fit",
+				title: t("Zoom to Fit"),
 				action() {
 					if (!_lastDefs) {
 						closePalette()
@@ -381,8 +388,10 @@ export function createCommandPalettePlugin(
 			},
 			{
 				id: "export-bpmn",
-				title: "Export as BPMN XML",
-				description: `Download as ${options.exportFilename ?? "diagram.bpmn"}`,
+				title: t("Export as BPMN XML"),
+				description: t("Download as {filename}", {
+					filename: options.exportFilename ?? "diagram.bpmn",
+				}),
 				action() {
 					if (!_lastDefs) {
 						closePalette()
@@ -401,8 +410,8 @@ export function createCommandPalettePlugin(
 			},
 			{
 				id: "zen-mode",
-				title: _isZenMode ? "Exit Zen Mode" : "Zen Mode",
-				description: _isZenMode ? "Restore grid and toolbars" : "Hide grid and toolbars",
+				title: t(_isZenMode ? "Exit Zen Mode" : "Zen Mode"),
+				description: t(_isZenMode ? "Restore grid and toolbars" : "Hide grid and toolbars"),
 				action() {
 					toggleZenMode()
 					closePalette()
@@ -475,7 +484,7 @@ export function createCommandPalettePlugin(
 		return entries.map((e) => ({
 			kind: "doc" as const,
 			title: e.title,
-			description: "docs ↗",
+			description: `${t("docs")} ↗`,
 			action() {
 				window.open(baseUrl + e.path, "_blank", "noopener")
 				closePalette()
@@ -487,13 +496,13 @@ export function createCommandPalettePlugin(
 		const ready = _proxyReady
 		const description =
 			ready === null
-				? "Checking server…"
+				? t("Checking server…")
 				: ready
-					? "Send to AI assistant  ↵"
-					: "npx @bpmnkit/proxy  —  then reopen"
+					? `${t("Send to AI assistant")}  ↵`
+					: `npx @bpmnkit/proxy  —  ${t("then reopen")}`
 		return {
 			kind: "ai" as const,
-			title: `Ask AI: "${query.trim()}"`,
+			title: t('Ask AI: "{query}"', { query: query.trim() }),
 			description,
 			disabled: ready !== true,
 			action() {
@@ -530,16 +539,16 @@ export function createCommandPalettePlugin(
 		if (cmdItems.length > 0) sections.push({ items: cmdItems })
 
 		const docItems = buildDocItems(query)
-		if (docItems.length > 0) sections.push({ label: "Documentation", items: docItems })
+		if (docItems.length > 0) sections.push({ label: t("Documentation"), items: docItems })
 
 		if (options.onAskAI && query.trim().length > 0) {
-			sections.push({ label: "AI", items: [buildAiItem(query)] })
+			sections.push({ label: t("AI"), items: [buildAiItem(query)] })
 		}
 
 		// Show "Commands" label only when there are other sections too
 		const first = sections[0]
 		if (sections.length > 1 && first && !first.label && first.items.length > 0) {
-			first.label = "Commands"
+			first.label = t("Commands")
 		}
 
 		return sections
@@ -569,7 +578,7 @@ export function createCommandPalettePlugin(
 		)
 		overlay.setAttribute("role", "dialog")
 		overlay.setAttribute("aria-modal", "true")
-		overlay.setAttribute("aria-label", "Command palette")
+		overlay.setAttribute("aria-label", t("Command palette"))
 
 		const panel = document.createElement("div")
 		panel.className = "bpmnkit-palette-panel"
@@ -586,7 +595,7 @@ export function createCommandPalettePlugin(
 		const input = document.createElement("input")
 		input.type = "text"
 		input.className = "bpmnkit-palette-input"
-		input.placeholder = "Search commands or docs\u2026"
+		input.placeholder = t("Search commands or docs…")
 		input.setAttribute("autocomplete", "off")
 		input.setAttribute("spellcheck", "false")
 		searchRow.appendChild(input)
@@ -594,6 +603,7 @@ export function createCommandPalettePlugin(
 		const kbdHint = document.createElement("span")
 		kbdHint.className = "bpmnkit-palette-kbd"
 		const kbdKey = document.createElement("kbd")
+		// i18n-ignore: the key's name as printed on the keyboard
 		kbdKey.textContent = "Esc"
 		kbdHint.appendChild(kbdKey)
 		searchRow.appendChild(kbdHint)
@@ -646,7 +656,7 @@ export function createCommandPalettePlugin(
 		const prev = _viewStack[_viewStack.length - 1]
 		if (_inputEl) {
 			_inputEl.value = ""
-			_inputEl.placeholder = prev?.placeholder ?? "Search commands or docs\u2026"
+			_inputEl.placeholder = prev?.placeholder ?? t("Search commands or docs…")
 		}
 		_focusedIndex = 0
 		renderList("")
@@ -667,8 +677,8 @@ export function createCommandPalettePlugin(
 			empty.className = "bpmnkit-palette-empty"
 			const activeView = _viewStack[_viewStack.length - 1]
 			empty.textContent = activeView?.onConfirm
-				? "Press \u21b5 to confirm, Esc to go back"
-				: "No commands found"
+				? t("Press ↵ to confirm, Esc to go back")
+				: t("No commands found")
 			_listEl.appendChild(empty)
 			return
 		}
@@ -853,7 +863,7 @@ export function createCommandPalettePlugin(
 			if (!_isOpen) return
 			const view: PushedView = {
 				cmds,
-				placeholder: opts.placeholder ?? "Select\u2026",
+				placeholder: opts.placeholder ?? t("Select…"),
 				onConfirm: opts.onConfirm,
 			}
 			_viewStack.push(view)

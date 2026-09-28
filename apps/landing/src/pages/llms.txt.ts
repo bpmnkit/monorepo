@@ -1,3 +1,4 @@
+import { ALL_TEMPLATES } from "@bpmnkit/patterns/templates"
 import type { APIRoute } from "astro"
 import { CODE, FEATURES, PACKAGES, SITE } from "../data/content"
 import { getDocsNav } from "../data/docs-nav"
@@ -18,6 +19,10 @@ async function documentationList(): Promise<string> {
 }
 
 const featureList = FEATURES.map((f) => `- ${f}`).join("\n")
+
+const templateList = ALL_TEMPLATES.map(
+	(t) => `- [${t.title}](${SITE.url}/templates/${t.id}): ${t.description}`,
+).join("\n")
 
 async function build(): Promise<string> {
 	return `\
@@ -43,8 +48,15 @@ ${CODE.createProcess}
 
 ${await documentationList()}
 
+## Process templates
+
+Runnable Camunda 8 templates with test scenarios. \`casen template use <id>\` writes one into a project.
+
+${templateList}
+
 ## Links
 
+- [Template gallery](${SITE.url}/templates): Runnable process templates, including AI agent patterns
 - [Live Editor](${SITE.url}/editor): Visual BPMN editor with AI-assisted editing and process simulation
 - [GitHub](${SITE.github}): Source code, issues, and contribution guide
 - [npm](${SITE.npm}): Package registry

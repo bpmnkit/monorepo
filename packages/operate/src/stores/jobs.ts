@@ -16,7 +16,7 @@ export class JobsStore extends Store<JobsPayload> {
 			this.setUnsub(
 				createMockStream(
 					() => ({ items: MOCK_JOBS, total: MOCK_JOBS.length }),
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -25,11 +25,11 @@ export class JobsStore extends Store<JobsPayload> {
 
 		const params = new URLSearchParams({ topic: "jobs" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		this.setUnsub(
 			createStream<JobsPayload>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

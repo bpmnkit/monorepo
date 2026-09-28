@@ -27,6 +27,7 @@ export function createThemeSwitcher(options: ThemeSwitcherOptions): {
 	let current: Theme = options.initial ?? "neon"
 	let dropdownEl: HTMLDivElement | null = null
 	let isOpen = false
+	let outsideHandler: ((e: PointerEvent) => void) | null = null
 
 	const btn = document.createElement("button")
 	btn.className = "bpmnkit-theme-btn"
@@ -44,6 +45,8 @@ export function createThemeSwitcher(options: ThemeSwitcherOptions): {
 		dropdownEl?.remove()
 		dropdownEl = null
 		isOpen = false
+		if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler)
+		outsideHandler = null
 	}
 
 	function openDropdown(): void {
@@ -93,14 +96,16 @@ export function createThemeSwitcher(options: ThemeSwitcherOptions): {
 		dropdown.style.right = `${window.innerWidth - rect.right}px`
 		dropdown.style.left = "auto"
 
-		// Close on outside click (defer to avoid catching current click)
-		const outsideHandler = (e: PointerEvent) => {
-			if (!dropdown.contains(e.target as Node)) {
-				closeDropdown()
-				document.removeEventListener("pointerdown", outsideHandler)
-			}
+		// Close on outside click (defer to avoid catching current click). The
+		// button is not "outside": its own click toggles the dropdown closed.
+		const handler = (e: PointerEvent) => {
+			const target = e.target as Node
+			if (!dropdown.contains(target) && !btn.contains(target)) closeDropdown()
 		}
-		setTimeout(() => document.addEventListener("pointerdown", outsideHandler), 0)
+		outsideHandler = handler
+		setTimeout(() => {
+			if (outsideHandler === handler) document.addEventListener("pointerdown", handler)
+		}, 0)
 	}
 
 	btn.addEventListener("click", () => {

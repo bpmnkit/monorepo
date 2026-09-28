@@ -1,36 +1,56 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
   <h1>@bpmnkit/engine</h1>
-  <p>Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies</p>
+  <p>Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine)
   [![license](https://img.shields.io/npm/l/@bpmnkit/engine?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: core](https://img.shields.io/badge/tier-core-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/engine/CHANGELOG.md)
 </div>
+
+> **Core tier.** Semver at 1.0: nothing breaks without a major release. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
 ## Overview
 
-`@bpmnkit/engine` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
+`@bpmnkit/engine` simulates BPMN 2.0 process execution — for tests, demos and debugging, not for running production processes. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
 
 Perfect for: workflow testing, visual debugging, interactive demos, offline simulation, and process-driven UI flows.
 
 ## Features
 
-- **Full control flow** — exclusive, parallel, inclusive, event-based, complex gateways
-- **Variable scopes** — hierarchical scope chain; FEEL expression evaluation for conditions/mappings
-- **All event types** — message, signal, timer (ISO 8601 duration/date/cycle), error, escalation, compensation
-- **Boundary events** — interrupting and non-interrupting error, timer, compensation
-- **Sub-processes** — embedded, call activity (process invocation by ID)
+- **Gateways** — exclusive (with default flow), parallel, inclusive, event-based; complex splits like inclusive
+- **Variables** — Zeebe-style scopes: input mappings are local to the element, results propagate to the nearest scope that defines them (else the process), output mappings pick what leaves an element
+- **Events** — timer (ISO 8601 duration/date/cycle), message (by name, optional correlation key), signal, error, escalation, link, compensation and terminate
+- **Boundary events** — timer, message, signal and escalation, interrupting or not; error; a job's `throwError` is caught like an error end event
+- **Sub-processes** — embedded sub-processes, transactions, and event sub-processes (message, timer, signal, error, escalation start)
+- **Call activities** — run a process deployed in the same engine as a child instance, with Zeebe variable propagation
+- **Multi-instance** — parallel and sequential, `inputCollection` / `outputCollection`, `loopCardinality`, `completionCondition`
+- **AI agents** — an ad-hoc sub-process with a job worker (the AI Agent Sub-process connector) runs its tools: the worker completes its job with an `adHocSubProcess` job result (`activateElements`, `isCompletionConditionFulfilled`), and each tool's result is collected into `outputCollection`
 - **DMN decisions** — inline decision table evaluation via `@bpmnkit/feel`
-- **Job workers** — register handlers for service tasks by job type
+- **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — `beforeComplete` hook pauses between elements for debugging UIs
 - **Zero dependencies** — browser + Node.js, no server required
+
+### Not executed
+
+- Ad-hoc sub-processes without a job worker, and a call activity whose process is not
+  deployed in the same engine, complete without running anything (the latter emits an
+  `element:warning` event).
+- Conditional events are not evaluated, a message start event of a top-level process does not
+  start an instance, and transaction cancel events are not modelled.
+- Inclusive and complex *joins* do not wait for the other branches, and a complex gateway's
+  activation condition is ignored.
+- Compensation handlers run one after another in reverse completion order, as BPMN specifies;
+  Zeebe invokes them all at once. Compensation event sub-processes are not modelled.
+
+For Zeebe semantics, `@bpmnkit/engine/wasm-runner` runs the same scenarios on the Reebe engine
+compiled to WebAssembly (experimental). See [Conformance](https://bpmnkit.com/docs/getting-started/conformance).
 
 ## Installation
 
@@ -81,6 +101,59 @@ const instance = engine.start("my-process", {}, {
 })
 ```
 
+## Testing processes in Vitest or Jest
+
+`@bpmnkit/engine/testing` wraps the simulator in a test fixture — no Docker, no cluster:
+job and connector mocks, manual job completion, a virtual clock for timers, BPMN matchers
+and path coverage.
+
+```typescript
+import "@bpmnkit/engine/testing/vitest" // registers the matchers (Jest: expect.extend(bpmnMatchers))
+import { createProcessTest, formatCoverage } from "@bpmnkit/engine/testing"
+
+const t = await createProcessTest({ bpmn: new URL("./order.bpmn", import.meta.url) })
+t.mockJob("payment", { result: { paid: true } })
+t.mockConnector("io.camunda:http-json:1", { response: { status: 200, body: {} } })
+
+const run = await t.start("order-process", { amount: 10 })
+await run.completeJob("ship", { shipped: true }) // unmocked jobs wait for you
+await run.publishMessage("payment-confirmed")
+await run.advanceTime("PT1H")                    // fires timers instantly
+
+expect(run).toHaveCompleted()
+expect(run).toHavePassed(["payment", "ship"])
+expect(run).toHaveVariables({ paid: true })
+
+console.log(formatCoverage(t.coverage()))        // flow nodes and sequence flows reached
+t.dispose()
+```
+
+`vitest` is an optional peer dependency, needed only for the `/testing/vitest` entry. See
+[Testing processes](https://bpmnkit.com/docs/guides/testing-processes).
+
+### AI agents under deterministic tests
+
+`mockAiAgent` plays the AI Agent connector from a script of turns: which tools the model
+calls, with which `fromAi()` arguments, then its answer. The tools run for real; unknown tools,
+wrong arguments and a script that runs out fail the run. Record a transcript to a JSON
+cassette once and replay it — no model, no network.
+
+```typescript
+import { readAgentCassette } from "@bpmnkit/engine/testing"
+
+const agent = t.mockAiAgent("support-agent", [
+  { toolCalls: [{ name: "lookup-order", arguments: { orderId: "1042" } }] },
+  { responseJson: { answer: "It ships tomorrow.", resolved: true } },
+])
+// or: t.mockAiAgent("support-agent", await readAgentCassette(new URL("./order.cassette.json", import.meta.url)))
+
+const run = await t.start("support", { customerMessage: "Where is order 1042?" })
+expect(agent).toHaveCalledTools([{ name: "lookup-order", arguments: { orderId: "1042" } }])
+t.coverage().tools // which of the agent's tools the tests called
+```
+
+See [Testing AI agents](https://bpmnkit.com/docs/guides/testing-ai-agents).
+
 ## API Reference
 
 ### `Engine`
@@ -90,6 +163,7 @@ const instance = engine.start("my-process", {}, {
 | `deploy({ bpmn, forms?, decisions? })` | Register BPMN (+ optional DMN/form assets) |
 | `start(processId, variables?, options?)` | Start a new instance; returns `ProcessInstance` |
 | `registerJobWorker(type, handler)` | Handle service tasks with a given job type |
+| `broadcastSignal(name, variables?)` | Deliver a signal to every running instance; returns instances its signal start events started |
 | `getDeployedProcesses()` | List all deployed process IDs |
 
 ### `ProcessInstance`
@@ -101,8 +175,13 @@ const instance = engine.start("my-process", {}, {
 | `variables_snapshot` | Flat snapshot of current variable scope |
 | `onChange(cb)` | Subscribe to state changes |
 | `cancel()` | Terminate the instance |
-| `deliverMessage(name, variables?)` | Correlate a message catch event |
+| `deliverMessage(name, variables?, correlationKey?)` | Correlate a message to the oldest waiting subscription; returns whether one received it |
+| `deliverSignal(name, variables?)` | Deliver a signal to this instance only |
 | `beforeComplete?` | Optional step hook (set after `start()`) |
+
+Besides the element and variable events, `onChange` reports `element:terminated` when an
+interrupting event, a terminate end event or a completion condition cancels an element, and
+`element:warning` when the simulator skips something it cannot run.
 
 ---
 
@@ -114,9 +193,10 @@ const instance = engine.start("my-process", {}, {
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

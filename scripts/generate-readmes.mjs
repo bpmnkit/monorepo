@@ -4,7 +4,7 @@
 
 import { writeFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { STABLE } from "./published-packages.mjs"
+import { APPS, PUBLISHED, STABLE, TIER, TIERS } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL = "https://bpmnkit.com/favicon.svg"
@@ -14,16 +14,25 @@ const DOCS = "https://bpmnkit.com/docs"
 // ── Shared header / footer ────────────────────────────────────────────────────
 
 /**
- * The status badge tells the truth per package rather than per repo.
+ * The tier badge tells the truth per package rather than per repo.
  *
- * It read `experimental` on all twenty-six for as long as it existed, which stopped
- * being true the moment twelve of them reached 1.0. `STABLE` is the same list the
- * release checks read, so the badge cannot disagree with the promise.
+ * It used to read `experimental` on every package, which stopped being true the moment
+ * twelve of them reached 1.0. `TIER` is the same data the release checks and the site
+ * read, so the badge cannot disagree with either.
  */
-function statusBadge(pkgPath) {
-	return STABLE.includes(pkgPath)
-		? `[![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](${DOCS}/getting-started/stability)`
-		: `[![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](${DOCS}/getting-started/stability)`
+const TIER_COLOURS = { core: "16a34a", tools: "2563eb", experimental: "d97706" }
+const TIERS_URL = `${DOCS}/getting-started/stability#product-tiers`
+
+function tierBadge(pkgPath) {
+	const tier = TIER[pkgPath]
+	if (!tier) throw new Error(`${pkgPath} has no tier — add it to TIER in published-packages.mjs`)
+	return `[![tier: ${tier}](https://img.shields.io/badge/tier-${tier}-${TIER_COLOURS[tier]}?style=flat-square)](${TIERS_URL})`
+}
+
+/** The one line under the header that says what the tier means for this package. */
+function tierLine(pkgPath) {
+	const { label, promise } = TIERS[TIER[pkgPath]]
+	return `> **${label} tier.** ${promise} See [product tiers](${TIERS_URL}).\n`
 }
 
 function header({ name, description, extra = "", dir = "packages", pkgPath = "" }) {
@@ -38,11 +47,12 @@ function header({ name, description, extra = "", dir = "packages", pkgPath = "" 
   [![license](https://img.shields.io/npm/l/${name}?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](${GITHUB})
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](${GITHUB})
-  ${statusBadge(pkgPath)}
+  ${tierBadge(pkgPath)}
 
   [Website](https://bpmnkit.com) · [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
 </div>
 
+${tierLine(pkgPath)}
 ---
 ${extra}`
 }
@@ -52,11 +62,15 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/core", desc: "BPMN/DMN/Form parser, builder, layout engine" },
 		{ name: "@bpmnkit/canvas", desc: "Zero-dependency SVG BPMN viewer" },
 		{ name: "@bpmnkit/editor", desc: "Full-featured interactive BPMN editor" },
-		{ name: "@bpmnkit/engine", desc: "Lightweight BPMN process execution engine" },
+		{ name: "@bpmnkit/engine", desc: "Lightweight BPMN process simulator for tests and demos" },
 		{ name: "@bpmnkit/feel", desc: "FEEL expression language parser & evaluator" },
-		{ name: "@bpmnkit/plugins", desc: "22 composable canvas plugins" },
+		{ name: "@bpmnkit/plugins", desc: "34 composable canvas plugins" },
 		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
 		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
+		{
+			name: "@bpmnkit/markdown",
+			desc: "BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering",
+		},
 		{
 			name: "@bpmnkit/docspack",
 			desc: "BPMN Kit docs as an offline docspack package for AI agents",
@@ -388,6 +402,13 @@ Event definitions are options on the element: \`timerDuration\`, \`timerDate\`,
 | \`projectSemantics(defs)\` | The canonical, presentation-free projection the hash covers |
 | \`diffSemantics(a, b)\` | What changed between two models, keyed by element id |
 
+### Typed code generation
+
+| Export | Description |
+|--------|-------------|
+| \`generateProcessTypes(defs \\| defs[], options?)\` | TypeScript source typing job types (variables, output, headers, errors), process ids, messages, signals, error and escalation codes. Deterministic |
+| \`extractProcessContract(defs \\| defs[])\` | The same contract as data — what \`casen gen types\` renders and \`--check-workers\` compares |
+
 ### Editing
 
 | Export | Description |
@@ -432,10 +453,22 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 |--------|-------------|
 | \`layoutProcess(process)\` | Auto-layout all elements; returns \`LayoutResult\` |
 | \`optimize(defs)\` | Run all optimization rules; returns \`OptimizeReport\` |
+| \`analyzeCamundaCompat(defs, version?)\` | What the targeted Camunda 8 version cannot run or requires, as \`compat/*\` findings — Camunda Modeler's \`@camunda/linting\` rules |
 | \`compactify(defs)\` | Convert to compact \`CompactDiagram\` |
 | \`expand(compact)\` | Restore full \`BpmnDefinitions\` |
 | \`createCompactStream(opts?)\` | Read a diagram out of a model's token stream, frame by frame |
 | \`generateId(prefix)\` | Generate a unique short ID |
+
+### Process documentation
+
+| Export | Description |
+|--------|-------------|
+| \`renderDocumentationHtml(defs, options?)\` | Self-contained, print-ready HTML: diagram, contents, every element in flow order, linked DMN tables and forms. Print → Save as PDF |
+| \`renderDocumentationMarkdown(defs, options?)\` | The same content as Markdown, for wikis and Confluence |
+| \`renderDocumentationDocx(defs, options?)\` | The same content as a Word \`.docx\` (bytes), diagram as SVG |
+| \`buildProcessDocumentation(defs, options?)\` | The structured content, for a renderer of your own |
+
+\`options\` takes \`decisions\` (\`DmnDefinitions[]\`), \`forms\` (\`FormDefinition[]\`), \`title\`, \`subtitle\` and \`diagram\`. Output is deterministic and all model text is escaped.
 `,
 	},
 
@@ -560,6 +593,7 @@ const myPlugin: CanvasPlugin = {
 - **HUD toolbar** — customisable palette with shape categories
 - **Side dock** — resizable right sidebar with Properties, AI chat, and Docs tabs
 - **Theme persistence** — auto read/write \`localStorage\` with \`persistTheme\`
+- **Ten languages** — English built in; German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable locales
 
 ## Installation
 
@@ -611,8 +645,12 @@ interface HudOptions {
   container: HTMLElement
   optimizeButton?: HTMLElement  // inject into action bar
   aiButton?: HTMLElement        // inject into action bar
+  // Decisions and forms (and a title) for More → Export documentation…
+  getDocumentationContext?: () => DocumentationOptions
 }
 \`\`\`
+
+The HUD's **More** menu has **Export documentation…**: a print-ready HTML view (Print → Save as PDF), or an HTML, Markdown or Word download, built with \`@bpmnkit/core\`'s process documentation renderers.
 
 ### \`createSideDock(container)\` → \`SideDock\`
 
@@ -631,6 +669,28 @@ interface SideDock {
   setDiagramInfo(processName: string, fileName: string): void
 }
 \`\`\`
+
+## Internationalisation
+
+Each shipped language is its own entry point, so a bundle carries only what it imports.
+\`createTranslate(locale)\` turns one into the \`translate\` hook; pass the same hook to the
+editor, \`createSideDock\` and each \`@bpmnkit/plugins\` panel:
+
+\`\`\`typescript
+import { BpmnEditor, createSideDock, createTranslate, initEditorHud } from "@bpmnkit/editor"
+import { de } from "@bpmnkit/editor/locales/de"
+
+const translate = createTranslate(de)
+const editor = new BpmnEditor({ container, translate })
+const dock = createSideDock({ translate })
+initEditorHud(editor) // reads the editor's hook
+\`\`\`
+
+Locales: \`de\`, \`es\`, \`fr\`, \`it\`, \`nl\`, \`pl\`, \`pt-BR\`, \`ja\`, \`zh-CN\`. \`AVAILABLE_LOCALES\`
+lists them with their own names, and \`matchLocale(navigator.languages, codes)\` picks the
+browser's. A message can be a plural object (\`{ one, few, many, other }\`), chosen with
+\`Intl.PluralRules\` from \`count\`. Missing keys fall back to English. The translations are
+machine-assisted — corrections welcome, see \`CONTRIBUTING.md\`.
 `,
 	},
 
@@ -638,24 +698,42 @@ interface SideDock {
 	"packages/engine": {
 		name: "@bpmnkit/engine",
 		description:
-			"Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
+			"Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies",
 		content: `## Overview
 
-\`@bpmnkit/engine\` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
+\`@bpmnkit/engine\` simulates BPMN 2.0 process execution — for tests, demos and debugging, not for running production processes. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
 
 Perfect for: workflow testing, visual debugging, interactive demos, offline simulation, and process-driven UI flows.
 
 ## Features
 
-- **Full control flow** — exclusive, parallel, inclusive, event-based, complex gateways
-- **Variable scopes** — hierarchical scope chain; FEEL expression evaluation for conditions/mappings
-- **All event types** — message, signal, timer (ISO 8601 duration/date/cycle), error, escalation, compensation
-- **Boundary events** — interrupting and non-interrupting error, timer, compensation
-- **Sub-processes** — embedded, call activity (process invocation by ID)
+- **Gateways** — exclusive (with default flow), parallel, inclusive, event-based; complex splits like inclusive
+- **Variables** — Zeebe-style scopes: input mappings are local to the element, results propagate to the nearest scope that defines them (else the process), output mappings pick what leaves an element
+- **Events** — timer (ISO 8601 duration/date/cycle), message (by name, optional correlation key), signal, error, escalation, link, compensation and terminate
+- **Boundary events** — timer, message, signal and escalation, interrupting or not; error; a job's \`throwError\` is caught like an error end event
+- **Sub-processes** — embedded sub-processes, transactions, and event sub-processes (message, timer, signal, error, escalation start)
+- **Call activities** — run a process deployed in the same engine as a child instance, with Zeebe variable propagation
+- **Multi-instance** — parallel and sequential, \`inputCollection\` / \`outputCollection\`, \`loopCardinality\`, \`completionCondition\`
+- **AI agents** — an ad-hoc sub-process with a job worker (the AI Agent Sub-process connector) runs its tools: the worker completes its job with an \`adHocSubProcess\` job result (\`activateElements\`, \`isCompletionConditionFulfilled\`), and each tool's result is collected into \`outputCollection\`
 - **DMN decisions** — inline decision table evaluation via \`@bpmnkit/feel\`
-- **Job workers** — register handlers for service tasks by job type
+- **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — \`beforeComplete\` hook pauses between elements for debugging UIs
 - **Zero dependencies** — browser + Node.js, no server required
+
+### Not executed
+
+- Ad-hoc sub-processes without a job worker, and a call activity whose process is not
+  deployed in the same engine, complete without running anything (the latter emits an
+  \`element:warning\` event).
+- Conditional events are not evaluated, a message start event of a top-level process does not
+  start an instance, and transaction cancel events are not modelled.
+- Inclusive and complex *joins* do not wait for the other branches, and a complex gateway's
+  activation condition is ignored.
+- Compensation handlers run one after another in reverse completion order, as BPMN specifies;
+  Zeebe invokes them all at once. Compensation event sub-processes are not modelled.
+
+For Zeebe semantics, \`@bpmnkit/engine/wasm-runner\` runs the same scenarios on the Reebe engine
+compiled to WebAssembly (experimental). See [Conformance](${DOCS}/getting-started/conformance).
 
 ## Installation
 
@@ -706,6 +784,59 @@ const instance = engine.start("my-process", {}, {
 })
 \`\`\`
 
+## Testing processes in Vitest or Jest
+
+\`@bpmnkit/engine/testing\` wraps the simulator in a test fixture — no Docker, no cluster:
+job and connector mocks, manual job completion, a virtual clock for timers, BPMN matchers
+and path coverage.
+
+\`\`\`typescript
+import "@bpmnkit/engine/testing/vitest" // registers the matchers (Jest: expect.extend(bpmnMatchers))
+import { createProcessTest, formatCoverage } from "@bpmnkit/engine/testing"
+
+const t = await createProcessTest({ bpmn: new URL("./order.bpmn", import.meta.url) })
+t.mockJob("payment", { result: { paid: true } })
+t.mockConnector("io.camunda:http-json:1", { response: { status: 200, body: {} } })
+
+const run = await t.start("order-process", { amount: 10 })
+await run.completeJob("ship", { shipped: true }) // unmocked jobs wait for you
+await run.publishMessage("payment-confirmed")
+await run.advanceTime("PT1H")                    // fires timers instantly
+
+expect(run).toHaveCompleted()
+expect(run).toHavePassed(["payment", "ship"])
+expect(run).toHaveVariables({ paid: true })
+
+console.log(formatCoverage(t.coverage()))        // flow nodes and sequence flows reached
+t.dispose()
+\`\`\`
+
+\`vitest\` is an optional peer dependency, needed only for the \`/testing/vitest\` entry. See
+[Testing processes](${DOCS}/guides/testing-processes).
+
+### AI agents under deterministic tests
+
+\`mockAiAgent\` plays the AI Agent connector from a script of turns: which tools the model
+calls, with which \`fromAi()\` arguments, then its answer. The tools run for real; unknown tools,
+wrong arguments and a script that runs out fail the run. Record a transcript to a JSON
+cassette once and replay it — no model, no network.
+
+\`\`\`typescript
+import { readAgentCassette } from "@bpmnkit/engine/testing"
+
+const agent = t.mockAiAgent("support-agent", [
+  { toolCalls: [{ name: "lookup-order", arguments: { orderId: "1042" } }] },
+  { responseJson: { answer: "It ships tomorrow.", resolved: true } },
+])
+// or: t.mockAiAgent("support-agent", await readAgentCassette(new URL("./order.cassette.json", import.meta.url)))
+
+const run = await t.start("support", { customerMessage: "Where is order 1042?" })
+expect(agent).toHaveCalledTools([{ name: "lookup-order", arguments: { orderId: "1042" } }])
+t.coverage().tools // which of the agent's tools the tests called
+\`\`\`
+
+See [Testing AI agents](${DOCS}/guides/testing-ai-agents).
+
 ## API Reference
 
 ### \`Engine\`
@@ -715,6 +846,7 @@ const instance = engine.start("my-process", {}, {
 | \`deploy({ bpmn, forms?, decisions? })\` | Register BPMN (+ optional DMN/form assets) |
 | \`start(processId, variables?, options?)\` | Start a new instance; returns \`ProcessInstance\` |
 | \`registerJobWorker(type, handler)\` | Handle service tasks with a given job type |
+| \`broadcastSignal(name, variables?)\` | Deliver a signal to every running instance; returns instances its signal start events started |
 | \`getDeployedProcesses()\` | List all deployed process IDs |
 
 ### \`ProcessInstance\`
@@ -726,8 +858,13 @@ const instance = engine.start("my-process", {}, {
 | \`variables_snapshot\` | Flat snapshot of current variable scope |
 | \`onChange(cb)\` | Subscribe to state changes |
 | \`cancel()\` | Terminate the instance |
-| \`deliverMessage(name, variables?)\` | Correlate a message catch event |
+| \`deliverMessage(name, variables?, correlationKey?)\` | Correlate a message to the oldest waiting subscription; returns whether one received it |
+| \`deliverSignal(name, variables?)\` | Deliver a signal to this instance only |
 | \`beforeComplete?\` | Optional step hook (set after \`start()\`) |
+
+Besides the element and variable events, \`onChange\` reports \`element:terminated\` when an
+interrupting event, a terminate end event or a completion condition cancels an element, and
+\`element:warning\` when the simulator skips something it cannot run.
 `,
 	},
 
@@ -735,17 +872,17 @@ const instance = engine.start("my-process", {}, {
 	"packages/feel": {
 		name: "@bpmnkit/feel",
 		description:
-			"Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
+			"FEEL (Friendly Enough Expression Language) parser, evaluator, formatter and highlighter — 94% DMN TCK conformance",
 		content: `## Overview
 
-\`@bpmnkit/feel\` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
+\`@bpmnkit/feel\` implements the FEEL expression language used in DMN decision tables and BPMN condition expressions, and passes 1,941 of the 2,053 FEEL cases in the [DMN TCK](https://dmn-tck.github.io/tck/) (94.5%) — the remaining cases are listed with their reasons in \`tests/tck.test.ts\`. It implements Camunda 8's extensions to FEEL too, and matches 375 of the 378 runnable examples in Camunda's FEEL documentation (\`tests/camunda-parity.test.ts\`). It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
 
 ## Features
 
 - **Full FEEL grammar** — arithmetic, comparisons, logic, function calls, paths, filters
 - **Temporal types** — date, time, datetime, duration (ISO 8601, full spec compliance)
 - **Unary tests** — DMN input expression syntax (\`> 5\`, \`"gold", "silver"\`, \`[1..10]\`)
-- **Built-in functions** — 88 standard FEEL functions (string, list, numeric, date, context, range)
+- **Built-in functions** — 101 FEEL functions (string, list, numeric, date, context, range), including Camunda's extensions (\`assert\`, \`partition\`, \`to json\`, \`fromAi\`, …)
 - **Range expressions** — \`[1..10]\`, \`(0..1)\`, \`[today..end]\`
 - **Context literals** — \`{ key: value, nested: { x: 1 } }\`
 - **Syntax highlighting** — semantic token classification for editors
@@ -824,10 +961,10 @@ interface ParseResult {
 	"packages/plugins": {
 		name: "@bpmnkit/plugins",
 		description:
-			"22 composable canvas plugins — minimap, AI chat, process simulation, storage, and more",
+			"34 composable canvas plugins — minimap, AI chat, process simulation, storage, and more",
 		content: `## Overview
 
-\`@bpmnkit/plugins\` is a single package containing 22 ready-made \`CanvasPlugin\` add-ons for \`@bpmnkit/canvas\` and \`@bpmnkit/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
+\`@bpmnkit/plugins\` is a single package containing 34 ready-made \`CanvasPlugin\` add-ons for \`@bpmnkit/canvas\` and \`@bpmnkit/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
 
 ## Installation
 
@@ -867,6 +1004,9 @@ npm install @bpmnkit/plugins
 | \`/history\` | \`createHistoryPlugin()\` | Visual undo/redo history panel |
 | \`/config-panel\` | \`createConfigPanelPlugin(options)\` | Properties panel for selected elements |
 | \`/config-panel-bpmn\` | \`createConfigPanelBpmnPlugin(options)\` | BPMN-specific properties panel |
+| \`/connector-catalog\` | \`createConnectorCatalogPlugin(options)\` | Import API connectors from OpenAPI specs via a catalog panel; register a project's element templates, per diagram (\`diagramPath\`, \`setDiagramPath\`) or project-wide |
+| \`/pattern-advisor\` | \`createPatternAdvisorPlugin(options)\` | Side panel flagging production-failure patterns, with fixes |
+| \`/variable-flow\` | \`createVariableFlowPlugin(options)\` | Overlay showing which elements read and write each variable |
 
 ### DMN & Forms
 
@@ -885,6 +1025,8 @@ npm install @bpmnkit/plugins
 | \`/process-runner\` | \`createProcessRunnerPlugin(options)\` | Run BPMN instances with play/step/stop UI |
 | \`/token-highlight\` | \`createTokenHighlightPlugin()\` | Highlight active/visited elements during execution |
 | \`/optimize\` | \`createOptimizePlugin()\` | Show optimizer findings overlay |
+| \`/live-mode\` | \`createLiveModePlugin(options)\` | Keep a dev instance on a cluster in sync with the diagram as you edit |
+| \`/deploy\` | \`createDeployPlugin(options)\` | One-click deploy through the local proxy |
 
 ### AI & Navigation
 
@@ -893,6 +1035,8 @@ npm install @bpmnkit/plugins
 | \`/ai-bridge\` | \`createAiBridgePlugin(options)\` | AI chat panel with diagram apply/checkpoint |
 | \`/element-docs\` | \`createElementDocsPlugin(options)\` | Built-in BPMN element reference docs |
 | \`/main-menu\` | \`createMainMenuPlugin(options)\` | File/Edit top-level menu |
+| \`/story-view\` | \`createStoryViewPlugin(options)\` | Read a process as a top-to-bottom story of cards |
+| \`/presentation\` | \`createPresentationPlugin(options)\` | Walk a process flow by flow, picking branches from the keyboard |
 
 ## Usage Examples
 
@@ -1230,6 +1374,104 @@ interface RenderOptions {
 `,
 	},
 
+	// ── markdown ──────────────────────────────────────────────────────────────
+	"packages/markdown": {
+		name: "@bpmnkit/markdown",
+		description:
+			"Real BPMN diagrams in Markdown — render bpmn and bpmn-compact code blocks to inline, themeable, accessible SVG",
+		content: `## Overview
+
+Mermaid has no BPMN, and PlantUML's BPMN is a sketch. \`@bpmnkit/markdown\` renders fenced \`\`\`bpmn\`\`\` (BPMN 2.0 XML) and \`\`\`bpmn-compact\`\`\` (compact JSON) code blocks to real BPMN diagrams — inline SVG, at build time, with no client-side JavaScript. Astro, Docusaurus, VitePress, Next.js MDX and GitHub READMEs are all covered.
+
+Every integration is a thin adapter over one function, \`renderBpmnBlock()\`, so a block renders the same everywhere.
+
+## Features
+
+- **Two input formats** — BPMN 2.0 XML (its own layout when it carries DI, auto-layout when it does not) and the compact JSON format from \`compactify()\`
+- **remark plugin** — Astro, Docusaurus, Next.js MDX, unified; emits hast, so it works in MDX too
+- **markdown-it plugin** — VitePress and other markdown-it sites
+- **HTML rewriter** — for pipelines with no plugin hook
+- **\`bpmnkit-md\` CLI** — pre-renders blocks in a README to committed SVG files, idempotently, with a \`--check\` mode for CI
+- **Themeable** — follows the page's \`--bpmnkit-*\` tokens, else the reader's colour scheme; or pin \`light\` / \`dark\`
+- **Accessible** — \`role="img"\`, a \`<title>\` from the process name and a \`<desc>\` listing its steps
+- **Build-safe errors** — an unparsable block renders as a readable error box, or fails the build if you prefer
+- **Deterministic** — the same block always yields the same bytes
+- **No dependencies** beyond \`@bpmnkit/core\` — no unified, no markdown-it
+
+## Installation
+
+\`\`\`sh
+npm install --save-dev @bpmnkit/markdown
+\`\`\`
+
+## Quick Start
+
+Write a block:
+
+\`\`\`\`md
+\`\`\`bpmn-compact title="Order fulfilment"
+{
+  "id": "order",
+  "elements": [
+    { "id": "start", "type": "startEvent", "name": "Order received" },
+    { "id": "ship", "type": "serviceTask", "name": "Ship order" },
+    { "id": "end", "type": "endEvent", "name": "Shipped" }
+  ],
+  "flows": [
+    { "id": "f1", "from": "start", "to": "ship" },
+    { "id": "f2", "from": "ship", "to": "end" }
+  ]
+}
+\`\`\`
+\`\`\`\`
+
+Then plug it in:
+
+\`\`\`typescript
+// Astro — astro.config.mjs
+import { remarkBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { remarkPlugins: [remarkBpmn] } })
+
+// VitePress — .vitepress/config.ts
+import { markdownItBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { config: (md) => md.use(markdownItBpmn) } })
+\`\`\`
+
+For a GitHub README, pre-render to committed SVGs:
+
+\`\`\`sh
+npx bpmnkit-md README.md          # rewrite blocks into image + folded source regions
+npx bpmnkit-md --check README.md  # CI: exit 1 when out of date
+\`\`\`
+
+## API Reference
+
+\`\`\`typescript
+function renderBpmnBlock(code: string, lang: BpmnLang, options?: RenderOptions): RenderResult
+function remarkBpmn(options?: RenderOptions): (tree, file?) => void
+function markdownItBpmn(md: MarkdownIt, options?: RenderOptions): void
+function renderBpmnInHtml(html: string, options?: RenderOptions): string
+function prerenderMarkdown(markdown: string, options?: PrerenderOptions): PrerenderResult
+
+type BpmnLang = "bpmn" | "bpmn-compact" | "bpmn-json"
+
+interface RenderOptions {
+  theme?: "auto" | "light" | "dark"   // default "auto"
+  maxWidth?: number                   // CSS px
+  title?: string                      // accessible name; default: the process name
+  link?: (d: { xml: string; title: string }) => string  // "Open in BPMN Kit" link, off by default
+  onError?: "render" | "throw"        // default "render"
+}
+
+type RenderResult =
+  | { ok: true; svg: string; html: string; title: string }
+  | { ok: false; error: string; html: string }
+\`\`\`
+
+Full guide: https://bpmnkit.com/docs/guides/bpmn-in-markdown
+`,
+	},
+
 	// ── docspack ──────────────────────────────────────────────────────────────
 	"packages/camunda-docspack": {
 		name: "@bpmnkit/camunda-docspack",
@@ -1529,32 +1771,35 @@ deleteProfile("old-profile")
 	"packages/operate": {
 		name: "@bpmnkit/operate",
 		description:
-			"Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
+			"Lightweight monitoring and operations UI for Camunda 8 dev clusters, C8 Run and SaaS trials",
 		content: `## Overview
 
-\`@bpmnkit/operate\` is a zero-dependency monitoring and operations frontend for Camunda 8. Mount it into any HTML element to get a full process monitoring UI — live dashboard, instance browser, incident management, job queue, and user tasks.
+\`@bpmnkit/operate\` is a small, Operate-like web UI for a Camunda 8 cluster. Mount it into any element to get a dashboard and lists of process definitions, decisions, instances, incidents, jobs and user tasks, with detail pages that draw the BPMN diagram. It is built for development clusters, Camunda 8 Run and SaaS trial clusters — not as a replacement for Camunda Operate in production.
 
-It pairs with the \`@bpmnkit/proxy\` local server, which polls the Camunda REST API server-side and pushes updates via **Server-Sent Events**. The frontend stays clean with no polling timers.
+The UI does not call the cluster directly. It polls the BPMN Kit proxy (\`@bpmnkit/proxy\`, started with \`casen proxy start\`), which holds your connection profiles and credentials and adds the auth header to each Camunda request. The browser never sees a credential.
 
-A **mock mode** (\`mock: true\`) ships fixture data without any running proxy or cluster — useful for demos and local development.
+A **mock mode** (\`mock: true\`) ships fixture data and makes no network calls — useful for demos and UI work.
 
 ## Features
 
-- **Dashboard** — real-time stats: active instances, open incidents, active jobs, pending tasks
-- **Process Definitions** — deployed process list with name, version, and tenant
-- **Process Instances** — paginated list with state filter (Active / Completed / Terminated)
-- **Instance Detail** — BPMN canvas via \`@bpmnkit/canvas\` with live token-highlight overlay
-- **Incidents** — error type, message, process, and resolution state
-- **Jobs** — job type, worker, retries, state, error message
-- **User Tasks** — name, assignee, state, due date, priority
-- **Profile switcher** — header dropdown that switches all SSE streams on change
-- **Mock/demo mode** — fully self-contained fixture data, no cluster required
-- **Hash router** — \`#/\`, \`#/instances\`, \`#/instances/:key\`, \`#/definitions\`, etc.
+- **Dashboard** — active instances, open incidents, active jobs, pending tasks, deployed processes
+- **Processes & decisions** — definitions grouped by id with version counts; BPMN diagram / DMN table on the detail page
+- **Instances** — state filter (Active / Completed / Terminated), root-process filter, parent-chain breadcrumbs, diagram with active and completed elements, variables, cancel
+- **Incidents** — state filter, retry job (sets retries to 3), resolve incident
+- **Jobs and user tasks** — searchable, sortable tables; task form preview
+- **Messages & signals** — publish / correlate a message, broadcast a signal, list active subscriptions
+- **Start instance** — with business ID and JSON variables
+- **Profile switcher** — every proxy profile in the header; switching reloads the view
+- **Errors on screen** — a failed poll shows its reason (e.g. \`HTTP 401: No active profile\`) and keeps the last good data
+- **Hash router** — \`#/\`, \`#/instances\`, \`#/instances/:key\`, \`#/definitions\`, … works from any static host
+
+**Not included** (use Camunda Operate): variable editing, instance modification and migration, batch operations, decision instance history, deletion, result sets beyond 1000 items per list, access-control UI.
 
 ## Installation
 
 \`\`\`sh
-npm install @bpmnkit/operate @bpmnkit/proxy
+npm install @bpmnkit/operate
+npm install -g @bpmnkit/cli   # casen proxy start, casen profile
 \`\`\`
 
 ## Quick Start
@@ -1567,23 +1812,41 @@ import { createOperate } from "@bpmnkit/operate"
 createOperate({
   container: document.getElementById("app")!,
   mock: true,
-  theme: "auto",
 })
 \`\`\`
 
-### Connected to a real Camunda cluster via proxy
+### Camunda 8 Run
+
+\`\`\`sh
+casen profile create c8run --base-url http://localhost:8080/v2 --auth-type none
+casen profile use c8run
+casen proxy start   # http://localhost:3033
+\`\`\`
+
+### Camunda SaaS
+
+Create client credentials in the Camunda Console, download the credentials file, then:
+
+\`\`\`sh
+casen profile import saas ./camunda-credentials.sh
+casen profile use saas
+casen proxy start
+\`\`\`
+
+### Mount against the proxy
 
 \`\`\`typescript
 import { createOperate } from "@bpmnkit/operate"
 
 createOperate({
   container: document.getElementById("app")!,
-  proxyUrl: "http://localhost:3033",   // default
-  profile: "production",               // optional, uses active profile if omitted
-  pollInterval: 15_000,                // ms between server-side polls (default: 30 000)
-  theme: "dark",
+  proxyUrl: "http://localhost:3033", // default; may be relative behind a same-origin reverse proxy
+  profile: "c8run",                  // optional; the proxy's active profile if omitted
+  pollInterval: 15_000,              // default 30 000 ms, minimum 5 000, 0 = load once
 })
 \`\`\`
+
+The proxy acts with the stored credentials, so it only answers browser origins it trusts: bpmnkit.com, Studio, the desktop app and any \`localhost\` origin. To mount Operate on another origin, start the proxy with \`casen proxy start --allow-origin https://your.app\`.
 
 ## API Reference
 
@@ -1593,10 +1856,11 @@ createOperate({
 interface OperateOptions {
   container: HTMLElement
   proxyUrl?: string        // default: "http://localhost:3033"
-  profile?: string         // profile name; uses active profile if omitted
-  theme?: "light" | "dark" | "auto" | "neon"  // default: "light"
-  pollInterval?: number    // ms between polls; default: 30 000
-  mock?: boolean           // use built-in fixture data; default: false
+  profile?: string         // default: the proxy's active profile
+  theme?: "light" | "dark" | "auto" | "neon"  // default: "light"; a theme picked in the header wins
+  pollInterval?: number    // ms; default 30 000, minimum 5 000, 0 = no auto-refresh
+  mock?: boolean           // built-in fixture data; default false
+  onOpenInEditor?: (xml: string, name: string) => void  // adds "Open in Editor" to diagrams
 }
 \`\`\`
 
@@ -1604,13 +1868,17 @@ Returns an \`OperateApi\`:
 
 \`\`\`typescript
 interface OperateApi {
-  el: HTMLElement
-  setProfile(name: string | null): void
-  setTheme(theme: "light" | "dark" | "auto"): void
-  navigate(path: string): void  // e.g. "/instances/123456789"
+  readonly el: HTMLElement
+  setProfile(name: string | null): void  // reloads the current view
+  setTheme(theme: "light" | "dark" | "auto" | "neon"): void
+  navigate(path: string): void           // e.g. "/instances/2251799813690001"
   destroy(): void
 }
 \`\`\`
+
+The detail views and stores (\`createInstanceDetailView\`, \`InstancesStore\`, …) are also exported for BPMN Kit Studio. They are \`@internal\` and may change in any release.
+
+Full guide: [bpmnkit.com/docs/packages/operate](https://bpmnkit.com/docs/packages/operate)
 `,
 	},
 
@@ -1763,6 +2031,7 @@ interface GenerateOptions {
 - **Complete binding resolution** — including \`zeebe:property\` and \`zeebe:output\`, which naive appliers drop
 - **Required-field and FEEL validation** — problems are reported, never silently swallowed
 - **Works with any template** — bundled catalog or a custom/generated \`ElementTemplate\`
+- **Inbound connectors and linked resources** — \`applyTemplateToElement\` writes a template onto an element of a parsed model: the root \`bpmn:message\` and its \`zeebe:subscription\` correlation key, \`zeebe:properties\`, \`zeebe:linkedResources\` and the \`zeebe:modelerTemplate\` stamps
 
 ## Installation
 
@@ -1791,6 +2060,24 @@ const defs = Bpmn.createProcess("proc")
   .serviceTask("notify", result.serviceTask!)
   .endEvent("e")
   .build()
+\`\`\`
+
+## Inbound connectors
+
+An inbound connector's message and correlation key live on a root \`bpmn:message\`, which builder
+options cannot reach. Apply the template to an element of a parsed model instead:
+
+\`\`\`typescript
+import { Bpmn } from "@bpmnkit/core"
+import { applyTemplateToElement, getTemplate } from "@bpmnkit/connectors"
+
+const webhook = getTemplate("io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1")!
+const { definitions, problems } = applyTemplateToElement(Bpmn.parse(xml), "payment-received", webhook, {
+  "inbound.context": "payments",
+  "message.correlationKey": "=orderId",
+  correlationKeyExpression: "=request.body.orderId",
+})
+const updated = Bpmn.export(definitions)
 \`\`\`
 
 ## Your project's own templates
@@ -1830,6 +2117,12 @@ function readTemplateDocument(value: unknown): TemplateDocumentResult
 
 function applyConnectorTemplate(templateId: string, values?: Record<string, string>): ApplyResult
 function applyElementTemplate(template: ElementTemplate, values?: Record<string, string>): ApplyResult
+function applyTemplateToElement(
+  definitions: BpmnDefinitions,
+  elementId: string,
+  template: ElementTemplate,
+  values?: Record<string, string>,
+): ApplyToElementResult // { definitions, problems } — the input is never mutated
 
 // @bpmnkit/connectors/node
 function discoverElementTemplates(options: DiscoverOptions): Promise<DiscoveryResult>
@@ -1866,6 +2159,17 @@ pnpm add -g @bpmnkit/cli
 \`\`\`
 
 ## Quick Start
+
+### Develop locally — no cluster needed
+
+\`\`\`sh
+casen dev
+\`\`\`
+
+Opens every \`.bpmn\`, \`.dmn\` and \`.form\` file in the folder in the BPMN Kit editor in your
+browser, with simulation. Saves go back to disk with the file's formatting kept, changes made
+elsewhere reload live, and each change re-runs lint and the file's \`.bpmn.tests.json\`
+scenarios. See [casen dev](https://bpmnkit.com/docs/cli/dev).
 
 ### Configure a profile
 
@@ -1906,6 +2210,13 @@ casen instances list --state active
 | \`casen instances list\` | List process instances (--state filter) |
 | \`casen instances cancel <key>\` | Cancel a running instance |
 
+### Templates
+
+| Command | Description |
+|---------|-------------|
+| \`casen template list [--category <c>]\` | List the runnable process templates from the [gallery](https://bpmnkit.com/templates) |
+| \`casen template use <id> [dir]\` | Write a template's \`.bpmn\`, \`.bpmn.tests.json\` scenarios and any \`.dmn\`/\`.form\` files (\`--force\` overwrites) |
+
 ### Incidents & jobs
 
 | Command | Description |
@@ -1919,6 +2230,23 @@ casen instances list --state active
 | Command | Description |
 |---------|-------------|
 | \`casen connector generate <spec>\` | Generate element templates from OpenAPI/Swagger |
+
+### Typed code generation
+
+| Command | Description |
+|---------|-------------|
+| \`casen gen types <files...> --out <file>\` | TypeScript types for job workers (job types, variables, headers, messages, error codes) |
+| \`casen gen types <files...> --out <file> --check\` | Exit 1 when the generated file is out of date (CI) |
+| \`casen gen types <files...> --check-workers <glob> --strict\` | Report job types without a worker and workers without a job type |
+
+### Camunda 7 migration
+
+| Command | Description |
+|---------|-------------|
+| \`casen migrate c7 <files...>\` | Convert Camunda 7 models to Camunda 8 (\`<name>.c8.bpmn\`, or \`--out <dir>\`) and report each construct as convertible, manual or unsupported |
+| \`casen migrate c7 <files...> --check\` | Report only; exit 1 while manual or unsupported findings remain (\`--format json\` for CI) |
+
+See [Migrate from Camunda 7](https://bpmnkit.com/docs/guides/migrate-from-camunda-7) for what is converted and why.
 
 ## Global options
 
@@ -2237,6 +2565,41 @@ Or use the \`X-Profile\` request header to target a specific profile on the \`/a
 \`\`\`sh
 curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 \`\`\`
+
+## Security
+
+The proxy holds your Camunda credentials, reads and writes project files, and starts AI
+CLIs, so it is locked down by default:
+
+- **Loopback only.** It listens on \`127.0.0.1\` and \`::1\`. \`--host\` (or
+  \`BPMNKIT_PROXY_HOST\`) listens elsewhere and prints a warning.
+- **Allowed origins only.** Browser requests must come from \`https://bpmnkit.com\`,
+  \`https://bpmnkit-studio.pages.dev\`, the desktop app
+  (\`tauri://localhost\`, \`http(s)://tauri.localhost\`) or a \`localhost\` / \`127.0.0.1\` /
+  \`[::1]\` origin on any port. Any other origin gets \`403\` and no CORS headers; the allowed
+  origin is reflected, never \`*\`. Add origins with \`--allow-origin\` or
+  \`BPMNKIT_PROXY_ALLOWED_ORIGINS\` (comma-separated).
+- **Loopback Host only.** Requests must name the proxy as \`localhost\`, \`127.0.0.1\` or
+  \`[::1]\`, which stops DNS rebinding. Add names with \`--allow-host\` or
+  \`BPMNKIT_PROXY_ALLOWED_HOSTS\`.
+- **Workspace roots.** \`/fs/*\` and \`/element-templates\` work only inside folders passed
+  with \`--root\` / \`BPMNKIT_PROXY_ROOTS\` or opened by Studio. The proxy will not open the
+  filesystem root, your home directory or a hidden folder on a client's say-so, and only
+  touches \`.bpmn\`, \`.dmn\`, \`.form\` and \`.md\` files. \`..\` and symlinks out of a root
+  are refused.
+- **AI CLIs without tools.** \`claude\`, \`copilot\` and \`gemini\` run with permission checks
+  on, no built-in tools (no shell, file or web access), in an empty temporary folder, and
+  without your own MCP servers, settings or extensions. A \`/chat\` diagram edit may call only
+  the proxy's diagram MCP tools, and \`compose_diagram\` runs the model's code in an
+  \`isolated-vm\` isolate. Request data reaches the model fenced as untrusted input.
+  \`askText\` gives other callers, such as \`casen ask\`, the same lockdown.
+
+Programs that send no \`Origin\` header — the CLI, the MCP server, \`curl\` — are served as
+before.
+
+\`\`\`sh
+casen proxy start --allow-origin https://modeler.example.com --root ~/work/processes
+\`\`\`
 `,
 	},
 
@@ -2302,7 +2665,7 @@ const plugin: CasenPlugin = {
     commands: [createWorkerCommand({
       jobType: "my-job",
       async processJob(job) {
-        return { result: "processed", input: job.variables }
+        return { outcome: "complete", variables: { result: "processed", input: job.variables } }
       },
     })],
   }],
@@ -2543,6 +2906,7 @@ Patterns are hints, not rigid templates. Claude adapts them to the user's specif
 - **Worker specs** — typical service tasks with job types, typed inputs/outputs, and real integration options
 - **Compact BPMN templates** — token-efficient starting-point structure for LLM-based generation
 - **Keyword matching** — \`findPattern(query)\` scores keyword hits to find the best-fit pattern from a free-text description
+- **25 runnable templates** — \`@bpmnkit/patterns/templates\`: complete Camunda 8 processes (order to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven AI agent patterns) with DMN, forms and test scenarios that pass on \`@bpmnkit/engine\`
 
 ## Installation
 
@@ -2581,6 +2945,20 @@ console.log(invoice?.readme)    // domain context for the LLM
 | \`content-moderation\` | Trust & safety | ai-scan, apply-action, report-csam, notify-user |
 | \`order-fulfillment\` | E-commerce | validate-inventory, process-payment, create-warehouse-order, create-shipment |
 
+## Runnable Templates
+
+\`@bpmnkit/patterns/templates\` is the source of the [template gallery](https://bpmnkit.com/templates) and of \`casen template use\`. Each template builds a laid-out process with the \`@bpmnkit/core\` builder and carries a \`.bpmn.tests.json\` scenario set — a happy path and at least one alternative.
+
+\`\`\`typescript
+import { getTemplate, listJobTypes, templateFiles } from "@bpmnkit/patterns/templates"
+
+const template = getTemplate("ai-agent-tool-loop")
+const defs = template?.build()               // BpmnDefinitions with DI
+const files = template ? templateFiles(template) : []
+// [{ path: "ai-agent-tool-loop.bpmn", content }, { path: "ai-agent-tool-loop.bpmn.tests.json", content }]
+const jobTypes = defs ? listJobTypes(defs) : []
+\`\`\`
+
 ## API Reference
 
 \`\`\`typescript
@@ -2610,6 +2988,14 @@ export interface WorkerSpec {
   outputs: Record<string, string>
   integrationOptions?: string[]  // e.g. ["Stripe", "Adyen", "Braintree"]
 }
+
+// @bpmnkit/patterns/templates
+export const ALL_TEMPLATES: readonly ProcessTemplate[]
+export const TEMPLATE_CATEGORIES: readonly TemplateCategoryInfo[]
+export function getTemplate(id: string): ProcessTemplate | undefined
+export function templatesInCategory(category: TemplateCategory): ProcessTemplate[]
+export function templateFiles(template: ProcessTemplate): TemplateFile[]
+export function listJobTypes(defs: BpmnDefinitions): TemplateJobType[]
 \`\`\`
 
 ## Used by AIKit
@@ -2635,6 +3021,7 @@ The key principle: workers built with this package have **zero BPMNKit runtime d
 
 - **Async generator polling** — \`client.poll(jobType)\` yields one \`ActivatedJob\` at a time; idles cleanly between polls
 - **Job lifecycle** — \`complete(variables)\`, \`fail(message, retries)\`, \`throwError(code, message, variables)\`
+- **Typed jobs** — \`createWorkerClient<JobTypes>()\` with the map \`casen gen types\` generates types each job's variables, output, headers and error codes by job type
 - **OAuth2 for Camunda SaaS** — token fetching and caching built in; no manual auth management
 - **Env-var driven** — reads \`ZEEBE_ADDRESS\`, \`ZEEBE_CLIENT_ID\`, \`ZEEBE_CLIENT_SECRET\` automatically
 - **Zero dependencies** — pure Node.js \`fetch\`, no external packages
@@ -2680,7 +3067,8 @@ const client = createWorkerClient({
 
 ### \`client.poll(jobType, options?)\`
 
-Async generator. Continuously polls Zeebe. Pauses 5 seconds between polls when idle.
+Async generator. Continuously polls Zeebe with long polling (\`requestTimeout\`, default 20 s).
+Transient errors go to \`onError\` and are retried; rejected credentials or a 4xx answer end the loop by throwing.
 
 \`\`\`typescript
 for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_000 })) {
@@ -2689,14 +3077,32 @@ for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_00
 }
 \`\`\`
 
+### Typed jobs from BPMN
+
+Generate a \`JobTypes\` map from your BPMN with \`casen gen types processes/ --out src/generated/bpmn-types.ts\`,
+then pass it as the type argument. Job types, variable names, output keys and error codes are checked at compile time:
+
+\`\`\`typescript
+import type { JobTypes } from "./generated/bpmn-types.js"
+
+const client = createWorkerClient<JobTypes>()
+for await (const job of client.poll("charge-card")) {
+  job.variables.amount             // typed; a misspelt key is a compile error
+  job.customHeaders.provider       // literal header value from the BPMN
+  await job.complete({ transactionId: "t-1" })
+}
+\`\`\`
+
+Without a type argument the client is untyped. See the [Typed Workers guide](https://bpmnkit.com/docs/guides/typed-workers).
+
 ### Job methods
 
 \`\`\`typescript
 // Return output variables to the process
 await job.complete({ approved: true })
 
-// Fail the job (Zeebe retries or raises incident at retries=0)
-await job.fail("upstream timeout", job.retries - 1)
+// Fail the job; retries default to job.retries - 1 (incident when none are left)
+await job.fail("upstream timeout")
 
 // Throw a BPMN error (caught by an error boundary event in the diagram)
 await job.throwError("PAYMENT_DECLINED", "Card issuer declined", { code: "05" })
@@ -2848,20 +3254,23 @@ interface UserTask {
 	"apps/reebe-wasm": {
 		name: "@bpmnkit/reebe-wasm",
 		dir: "apps",
-		description: "WebAssembly BPMN workflow engine — runs the Reebe engine in the browser",
+		description:
+			"The Reebe dev/test BPMN engine, compiled to WebAssembly for the browser and Node.js",
 		content: `## Overview
 
-\`@bpmnkit/reebe-wasm\` is the WebAssembly build of the [Reebe](https://github.com/bpmnkit/monorepo) BPMN workflow engine, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It enables full BPMN 2.0 process execution directly in the browser — no server required.
+\`@bpmnkit/reebe-wasm\` is the WebAssembly build of [Reebe](${GITHUB}/tree/main/apps/reebe), BPMN Kit's BPMN engine for development and tests, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It runs BPMN 2.0 processes in the browser or in Node.js, with no server.
 
-Used internally by \`@bpmnkit/engine\` for the \`./wasm-runner\` entry point, which powers the BPMNKit Studio simulator and the \`casen test\` CLI command.
+> **Dev/test only — not for production.** Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public documentation. It is not affiliated with or endorsed by Camunda, and its behaviour is checked by its own tests, not against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
+
+Used internally by \`@bpmnkit/engine\` for the \`./wasm-runner\` entry point, which powers the BPMN Kit Studio simulator and the \`casen test\` CLI command.
 
 ## Features
 
-- **Full BPMN execution** — gateways, events, subprocesses, boundary events
+- **BPMN execution** — gateways, events, sub-processes, boundary events
 - **Zero network calls** — runs entirely in the browser sandbox
 - **DMN decisions** — inline decision table evaluation
 - **FEEL expressions** — condition and mapping evaluation
-- **WebAssembly** — near-native performance, minimal footprint
+- **WebAssembly** — one binary for the browser and Node.js; no benchmark figures are published
 
 ## Installation
 
@@ -2922,6 +3331,23 @@ Requires [Rust](https://rustup.rs/) and [wasm-pack](https://rustwasm.github.io/w
 
 // ── Root monorepo README ─────────────────────────────────────────────────────
 
+/** Every product in one tier: the npm packages by name, then the apps. */
+function tierMembers(tier) {
+	const npm = PUBLISHED.filter((dir) => TIER[dir] === tier).map((dir) => {
+		const pkg = packages[dir]
+		if (!pkg) throw new Error(`${dir} is published but has no README entry`)
+		return `[\`${pkg.name}\`](${dir})`
+	})
+	const apps = APPS.filter((app) => app.tier === tier).map(
+		(app) => `${app.name} ([\`${app.dir}\`](${app.dir}))`,
+	)
+	return [...npm, ...apps].join(", ")
+}
+
+const tierTable = Object.entries(TIERS)
+	.map(([tier, { label, promise }]) => `| **${label}** | ${promise} | ${tierMembers(tier)} |`)
+	.join("\n")
+
 const rootReadme = `<div align="center">
   <a href="https://bpmnkit.com"><img src="${LOGO_URL}" width="80" height="80" alt="BPMN Kit logo"></a>
   <h1>BPMN Kit</h1>
@@ -2962,14 +3388,27 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 
 - **Full-stack BPMN tooling** — parse, build, validate, auto-layout, and export BPMN 2.0 / DMN 1.3 / Camunda Forms with a fluent TypeScript API
 - **Interactive browser editor** — drag-and-drop BPMN editor with 40+ element types, undo/redo, multi-file tabs, AI chat, and in-browser process simulation
-- **22 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
+- **34 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **\`casen\` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** — 3–5 MB Tauri installer for Windows, macOS, and Linux
+- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](${GITHUB}/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff \`.bpmn\`, \`.dmn\` and \`.form\` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
+
+## Product tiers
+
+Every product is in one of three tiers. [Stability and Versioning](${DOCS}/getting-started/stability#product-tiers)
+says what each one promises; every package README shows its tier at the top.
+
+| Tier | Promise | Products |
+|------|---------|----------|
+${tierTable}
+
+Reebe is a dev/test engine, not for production. It is a clean-room implementation of the Zeebe
+API written from Camunda's public documentation, and is not affiliated with or endorsed by
+Camunda. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ## Packages
 
@@ -2980,8 +3419,8 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [\`@bpmnkit/core\`](packages/core) | [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine, optimizer |
 | [\`@bpmnkit/canvas\`](packages/canvas) | [![npm](https://img.shields.io/npm/v/@bpmnkit/canvas?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer with pan/zoom and plugin API |
 | [\`@bpmnkit/editor\`](packages/editor) | [![npm](https://img.shields.io/npm/v/@bpmnkit/editor?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [\`@bpmnkit/engine\`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight zero-dependency BPMN execution engine |
-| [\`@bpmnkit/feel\`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | Complete FEEL expression language — parser, evaluator, highlighter |
+| [\`@bpmnkit/engine\`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Zero-dependency BPMN simulator for tests and demos |
+| [\`@bpmnkit/feel\`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language — parser, evaluator, highlighter; 94% DMN TCK |
 | [\`@bpmnkit/plugins\`](packages/plugins) | [![npm](https://img.shields.io/npm/v/@bpmnkit/plugins?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [\`@bpmnkit/ascii\`](packages/ascii) | [![npm](https://img.shields.io/npm/v/@bpmnkit/ascii?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 
@@ -3102,7 +3541,7 @@ casen proxy start
 
 See the full [\`@bpmnkit/cli\` README](apps/cli/README.md) for all commands.
 
-### Monitoring — embed the operations frontend
+### Monitoring — embed the operations frontend (experimental)
 
 \`\`\`typescript
 import { createOperate } from "@bpmnkit/operate"
@@ -3128,7 +3567,7 @@ bpmnkit/monorepo
 │   ├── editor/         # @bpmnkit/editor  — Interactive editor
 │   ├── engine/         # @bpmnkit/engine  — Process execution engine
 │   ├── feel/           # @bpmnkit/feel    — FEEL expression language
-│   ├── plugins/        # @bpmnkit/plugins — 22 canvas plugins
+│   ├── plugins/        # @bpmnkit/plugins — 34 canvas plugins
 │   ├── api/            # @bpmnkit/api     — Camunda 8 REST client
 │   ├── connector-gen/  # @bpmnkit/connector-gen — OpenAPI → connectors
 │   ├── operate/        # @bpmnkit/operate — Monitoring frontend
@@ -3137,7 +3576,7 @@ bpmnkit/monorepo
 │   ├── ascii/          # @bpmnkit/ascii   — ASCII art renderer
 │   ├── ui/             # @bpmnkit/ui      — Design tokens
 │   └── astro-shared/   # Shared Astro CSS/metadata
-├── apps/               # Non-published applications
+├── apps/               # Applications (cli, proxy and reebe-wasm are published)
 │   ├── cli/            # casen CLI tool
 │   ├── proxy/          # Local AI + API proxy server
 │   ├── desktop/        # Tauri native desktop app
@@ -3208,13 +3647,16 @@ Every PR that changes a published package **must** include a changeset. Use \`pa
 
 ## Versioning
 
-Every package is on **0.x**, which under semver promises nothing about compatibility — pin an
-exact version if that matters to you today.
+Packages version independently. Twelve are at **1.0** and covered by
+[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) — the contract
+that says what counts as public API, what makes a change breaking (including when generated
+BPMN counts as one), which runtimes are supported, and how deprecations run:
+${STABLE.map((p) => `\`@bpmnkit/${p.split("/")[1]}\``).join(", ")}.
 
-[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) is the contract
-each package takes on when it reaches 1.0.0: what counts as public API, what makes a change
-breaking (including when generated BPMN counts as one), which runtimes are supported, and how
-deprecations run.
+The other published packages are on **0.x**, which under semver promises nothing about
+compatibility — pin an exact version of those if that matters to you today. Their
+[tier](#product-tiers) says what they do promise: Tools are maintained, Experimental may
+change or be discontinued.
 
 ## Contributing
 
@@ -3237,6 +3679,10 @@ Contributions are welcome — bug reports, feature requests, documentation impro
 ## License
 
 [MIT](./LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+
+Two parts carry a different licence: the Reebe engine in [\`apps/reebe\`](apps/reebe) is
+Apache-2.0, and [\`@bpmnkit/camunda-docspack\`](packages/camunda-docspack) redistributes
+Camunda's documentation under CC-BY-SA-3.0 (see its \`NOTICE\`).
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="${LOGO_URL}" width="32" height="32" alt="BPMN Kit"></a>

@@ -301,6 +301,8 @@ export async function deleteDrop(
 		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(shareId),
 		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(shareId),
 		db.prepare("DELETE FROM files WHERE drop_id = ?").bind(shareId),
+		db.prepare("DELETE FROM comments WHERE drop_id = ?").bind(shareId),
+		db.prepare("DELETE FROM comment_authors WHERE drop_id = ?").bind(shareId),
 		db.prepare("DELETE FROM drops WHERE id = ?").bind(shareId),
 	)
 
@@ -374,6 +376,8 @@ export async function deleteExpired(db: D1Database, now: number): Promise<number
 		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(...ids),
 		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(...ids),
 		db.prepare(`DELETE FROM files WHERE drop_id IN (${placeholders})`).bind(...ids),
+		db.prepare(`DELETE FROM comments WHERE drop_id IN (${placeholders})`).bind(...ids),
+		db.prepare(`DELETE FROM comment_authors WHERE drop_id IN (${placeholders})`).bind(...ids),
 		db.prepare(`DELETE FROM drops WHERE id IN (${placeholders})`).bind(...ids),
 	])
 	return ids.length

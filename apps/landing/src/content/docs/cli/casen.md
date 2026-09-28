@@ -26,8 +26,9 @@ The main menu appears. Use ↑ ↓ to navigate, Enter to select, Escape to go ba
 
 ```
 casen
-├── generate        — generate or modify BPMN files without the TUI
-│   └── bpmn        — templates, CompactDiagram JSON, or patch existing files
+├── generate        — generate or modify BPMN files without the TUI (alias: gen)
+│   ├── bpmn        — templates, CompactDiagram JSON, or patch existing files
+│   └── types       — TypeScript types for job workers, generated from BPMN
 ├── view            — view BPMN, DMN, and form files in the browser
 │   ├── open        — any mix of .bpmn/.dmn/.form files or folders (auto-detect)
 │   ├── bpmn        — BPMN diagrams rendered as SVG
@@ -37,6 +38,8 @@ casen
 │   ├── lint        — run all checks, report findings
 │   └── improve     — AI-assisted improvement suggestions
 ├── story           — render a BPMN process as a narrative HTML page
+├── migrate         — migrate models from other engines to Camunda 8
+│   └── c7          — convert Camunda 7 models and report the manual work
 ├── ask             — ask an AI assistant about your process or cluster
 ├── connector       — generate element templates from OpenAPI specs
 │   ├── generate    — generate templates from a spec file or catalog entry
@@ -89,7 +92,32 @@ casen generate bpmn --input order.bpmn --dump-compact   # inspect as JSON for AI
 casen generate bpmn --input order.bpmn --patch '{"elements":[...],"flows":[...]}'
 ```
 
+`casen gen types` turns BPMN files into TypeScript types for job workers — job types, their
+variables, output and headers, message names and error codes — and can check that every job type has
+a worker:
+
+```sh
+casen gen types processes/ --out src/generated/bpmn-types.ts
+casen gen types processes/ --check-workers "src/**/*.ts" --strict
+```
+
 See [casen generate](/docs/cli/generate) for full documentation.
+
+## Start from a gallery template
+
+`casen template` writes one of the runnable templates from the [gallery](/templates) into your
+project. You get the `.bpmn`, a `.bpmn.tests.json` file with its scenarios, and any `.dmn` or
+`.form` files the process uses. The skeletons from `casen generate bpmn --template` are empty
+starting shapes. A gallery template is a complete process with its job types, mappings and
+tests.
+
+```sh
+casen template list --category approvals
+casen template use expense-approval processes/   # --force overwrites existing files
+```
+
+See [Process Templates](/docs/guides/templates) for what each template contains and how to
+run its scenarios.
 
 ## View BPMN, DMN, and Form files
 
@@ -237,6 +265,7 @@ casen connector search slack
 casen connector show io.camunda.connectors.Slack.v1
 
 # Deploy-readiness gate, then deploy
+# (a .bpmnlintrc in the diagram's folder or above is honoured; --no-bpmnlintrc ignores it)
 casen lint lint order-process.bpmn --profile deploy
 casen deploy deploy order-process.bpmn                   # local Reebe
 casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 profile
@@ -245,6 +274,10 @@ casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 prof
 `casen synth` reports any problems keyed by JSON path in the plan (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run. If the plan has a `tests` array, `casen synth` also writes a `<file>.bpmn.tests.json` sidecar, runnable with `casen test <file>.bpmn`.
 
 See [Building Processes with AI](/docs/guides/ai-implement) and [AI Agents](/docs/guides/ai-agents) for full walkthroughs.
+
+`casen lint` reads a `.bpmnlintrc` if your project has one. See
+[bpmnlint Compatibility](/docs/guides/bpmnlint) for how the rules map and how to run your
+own `bpmnlint-plugin-*` rules.
 
 ## AIKit Skills
 
@@ -278,8 +311,12 @@ casen worker start send-invoice
 
 ## Local engine (Reebe)
 
-Reebe is a Zeebe-compatible workflow engine (~50 MB) that runs locally, so you can deploy
-and run processes without a Camunda 8 cluster.
+Reebe is a **dev/test** workflow engine (~50 MB) that serves the Zeebe API locally, so you
+can deploy and run processes on your machine or in CI without a Camunda 8 cluster. It is
+[Experimental](/docs/getting-started/stability#product-tiers) and single-node: do not run it
+in production. Reebe is a clean-room implementation written from Camunda's public
+documentation, and is not affiliated with or endorsed by Camunda. "Zeebe" and "Camunda" are
+trademarks of Camunda Services GmbH.
 
 ```sh
 # Embedded SQLite, no external database
@@ -302,31 +339,107 @@ casen reebe start --database-url postgres://user:pass@localhost/reebe
 `reebe-server` binary; build it with
 `cargo install --path apps/reebe/crates/reebe-server` if it is not on your `PATH`.
 
-## MCP Server Mode
+## Local proxy
 
-`casen` can act as an MCP (Model Context Protocol) server, exposing all cluster operations
-as tools to Claude Desktop, Cursor, or any MCP client:
+`casen proxy start` (or `casen proxy`) starts the local proxy on port 3033. Studio, the
+bpmnkit.com editor and Operate page, and the desktop app use it for AI, deploys, Camunda API
+calls with your stored profiles, and Studio's project folders.
 
 ```sh
-casen mcp
+casen proxy start
 ```
 
-Configure in Claude Desktop (`claude_desktop_config.json`):
+| Flag | Default | Description |
+|---|---|---|
+| `--port <n>` | `3033` | Port to listen on. |
+| `--host <addr>` | loopback | Interface to listen on. By default the proxy listens on `127.0.0.1` and `::1` only. Any other value exposes it to the network and prints a warning. |
+| `--allow-origin <list>` | — | Extra browser origins that may call the proxy, comma-separated. |
+| `--allow-host <list>` | — | Extra `Host` names the proxy answers to, comma-separated. You need this with `--host 0.0.0.0`. |
+| `--root <list>` | — | Folders the file routes may always use, separated like `PATH` (`:` on macOS and Linux, `;` on Windows). |
+
+The same settings are read from `BPMNKIT_PROXY_HOST`, `BPMNKIT_PROXY_ALLOWED_ORIGINS`,
+`BPMNKIT_PROXY_ALLOWED_HOSTS` and `BPMNKIT_PROXY_ROOTS`, for example when you run the
+`bpmn-ai-server` binary directly. Flags add to the lists from the environment.
+
+### Who can use the proxy
+
+The proxy acts with your Camunda credentials and reads and writes files. Any web page open in
+your browser can send requests to `localhost`, so the proxy checks every request:
+
+- **Origin.** A browser request must come from `https://bpmnkit.com`,
+  `https://bpmnkit-studio.pages.dev`, the desktop app
+  (`tauri://localhost`, `http(s)://tauri.localhost`), any `localhost`, `127.0.0.1` or
+  `[::1]` origin on any port, or an origin you allow with `--allow-origin`. Other origins get
+  `403` and no CORS headers. Cross-site browser requests without an `Origin` header, such as
+  an image tag, are also refused. Programs that send no `Origin` (the CLI, the MCP server,
+  `curl`) are served.
+- **Host.** A request must name the proxy as `localhost`, `127.0.0.1` or `[::1]`, or as a
+  host you allow with `--allow-host`. This stops DNS-rebinding pages.
+- **Files.** The `/fs/*` routes and `/element-templates` work only inside workspace roots:
+  folders you pass with `--root`, and project folders Studio opens. The proxy does not open
+  the filesystem root, your home directory, a folder that contains your home directory, or a
+  hidden folder such as `~/.ssh` unless you pass it with `--root`. Inside a root, only
+  `.bpmn`, `.dmn`, `.form` and `.md` files (and their `.bpmnkit` metadata) can be read,
+  written, moved or deleted. Paths with `..`, and symlinks that lead out of the root, are
+  refused.
+- **AI CLIs.** The AI routes (`/chat`, `/improve`, `/operate/chat`,
+  `/operate/incident-assist`, `/operate/ai-search`), the `io.bpmnkit:llm:1` worker and
+  `casen ask` start `claude`, `copilot` or `gemini` with permission checks on and no
+  built-in tools: the model cannot run commands, read or write files, or open URLs. Each run
+  starts in an empty temporary folder and loads none of your own MCP servers, settings,
+  plugins or extensions. A `/chat` run that edits a diagram gets only the proxy's diagram
+  tools (`get_diagram`, `compose_diagram`, `add_elements`, `remove_elements`,
+  `update_element`, `set_condition`, `add_http_call`, `replace_diagram`); they change the
+  diagram in the MCP server's memory, and `compose_diagram` runs the model's code in an
+  isolated V8 isolate. Chat text, diagrams, incident details and variable values reach the
+  model fenced as untrusted data.
+
+| CLI | Flags the proxy passes |
+|---|---|
+| `claude` | `-p --system-prompt … --tools "" --strict-mcp-config --setting-sources "" --permission-mode dontAsk --disable-slash-commands --no-session-persistence`, plus `--mcp-config <run config> --allowedTools mcp__bpmn__…` for diagram edits. The conversation goes on stdin. |
+| `copilot` | `-p … --deny-tool=shell --deny-tool=write --deny-tool=url --disable-builtin-mcps --no-custom-instructions --no-ask-user --disallow-temp-dir`, plus `--additional-mcp-config @<run config> --allow-tool=bpmn(<tool>)` per diagram tool. |
+| `gemini` | `--prompt … --approval-mode default --admin-policy <deny-all> --policy <deny-all> --extensions none --skip-trust`, where the policy denies every tool and trust covers only the empty run folder. |
+
+To use the proxy from your own web app, allow its origin:
+
+```sh
+casen proxy start --allow-origin https://modeler.example.com
+```
+
+To reach the proxy from another machine, which gives that network your credentials and
+files, listen on all interfaces and name the host clients use:
+
+```sh
+casen proxy start --host 0.0.0.0 --allow-host devbox.lan
+```
+
+## MCP Server Mode
+
+`casen proxy mcp` starts BPMN Kit's MCP (Model Context Protocol) server on stdio, so Claude
+Code, Claude Desktop, Cursor or any MCP client can create, validate, simulate and deploy
+processes, and call any Camunda 8 REST operation through `camunda_search` and
+`camunda_execute`:
+
+```sh
+casen proxy mcp
+```
+
+Configure it in Claude Desktop (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "camunda": {
+    "bpmnkit": {
       "command": "casen",
-      "args": ["mcp"],
-      "env": {
-        "CAMUNDA_CLIENT_ID": "...",
-        "CAMUNDA_CLIENT_SECRET": "..."
-      }
+      "args": ["proxy", "mcp"]
     }
   }
 }
 ```
+
+The server uses the active `casen` profile for cluster calls; set one with `casen profile`
+first, or pass `ZEEBE_ADDRESS`, `ZEEBE_CLIENT_ID` and `ZEEBE_CLIENT_SECRET` in `env`. The
+full tool list is in the [AI guide](/docs/guides/ai#mcp-server).
 
 Now you can ask Claude: _"Show me the open incidents on the invoice-approval process"_ or
 _"Resolve all incidents on process instance 2251799813685249"_.

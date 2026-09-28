@@ -1,4 +1,4 @@
-import type { BpmnProcess } from "../bpmn-model.js"
+import type { BpmnMessage, BpmnProcess } from "../bpmn-model.js"
 import type { OptimizationFinding } from "./types.js"
 import { readZeebeIoMapping, readZeebeTaskHeaders, readZeebeTaskType } from "./utils.js"
 
@@ -25,9 +25,28 @@ function findExt(
 export function analyzeDeploy(
 	p: BpmnProcess,
 	resolveConnectorRequirements?: ConnectorRequirementsResolver,
+	/**
+	 * The document's root messages. Camunda reads a catch's correlation key from
+	 * the `zeebe:subscription` on the message it references; without these only
+	 * a key placed on the element itself is seen.
+	 */
+	messages: readonly BpmnMessage[] = [],
 ): OptimizationFinding[] {
 	const findings: OptimizationFinding[] = []
 	const processId = p.id
+	const messageById = new Map(messages.map((message) => [message.id, message]))
+	const hasCorrelationKey = (
+		element: { extensionElements: Array<{ name: string; attributes: Record<string, string> }> },
+		messageRef: string | undefined,
+	): boolean => {
+		if (findExt(element, "zeebe:subscription")?.attributes.correlationKey) return true
+		const message = messageRef === undefined ? undefined : messageById.get(messageRef)
+		return (
+			message?.extensionElements?.some(
+				(ext) => ext.name.endsWith(":subscription") && Boolean(ext.attributes.correlationKey),
+			) ?? false
+		)
+	}
 
 	if (p.isExecutable !== true) {
 		findings.push({
@@ -116,9 +135,9 @@ export function analyzeDeploy(
 					: el.eventDefinitions.find((d) => d.type === "message")
 			const isMessageCatch =
 				el.type === "receiveTask" ? el.messageRef !== undefined : messageDef !== undefined
+			const messageRef = el.type === "receiveTask" ? el.messageRef : messageDef?.messageRef
 			if (isMessageCatch) {
-				const subscription = findExt(el, "zeebe:subscription")
-				if (!subscription?.attributes.correlationKey) {
+				if (!hasCorrelationKey(el, messageRef)) {
 					findings.push({
 						id: "deploy/message-catch-no-correlation",
 						category: "deploy",

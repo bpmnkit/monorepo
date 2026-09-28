@@ -34,6 +34,11 @@ export interface OptimizationFinding {
 	produces?: string[]
 	/** Data-flow: variable names consumed (read) by the associated element. */
 	consumes?: string[]
+	/**
+	 * The bpmnlint rule this finding was reported under, when a `.bpmnlintrc`
+	 * governs it (see `applyBpmnlintConfig`).
+	 */
+	bpmnlintRule?: string
 }
 
 export interface OptimizationReport {
@@ -60,6 +65,14 @@ export interface OptimizeOptions {
 	 * are skipped (core has no dependency on the connector catalog).
 	 */
 	resolveConnectorRequirements?: (templateId: string, boundKeys: string[]) => string[]
+	/**
+	 * The Camunda 8 version the `compat/…` findings check against, e.g. `"8.6"`.
+	 * Given explicitly, the compatibility check runs even when the `deploy`
+	 * category is not requested.
+	 * Defaults to the model's `modeler:executionPlatformVersion`; without either,
+	 * `compat` reports nothing.
+	 */
+	camundaVersion?: string
 }
 
 export interface ResolvedOptions {
@@ -70,4 +83,5 @@ export interface ResolvedOptions {
 	reuseThreshold: number
 	categories: OptimizationCategory[]
 	resolveConnectorRequirements?: (templateId: string, boundKeys: string[]) => string[]
+	camundaVersion?: string
 }

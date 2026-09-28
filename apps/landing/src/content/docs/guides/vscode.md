@@ -16,20 +16,26 @@ extension, which is the point: the files it shows you are the files git has, byt
 
 ## Installing
 
-The extension is **pre-1.0 and not on the Marketplace yet** — it is built from the monorepo
-and ships when the packages it is built from do:
+Every version is attached as a `.vsix` to a
+[GitHub Release](https://github.com/bpmnkit/monorepo/releases?q=vscode-v) tagged
+`vscode-v<version>`. Download it and install it with **Extensions → … → Install from VSIX…**,
+or from a terminal:
+
+```sh
+code --install-extension bpmnkit-<version>.vsix
+```
+
+The same release workflow publishes to the Visual Studio Marketplace and Open VSX as
+`bpmnkit.bpmnkit`; those listings are being set up, and this page will link them once they
+are live.
+
+To build it yourself from the monorepo:
 
 ```sh
 git clone https://github.com/bpmnkit/monorepo
 cd monorepo && pnpm install
-pnpm --filter bpmnkit build
+pnpm turbo build --filter bpmnkit...
 pnpm --filter bpmnkit package     # → apps/vscode/bpmnkit.vsix
-```
-
-Then install the `.vsix`: **Extensions → … → Install from VSIX…**, or
-
-```sh
-code --install-extension apps/vscode/bpmnkit.vsix
 ```
 
 It activates on a workspace containing a `.bpmn` file, and requires VS Code 1.90 or newer.
@@ -76,6 +82,17 @@ The analysis matches the file. A diagram that declares no `modeler:executionPlat
 judged against Camunda 8 deployability, because "this service task has no
 `zeebe:taskDefinition`" is not a defect in a diagram that was never going to be deployed to
 Zeebe. Turn on `bpmnkit.lint.forceEngineRules` to apply those rules anyway.
+
+A `.bpmnlintrc` in the diagram's folder or above is honoured the way `casen lint` honours it.
+When the workspace has `bpmnlint` installed, bpmnlint's own findings, plugin rules included,
+appear with source `bpmnlint`. See [bpmnlint Compatibility](/docs/guides/bpmnlint).
+
+A connector task's required inputs are checked against the element templates **this file**
+sees: `.camunda/element-templates/` in the diagram's folder and every folder above it up to the
+workspace folder, the nearest winning on an id, then the bundled Camunda templates. A diagram in
+`a/` is never checked against `b/`'s templates. The extension host reads them itself; no proxy
+is needed. An unsaved file has no folder, so only the bundled templates apply. See
+[workspace templates](/docs/packages/connectors#workspace-templates).
 
 ### A visual diff in Source Control
 
@@ -143,6 +160,7 @@ dedented so the diagram is not mostly margin.
 | `bpmnkit.lint.enabled` | `true` | Report findings in the Problems panel |
 | `bpmnkit.lint.run` | `onType` | `onType` or `onSave` |
 | `bpmnkit.lint.forceEngineRules` | `false` | Apply Camunda 8 rules to an engine-neutral diagram |
+| `bpmnkit.lint.bpmnlintrc` | `true` | Honour the nearest `.bpmnlintrc`, and run the workspace's bpmnlint if installed |
 | `bpmnkit.viewer.grid` | `true` | Dot grid behind the diagram |
 | `bpmnkit.viewer.minimap` | `true` | Minimap in the BPMN viewer |
 | `bpmnkit.simulation.enabled` | `true` | Offer step-through simulation in the preview |

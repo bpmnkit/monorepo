@@ -8,13 +8,21 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
+		},
+		"./templates": {
+			"types": "./dist/templates/index.d.ts",
+			"import": "./dist/templates/index.js"
 		}
 	},
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
-		"check": "biome check ."
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bpmnkit/core": "workspace:^"
 	},
 	"description": "Domain process patterns for BPMNKit AIKit — compact BPMN templates and worker specs for common business processes",
 	"keywords": ["bpmn", "camunda", "zeebe", "workflow", "ai", "aikit", "patterns", "typescript"],

@@ -7,6 +7,10 @@ export interface DecisionsPayload {
 	items: DecisionDefinitionResult[]
 }
 
+/**
+ * @internal Exported for BPMN Kit Studio, which embeds the detail views. Not a
+ * stable API: it may change in any release. Use `createOperate()` instead.
+ */
 export class DecisionsStore extends Store<DecisionsPayload> {
 	connect(proxyUrl: string, profile: string | null, interval: number, mock: boolean): void {
 		this.set({ loading: true, error: null })
@@ -15,7 +19,7 @@ export class DecisionsStore extends Store<DecisionsPayload> {
 			this.setUnsub(
 				createMockStream(
 					() => ({ items: MOCK_DECISIONS }),
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -24,11 +28,11 @@ export class DecisionsStore extends Store<DecisionsPayload> {
 
 		const params = new URLSearchParams({ topic: "decisions" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		this.setUnsub(
 			createStream<DecisionsPayload>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

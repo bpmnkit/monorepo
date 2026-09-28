@@ -24,8 +24,9 @@ The main menu appears. Use ↑ ↓ to navigate, Enter to select, Escape to go ba
 
 ```
 casen
-├── generate        — generate or modify BPMN files without the TUI
-│   └── bpmn        — templates, CompactDiagram JSON, or patch existing files
+├── generate        — generate or modify BPMN files without the TUI (alias: gen)
+│   ├── bpmn        — templates, CompactDiagram JSON, or patch existing files
+│   └── types       — TypeScript types for job workers, generated from BPMN
 ├── view            — view BPMN, DMN, and form files in the browser
 │   ├── open        — any mix of .bpmn/.dmn/.form files or folders (auto-detect)
 │   ├── bpmn        — BPMN diagrams rendered as SVG
@@ -35,6 +36,8 @@ casen
 │   ├── lint        — run all checks, report findings
 │   └── improve     — AI-assisted improvement suggestions
 ├── story           — render a BPMN process as a narrative HTML page
+├── migrate         — migrate models from other engines to Camunda 8
+│   └── c7          — convert Camunda 7 models and report the manual work
 ├── ask             — ask an AI assistant about your process or cluster
 ├── connector       — generate element templates from OpenAPI specs
 │   ├── generate    — generate templates from a spec file or catalog entry

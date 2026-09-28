@@ -12,6 +12,42 @@
 		"./headless": {
 			"types": "./dist/headless.d.ts",
 			"import": "./dist/headless.js"
+		},
+		"./locales/de": {
+			"types": "./dist/locales/de.d.ts",
+			"import": "./dist/locales/de.js"
+		},
+		"./locales/es": {
+			"types": "./dist/locales/es.d.ts",
+			"import": "./dist/locales/es.js"
+		},
+		"./locales/fr": {
+			"types": "./dist/locales/fr.d.ts",
+			"import": "./dist/locales/fr.js"
+		},
+		"./locales/it": {
+			"types": "./dist/locales/it.d.ts",
+			"import": "./dist/locales/it.js"
+		},
+		"./locales/ja": {
+			"types": "./dist/locales/ja.d.ts",
+			"import": "./dist/locales/ja.js"
+		},
+		"./locales/nl": {
+			"types": "./dist/locales/nl.d.ts",
+			"import": "./dist/locales/nl.js"
+		},
+		"./locales/pl": {
+			"types": "./dist/locales/pl.d.ts",
+			"import": "./dist/locales/pl.js"
+		},
+		"./locales/pt-BR": {
+			"types": "./dist/locales/pt-BR.d.ts",
+			"import": "./dist/locales/pt-BR.js"
+		},
+		"./locales/zh-CN": {
+			"types": "./dist/locales/zh-CN.d.ts",
+			"import": "./dist/locales/zh-CN.js"
 		}
 	},
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],

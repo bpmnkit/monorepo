@@ -50,6 +50,17 @@ export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export { diffSemantics, projectSemantics, semanticHash } from "./bpmn/semantic-hash.js"
 export type { JsonValue, SemanticDiff, SemanticProjection } from "./bpmn/semantic-hash.js"
+export { extractProcessContract, generateProcessTypes } from "./bpmn/process-types.js"
+export type {
+	CodeContract,
+	ContractElementRef,
+	ContractHeader,
+	ContractVariable,
+	JobContract,
+	MessageContract,
+	ProcessContract,
+	ProcessTypesOptions,
+} from "./bpmn/process-types.js"
 export { detectExecutionPlatform, lintCategories, lintDiagram } from "./bpmn/lint.js"
 export type {
 	DetectedPlatform,
@@ -58,6 +69,44 @@ export type {
 	LintOptions,
 	LintReport,
 } from "./bpmn/lint.js"
+export {
+	BPMNLINT_RULE_MAP,
+	applyBpmnlintConfig,
+	bpmnlintRuleForFinding,
+	normalizeBpmnlintRuleName,
+	parseBpmnlintConfig,
+	resolveBpmnlintConfig,
+} from "./bpmn/bpmnlint.js"
+export type {
+	ApplyBpmnlintOptions,
+	BpmnlintApplication,
+	BpmnlintConfig,
+	BpmnlintMatch,
+	BpmnlintRuleMapping,
+	BpmnlintRuleSetting,
+	BpmnlintRuleValue,
+	BpmnlintSeverity,
+	ResolvedBpmnlintConfig,
+	UnsupportedBpmnlintRule,
+} from "./bpmn/bpmnlint.js"
+export {
+	analyzeCamundaCompat,
+	applyCamundaCompatConfig,
+	isCamundaCompatFinding,
+	normalizeCamundaVersion,
+	splitCamundaCompatConfig,
+} from "./bpmn/camunda-compat.js"
+export type { CamundaCompatConfig } from "./bpmn/camunda-compat.js"
+export {
+	CAMUNDA_COMPAT_PLUGIN_VERSION,
+	CAMUNDA_COMPAT_RULES,
+	CAMUNDA_COMPAT_VERSIONS,
+} from "./bpmn/camunda-compat-data.js"
+export type {
+	CamundaCompatCoverage,
+	CamundaCompatRule,
+	CamundaCompatVersion,
+} from "./bpmn/camunda-compat-data.js"
 export { diffDiagram } from "./bpmn/diagram-diff.js"
 export {
 	exportPreserving,
@@ -314,6 +363,8 @@ export { exportFormPreserving, preserveFormFormatting } from "./form/preserving-
 export type { JsonKind, JsonMember, JsonNode, PreservedJson } from "./json/index.js"
 export { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from "./bpmn/di-color.js"
 export type { DiColor } from "./bpmn/di-color.js"
+export { collectLabelStyles, labelFontCss, resolveLabelFont } from "./bpmn/label-style.js"
+export type { BpmnLabelFont, LabelFontCss } from "./bpmn/label-style.js"
 export { optimize } from "./bpmn/optimize/index.js"
 export { renderStoryHtml } from "./bpmn/story.js"
 export type { StoryRenderOptions } from "./bpmn/story.js"
@@ -376,8 +427,41 @@ export type {
 	ValidationStructure,
 	ValidationVariableType,
 } from "./bpmn/input-validation.js"
+export { analyzeCamunda7, convertCamunda7 } from "./bpmn/camunda7/migrate.js"
+export type {
+	Camunda7Conversion,
+	Camunda7ConvertOptions,
+	Camunda7Finding,
+	Camunda7Report,
+	Camunda7Severity,
+} from "./bpmn/camunda7/migrate.js"
+export { translateJuelToFeel } from "./bpmn/camunda7/juel.js"
+export type { JuelToFeelOptions, JuelToFeelResult } from "./bpmn/camunda7/juel.js"
 export { exportSvg } from "./bpmn/svg.js"
 export type { SvgExportOptions } from "./bpmn/svg.js"
+export {
+	buildProcessDocumentation,
+	documentationToDocx,
+	documentationToHtml,
+	documentationToMarkdown,
+	renderDocumentationDocx,
+	renderDocumentationHtml,
+	renderDocumentationMarkdown,
+} from "./doc/index.js"
+export type {
+	DocumentationLink,
+	DocumentationOptions,
+	DocumentedDecision,
+	DocumentedElement,
+	DocumentedForm,
+	DocumentedFormField,
+	DocumentedLane,
+	DocumentedMessageFlow,
+	DocumentedProcess,
+	DocumentedProperty,
+	DocxDocumentationOptions,
+	ProcessDocumentation,
+} from "./doc/index.js"
 export type {
 	CompactDiagram,
 	CompactElement,

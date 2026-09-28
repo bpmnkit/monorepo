@@ -29,6 +29,27 @@ pub struct MessageSubscription {
     pub tenant_id: String,
 }
 
+/// A message start event of the latest version of a deployed process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageStartEventSubscription {
+    pub key: i64,
+    pub message_name: String,
+    pub bpmn_process_id: String,
+    pub start_event_id: String,
+    pub process_definition_key: i64,
+    pub tenant_id: String,
+}
+
+/// A process instance a message with a correlation key created through a message start event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageStartCorrelation {
+    pub process_instance_key: i64,
+    pub message_key: i64,
+    pub bpmn_process_id: String,
+    pub correlation_key: String,
+    pub tenant_id: String,
+}
+
 #[cfg(any(feature = "postgres", feature = "sqlite"))]
 pub struct MessageRepository<'a> {
     pool: &'a DbPool,

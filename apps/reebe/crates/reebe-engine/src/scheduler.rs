@@ -1,16 +1,19 @@
 use std::sync::Arc;
 use std::time::Duration;
 use reebe_db::StateBackend;
+use crate::clock::Clock;
 use crate::engine::EngineHandle;
 
 pub struct Scheduler {
     backend: Arc<dyn StateBackend>,
     engine_handle: EngineHandle,
+    clock: Arc<dyn Clock>,
 }
 
 impl Scheduler {
-    pub fn new(backend: Arc<dyn StateBackend>, engine_handle: EngineHandle) -> Self {
-        Self { backend, engine_handle }
+    /// `clock` decides when a timer is due; pass the engine's clock so that both agree.
+    pub fn new(backend: Arc<dyn StateBackend>, engine_handle: EngineHandle, clock: Arc<dyn Clock>) -> Self {
+        Self { backend, engine_handle, clock }
     }
 
     /// Run all background scheduler tasks.
@@ -23,7 +26,7 @@ impl Scheduler {
         let h2 = self.engine_handle.clone();
 
         tokio::join!(
-            run_timer_scheduler(b1, h1),
+            run_timer_scheduler(b1, h1, self.clock.clone()),
             run_job_timeout_checker(b2, h2),
             run_message_expiry_checker(b3),
             run_metrics_updater(b4),
@@ -31,11 +34,11 @@ impl Scheduler {
     }
 }
 
-async fn run_timer_scheduler(backend: Arc<dyn StateBackend>, engine_handle: EngineHandle) {
+async fn run_timer_scheduler(backend: Arc<dyn StateBackend>, engine_handle: EngineHandle, clock: Arc<dyn Clock>) {
     loop {
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        match backend.get_due_timers(chrono::Utc::now(), 100).await {
+        match backend.get_due_timers(clock.now(), 100).await {
             Ok(timers) => {
                 for timer in timers {
                     if let Err(e) = backend.update_timer_state(timer.key, "FIRED").await {

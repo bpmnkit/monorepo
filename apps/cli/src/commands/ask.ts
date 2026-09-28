@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process"
 import type { CamundaClient } from "@bpmnkit/api"
+import { type AiCli, askText } from "@bpmnkit/proxy"
 import type { ColumnDef, CommandGroup, Relation, RunContext } from "../types.js"
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -47,8 +48,8 @@ class Spinner {
 // ─── Compact AI adapter ───────────────────────────────────────────────────────
 
 /** Try claude → copilot → gemini. Return the first available binary name. */
-async function detectAi(): Promise<string | null> {
-	for (const bin of ["claude", "copilot", "gemini"]) {
+async function detectAi(): Promise<AiCli | null> {
+	for (const bin of ["claude", "copilot", "gemini"] as const) {
 		const ok = await Promise.race([
 			new Promise<boolean>((res) => {
 				const p = spawn(bin, ["--version"], { stdio: "ignore" })
@@ -60,72 +61,6 @@ async function detectAi(): Promise<string | null> {
 		if (ok) return bin
 	}
 	return null
-}
-
-/** Run an AI binary with the given prompt and collect the full text output. */
-async function runAi(bin: string, prompt: string): Promise<string> {
-	return new Promise<string>((resolve, reject) => {
-		let args: string[]
-		if (bin === "claude") {
-			args = [
-				"-p",
-				prompt,
-				"--output-format",
-				"stream-json",
-				"--verbose",
-				"--dangerously-skip-permissions",
-				"--permission-mode",
-				"bypassPermissions",
-			]
-		} else if (bin === "copilot") {
-			args = ["-p", prompt, "--yolo"]
-		} else {
-			args = ["--prompt", prompt, "--yolo"]
-		}
-
-		const env: Record<string, string | undefined> = { ...process.env, CLAUDECODE: undefined }
-		const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], env })
-
-		// Drain stderr to prevent the pipe buffer from filling and stalling the child.
-		proc.stderr?.resume()
-
-		let out = ""
-		let buf = ""
-
-		if (bin === "claude") {
-			proc.stdout?.on("data", (chunk: Buffer) => {
-				buf += chunk.toString()
-				const lines = buf.split("\n")
-				buf = lines.pop() ?? ""
-				for (const line of lines) {
-					if (!line.trim()) continue
-					try {
-						const ev = JSON.parse(line) as {
-							type: string
-							message?: { content?: Array<{ type: string; text?: string }> }
-						}
-						if (ev.type === "assistant" && ev.message?.content) {
-							for (const block of ev.message.content) {
-								if (block.type === "text" && block.text) out += block.text
-							}
-						}
-					} catch {
-						/* skip non-JSON */
-					}
-				}
-			})
-		} else {
-			proc.stdout?.on("data", (chunk: Buffer) => {
-				out += chunk.toString()
-			})
-		}
-
-		proc.on("error", reject)
-		proc.on("close", (code) => {
-			if (code === 0) resolve(out)
-			else reject(new Error(`${bin} exited with code ${code}`))
-		})
-	})
 }
 
 // ─── System prompt ────────────────────────────────────────────────────────────
@@ -405,8 +340,8 @@ export async function runAskQuery(
 
 	// Ask AI to translate query → search spec
 	onStatus(`Asking ${bin}…`)
-	const fullPrompt = `${SYSTEM_PROMPT}\n\nQuery: ${query}\n\nJSON:`
-	const raw = await runAi(bin, fullPrompt)
+	// The query goes to the CLI as fenced data, and the CLI gets no tools: see askText.
+	const raw = await askText(bin, SYSTEM_PROMPT, query)
 
 	// Extract JSON from the response (strip any prose/markdown fences)
 	const jsonMatch = raw.match(/\{[\s\S]*\}/)

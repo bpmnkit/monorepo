@@ -63,6 +63,25 @@ describe("preserveFormatting", () => {
 		expect(kept).toBe(original)
 	})
 
+	it("keeps a number's spelling when asked to, and only then", () => {
+		const original = `<a><b x="30.0" y="7"/></a>`
+		const updated = `<a><b x="30" y="8"/></a>`
+		expect(preserveFormatting(original, updated, { equalNumbers: "keep" })).toBe(
+			`<a><b x="30.0" y="8"/></a>`,
+		)
+		expect(patch(original, updated)).toBe(updated)
+		// Not numbers, so not "the same number".
+		expect(preserveFormatting(`<a v=""/>`, `<a v="0"/>`, { equalNumbers: "keep" })).toBe(
+			`<a v="0"/>`,
+		)
+	})
+
+	it("keeps an empty element the update dropped when asked to, and only an empty one", () => {
+		const original = `<a>\n  <ext/>\n  <ext k="1"/>\n  <b/>\n</a>`
+		const kept = preserveFormatting(original, "<a>\n  <b/>\n</a>", { droppedEmptyElements: "keep" })
+		expect(kept).toBe("<a>\n  <ext/>\n  <b/>\n</a>")
+	})
+
 	it("leaves a value alone when only its spelling differs", () => {
 		// `&#10;` and `&#xA;` are the same newline. Rewriting one into the other
 		// is a diff that says nothing.

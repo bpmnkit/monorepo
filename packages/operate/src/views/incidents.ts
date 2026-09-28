@@ -77,9 +77,9 @@ export function createIncidentsView(
 		onRowClick: onSelect,
 		emptyText: "No incidents",
 	})
-	function applyFilter(): void {
+	function applyFilter(keepPage = false): void {
 		const rows = activeState ? allItems.filter((i) => i.state === activeState) : allItems
-		setRows(rows)
+		setRows(rows, keepPage)
 	}
 
 	const filterBar = document.createElement("div")
@@ -110,7 +110,7 @@ export function createIncidentsView(
 
 	function render(): void {
 		allItems = store.state.data?.items ?? []
-		applyFilter()
+		applyFilter(true)
 	}
 
 	const unsub = store.subscribe(render)

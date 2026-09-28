@@ -7,6 +7,7 @@ use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
 use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
+use super::throw_event::{element_was_terminated, throw_event, Thrown};
 
 pub struct JobProcessor {
     pub job_notifier: std::sync::Arc<crate::JobNotifier>,
@@ -45,6 +46,12 @@ impl JobProcessor {
         state: &EngineState,
         writers: &mut Writers,
     ) -> EngineResult<()> {
+        // The element may have been terminated (by a caught error or escalation)
+        // between queuing this command and processing it.
+        if element_was_terminated(state, &record.payload).await {
+            return Ok(());
+        }
+
         let key_gen = KeyGenerator::new(Arc::clone(&state.backend), state.partition_id);
         let payload = &record.payload;
         let tenant_id = record.tenant_id.clone();
@@ -88,7 +95,13 @@ impl JobProcessor {
             error_code: None,
             error_message: None,
             custom_headers,
-            variables: serde_json::Value::Object(Default::default()),
+            // What a worker sees on activation: every variable visible from the
+            // element (its input mappings included), inner scopes winning.
+            variables: serde_json::Value::Object(
+                crate::processor::scope::visible_variables(
+                    state, process_instance_key, element_instance_key,
+                ).await,
+            ),
             created_at: state.clock.now(),
             tenant_id: tenant_id.clone(),
         };
@@ -132,11 +145,21 @@ impl JobProcessor {
         let variables = payload.get("variables").cloned();
 
         let job = state.backend.get_job_by_key(job_key).await?;
-        state.backend.complete_job(job_key, variables.clone()).await?;
-
         // Look up the element instance to recover the correct flowScopeKey (e.g. subprocess scope)
         let ei = state.backend.get_element_instance_by_key(job.element_instance_key).await?;
         let flow_scope_key = ei.flow_scope_key.unwrap_or(job.process_instance_key);
+
+        // The job of an ad-hoc sub-process may complete with a result that activates
+        // inner elements or fulfils the completion condition. An invalid result
+        // rejects the completion before anything changes.
+        let ad_hoc = if ei.element_type == super::ad_hoc::AD_HOC {
+            let process = super::throw_event::load_process(state, ei.process_definition_key, &ei.bpmn_process_id).await?;
+            super::ad_hoc::job_result(&process, &job, payload.get("result"))?.map(|result| (process, result))
+        } else {
+            None
+        };
+
+        state.backend.complete_job(job_key, variables.clone()).await?;
 
         writers.events.push(EventToWrite {
             value_type: "JOB".to_string(),
@@ -150,6 +173,13 @@ impl JobProcessor {
                 "tenantId": tenant_id,
             }),
         });
+
+        if let Some((process, result)) = ad_hoc {
+            if let Some(reebe_bpmn::FlowElement::SubProcess(sp)) = process.get_element_recursive(&ei.element_id) {
+                let vars = variables.as_ref().and_then(|v| v.as_object());
+                return super::ad_hoc::apply_job_result(state, writers, sp, &ei, vars, result).await;
+            }
+        }
 
         // Complete the element instance
         writers.commands.push(CommandToWrite {
@@ -196,6 +226,12 @@ impl JobProcessor {
         state.backend
             .fail_job(job_key, retries, error_message.as_deref(), None, retry_back_off_ms)
             .await?;
+        // The variables a job is failed with become local variables of its task, as in Zeebe.
+        if let Some(variables) = payload["variables"].as_object() {
+            for (name, value) in variables {
+                super::scope::set_local(state, job.process_instance_key, job.element_instance_key, name, value.clone(), &tenant_id).await?;
+            }
+        }
 
         writers.events.push(EventToWrite {
             value_type: "JOB".to_string(),
@@ -253,7 +289,6 @@ impl JobProcessor {
         state: &EngineState,
         writers: &mut Writers,
     ) -> EngineResult<()> {
-        let key_gen = KeyGenerator::new(Arc::clone(&state.backend), state.partition_id);
         let payload = &record.payload;
         let tenant_id = record.tenant_id.clone();
 
@@ -265,6 +300,7 @@ impl JobProcessor {
 
         let error_code = payload["errorCode"].as_str().unwrap_or("").to_string();
         let error_message = payload["errorMessage"].as_str().map(|s| s.to_string());
+        let error_variables = payload.get("variables").filter(|v| v.as_object().is_some_and(|o| !o.is_empty())).cloned();
 
         let job = state.backend.get_job_by_key(job_key).await?;
         state.backend
@@ -283,125 +319,18 @@ impl JobProcessor {
             }),
         });
 
-        // Look for an error boundary event attached to the task element.
-        let boundary_event_id = self
-            .find_error_boundary_event(
-                state,
-                job.process_definition_key,
-                &job.bpmn_process_id,
-                &job.element_id,
-                &error_code,
-            )
-            .await;
-
-        if let Some(be_id) = boundary_event_id {
-            // Terminate the service task element instance
-            if let Ok(ei) = state.backend.get_element_instance_by_key(job.element_instance_key).await {
-                state.backend.update_element_instance_state(ei.key, "TERMINATED").await?;
-                writers.events.push(EventToWrite {
-                    value_type: "PROCESS_INSTANCE".to_string(),
-                    intent: "ELEMENT_TERMINATED".to_string(),
-                    key: ei.key,
-                    payload: serde_json::json!({
-                        "elementInstanceKey": ei.key.to_string(),
-                        "processInstanceKey": job.process_instance_key.to_string(),
-                        "elementId": ei.element_id,
-                        "elementType": ei.element_type,
-                        "bpmnProcessId": job.bpmn_process_id,
-                        "tenantId": tenant_id,
-                    }),
-                });
-
-                // Activate the boundary event
-                writers.commands.push(CommandToWrite {
-                    value_type: "PROCESS_INSTANCE".to_string(),
-                    intent: "ACTIVATE_ELEMENT".to_string(),
-                    key: job.process_instance_key,
-                    payload: serde_json::json!({
-                        "processInstanceKey": job.process_instance_key.to_string(),
-                        "processDefinitionKey": job.process_definition_key.to_string(),
-                        "bpmnProcessId": job.bpmn_process_id,
-                        "elementId": be_id,
-                        "flowScopeKey": ei.flow_scope_key.unwrap_or(job.process_instance_key).to_string(),
-                        "variables": { "errorCode": error_code, "errorMessage": error_message },
-                        "tenantId": tenant_id,
-                    }),
-                });
-            }
-        } else {
-            // No matching boundary event — create an incident
-            let incident_key = key_gen.next_key().await?;
-            let incident = Incident {
-                key: incident_key,
-                partition_id: state.partition_id,
-                process_instance_key: job.process_instance_key,
-                process_definition_key: job.process_definition_key,
-                element_instance_key: job.element_instance_key,
-                element_id: job.element_id.clone(),
-                error_type: "UNHANDLED_ERROR_EVENT".to_string(),
-                error_message: error_message.clone().or(Some(error_code.clone())),
-                state: "ACTIVE".to_string(),
-                job_key: Some(job_key),
-                created_at: state.clock.now(),
-                resolved_at: None,
-                tenant_id: tenant_id.clone(),
-            };
-            state.backend.insert_incident(&incident).await?;
-
-            writers.events.push(EventToWrite {
-                value_type: "INCIDENT".to_string(),
-                intent: "CREATED".to_string(),
-                key: incident_key,
-                payload: serde_json::json!({
-                    "incidentKey": incident_key.to_string(),
-                    "jobKey": job_key.to_string(),
-                    "processInstanceKey": job.process_instance_key.to_string(),
-                    "errorType": "UNHANDLED_ERROR_EVENT",
-                    "errorCode": error_code,
-                    "errorMessage": error_message,
-                    "tenantId": tenant_id,
-                }),
-            });
-        }
+        // Hand the error to the nearest catch event; an uncaught error raises an incident.
+        let thrower = state.backend.get_element_instance_by_key(job.element_instance_key).await?;
+        throw_event(
+            state,
+            writers,
+            &thrower,
+            &Thrown::Error { code: error_code, message: error_message, variables: error_variables },
+            Some(job_key),
+        )
+        .await?;
 
         Ok(())
-    }
-
-    /// Return the element ID of an error boundary event attached to `element_id` whose
-    /// error code matches `thrown_code` (or is a catch-all with no error code).
-    async fn find_error_boundary_event(
-        &self,
-        state: &EngineState,
-        process_definition_key: i64,
-        bpmn_process_id: &str,
-        element_id: &str,
-        thrown_code: &str,
-    ) -> Option<String> {
-        let pd = state.backend
-            .get_process_definition_by_key(process_definition_key)
-            .await
-            .ok()?;
-        let processes = reebe_bpmn::parse_bpmn(&pd.bpmn_xml).ok()?;
-        let process = processes
-            .iter()
-            .find(|p| p.id == bpmn_process_id || p.id == pd.bpmn_process_id)?;
-
-        for (_id, elem) in &process.elements {
-            if let reebe_bpmn::FlowElement::BoundaryEvent(be) = elem {
-                if be.attached_to_ref != element_id {
-                    continue;
-                }
-                if let Some(reebe_bpmn::EventDefinition::Error(err_def)) = &be.event_definition {
-                    let code_matches = err_def.error_code.as_deref().map_or(true, |c| {
-                        c.is_empty() || c == thrown_code
-                    });
-                    if code_matches {
-                        return Some(be.id.clone());
-                    }
-                }
-            }
-        }
-        None
     }
 
     async fn timeout_job(

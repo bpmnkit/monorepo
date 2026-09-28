@@ -1,0 +1,138 @@
+name: Release desktop app
+
+# Builds the Tauri desktop app for Linux, Windows and macOS (Apple silicon and Intel) and
+# attaches the installers to a GitHub Release tagged desktop-v<version>.
+#
+# Runs when apps/desktop's version changes on main — the Changesets release PR bumps it like
+# any other workspace — or on demand. The release is created as a draft by the build jobs
+# and published only once every platform has uploaded, so a half-built release is never
+# visible and a failed run can simply be re-run.
+#
+# The builds are not code-signed yet: macOS asks the user to confirm the first launch
+# (right-click → Open), and Windows SmartScreen shows "unrecognised app".
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/desktop/package.json
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  version:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      released: ${{ steps.version.outputs.released }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=desktop-v$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/desktop-v$VERSION" >/dev/null; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "desktop-v$VERSION is already released — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: version
+    if: needs.version.outputs.released == 'false'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-22.04
+          - name: Windows x64
+            runner: windows-latest
+          - name: macOS Apple silicon
+            runner: macos-latest
+          - name: macOS Intel
+            runner: macos-13
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/proxy-rs -> target
+            apps/desktop/src-tauri -> target
+
+      # The app's own Vite build runs as Tauri's beforeBuildCommand; the workspace
+      # packages it imports have to be built first.
+      - name: Build workspace dependencies
+        run: pnpm turbo build --filter "@bpmnkit/desktop^..."
+
+      # The native AI server and MCP binaries are bundled as resources
+      # (tauri.conf.json / tauri.windows.conf.json).
+      - name: Build the AI server sidecar
+        run: cargo build --manifest-path apps/proxy-rs/Cargo.toml --release
+
+      - name: Build and upload installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: pnpm exec tauri
+          tagName: ${{ needs.version.outputs.tag }}
+          releaseName: BPMN Kit desktop ${{ needs.version.outputs.version }}
+          releaseBody: |
+            Installers for the BPMN Kit desktop editor. Builds are not code-signed yet: on macOS, right-click the app and choose **Open** the first time; on Windows, choose **More info → Run anyway**.
+
+            Changes: https://github.com/${{ github.repository }}/blob/main/apps/desktop/CHANGELOG.md
+          releaseDraft: true
+          releaseCommitish: ${{ github.sha }}
+
+  publish:
+    name: Publish release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ needs.version.outputs.tag }}" --repo "${{ github.repository }}" --draft=false --latest=false

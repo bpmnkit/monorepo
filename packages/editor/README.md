@@ -7,10 +7,12 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/editor?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: core](https://img.shields.io/badge/tier-core-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/editor/CHANGELOG.md)
 </div>
+
+> **Core tier.** Semver at 1.0: nothing breaks without a major release. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
@@ -30,6 +32,7 @@
 - **HUD toolbar** — customisable palette with shape categories
 - **Side dock** — resizable right sidebar with Properties, AI chat, and Docs tabs
 - **Theme persistence** — auto read/write `localStorage` with `persistTheme`
+- **Ten languages** — English built in; German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable locales
 
 ## Installation
 
@@ -81,8 +84,12 @@ interface HudOptions {
   container: HTMLElement
   optimizeButton?: HTMLElement  // inject into action bar
   aiButton?: HTMLElement        // inject into action bar
+  // Decisions and forms (and a title) for More → Export documentation…
+  getDocumentationContext?: () => DocumentationOptions
 }
 ```
+
+The HUD's **More** menu has **Export documentation…**: a print-ready HTML view (Print → Save as PDF), or an HTML, Markdown or Word download, built with `@bpmnkit/core`'s process documentation renderers.
 
 ### `createSideDock(container)` → `SideDock`
 
@@ -102,6 +109,28 @@ interface SideDock {
 }
 ```
 
+## Internationalisation
+
+Each shipped language is its own entry point, so a bundle carries only what it imports.
+`createTranslate(locale)` turns one into the `translate` hook; pass the same hook to the
+editor, `createSideDock` and each `@bpmnkit/plugins` panel:
+
+```typescript
+import { BpmnEditor, createSideDock, createTranslate, initEditorHud } from "@bpmnkit/editor"
+import { de } from "@bpmnkit/editor/locales/de"
+
+const translate = createTranslate(de)
+const editor = new BpmnEditor({ container, translate })
+const dock = createSideDock({ translate })
+initEditorHud(editor) // reads the editor's hook
+```
+
+Locales: `de`, `es`, `fr`, `it`, `nl`, `pl`, `pt-BR`, `ja`, `zh-CN`. `AVAILABLE_LOCALES`
+lists them with their own names, and `matchLocale(navigator.languages, codes)` picks the
+browser's. A message can be a plural object (`{ one, few, many, other }`), chosen with
+`Intl.PluralRules` from `count`. Missing keys fall back to English. The translations are
+machine-assisted — corrections welcome, see `CONTRIBUTING.md`.
+
 ---
 
 ## Related Packages
@@ -110,11 +139,12 @@ interface SideDock {
 |---------|-------------|
 | [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

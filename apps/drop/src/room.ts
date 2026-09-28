@@ -23,6 +23,7 @@ import { parseOp } from "./lib/op-guard.js"
 import { verifyTurnstile } from "./lib/turnstile.js"
 import { byteLength } from "./lib/validate.js"
 import { appendMilestone, bucketKey, setCurrent } from "./lib/versions.js"
+import { type CommentView, normaliseName } from "./shared/comments.js"
 import { AUTOSAVE_MS, MAX_ROW_BYTES, RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
 import {
 	BATON_IDLE_MS,
@@ -41,10 +42,25 @@ interface Attachment {
 	actor: string
 	/** Rejected Turnstile tokens on this connection, so a prober can be cut off. */
 	failedClaims?: number
+	/** The display name this viewer gave, if any. */
+	name?: string
+	/** How many times it has changed, so renaming cannot be used to flood a room. */
+	renames?: number
 }
 
 /** How many failed challenges one connection gets before it is ignored. */
 const MAX_FAILED_CLAIMS = 3
+
+/** Each rename is a presence broadcast to everyone, so one connection gets a few. */
+const MAX_RENAMES = 20
+
+/**
+ * Where the Worker posts a comment for the room to fan out.
+ *
+ * Not reachable from outside: the Worker forwards only
+ * `/drop/api/presence/:shareId` to a room, and that is never this path.
+ */
+export const ROOM_COMMENT_PATH = "/internal/comment"
 
 /**
  * One instance per shareId: the room a drop's viewers share.
@@ -104,6 +120,9 @@ export class DocRoom implements DurableObject {
 	}
 
 	async fetch(request: Request): Promise<Response> {
+		if (new URL(request.url).pathname === ROOM_COMMENT_PATH && request.method === "POST") {
+			return this.fanOutComment(request)
+		}
 		if (request.headers.get("Upgrade") !== "websocket") {
 			return new Response("expected a WebSocket upgrade", { status: 426 })
 		}
@@ -132,9 +151,22 @@ export class DocRoom implements DurableObject {
 			viewers: this.state.getWebSockets().length,
 			holder,
 			file: await this.holderFile(),
+			names: this.names(),
 		})
 		await this.broadcastPresence()
 		return new Response(null, { status: 101, webSocket: client })
+	}
+
+	/**
+	 * Delivers a comment the Worker has already stored to everyone in the room.
+	 *
+	 * The room keeps nothing: D1 is where comments live, and this is only the
+	 * live half — a viewer who was not connected reads them on load instead.
+	 */
+	private async fanOutComment(request: Request): Promise<Response> {
+		const comment = (await request.json()) as CommentView
+		this.broadcast({ type: "comment", comment })
+		return new Response(null, { status: 204 })
 	}
 
 	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
@@ -158,6 +190,7 @@ export class DocRoom implements DurableObject {
 			await this.broadcastPresence()
 		} else if (message.type === "op") await this.handleOp(ws, actor, message)
 		else if (message.type === "resync") await this.sendState(ws, message.filename)
+		else if (message.type === "name") await this.rename(ws, message.name)
 		await this.rearm()
 	}
 
@@ -468,6 +501,34 @@ export class DocRoom implements DurableObject {
 		this.send(ws, { type: "rejected", seq, reason, ...(detail ? { detail } : {}) })
 	}
 
+	// ── Names ──────────────────────────────────────────────────────────────────
+
+	/**
+	 * Records the name a viewer goes by and tells the room.
+	 *
+	 * A name that does not pass {@link normaliseName}, or one that has not
+	 * changed, is ignored rather than answered: nothing is at stake in it, and a
+	 * reply would only be something else to send.
+	 */
+	private async rename(ws: WebSocket, raw: unknown): Promise<void> {
+		const name = normaliseName(raw)
+		const attached = (ws.deserializeAttachment() as Attachment | null) ?? { actor: "" }
+		if (!name || name === attached.name || (attached.renames ?? 0) >= MAX_RENAMES) return
+		ws.serializeAttachment({ ...attached, name, renames: (attached.renames ?? 0) + 1 })
+		await this.broadcastPresence()
+	}
+
+	/** The distinct names of everyone connected, sorted. */
+	private names(excluding?: WebSocket): string[] {
+		const names = new Set<string>()
+		for (const ws of this.state.getWebSockets()) {
+			if (ws === excluding) continue
+			const name = (ws.deserializeAttachment() as Attachment | null)?.name
+			if (name) names.add(name)
+		}
+		return [...names].sort((a, b) => a.localeCompare(b))
+	}
+
 	// ── Views ──────────────────────────────────────────────────────────────────
 
 	private async noteView(shareId: string): Promise<void> {
@@ -650,8 +711,9 @@ export class DocRoom implements DurableObject {
 		const holder = await this.holder()
 		const file = await this.holderFile()
 		const sockets = this.state.getWebSockets().filter((ws) => ws !== excluding)
+		const names = this.names(excluding)
 		for (const ws of sockets) {
-			this.send(ws, { type: "presence", viewers: sockets.length, holder, file })
+			this.send(ws, { type: "presence", viewers: sockets.length, holder, file, names })
 		}
 	}
 }

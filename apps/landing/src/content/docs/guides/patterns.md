@@ -65,6 +65,14 @@ casen pattern get invoice-approval
 casen pattern get "employee onboarding workflow"   # free-text match
 ```
 
+## Patterns and templates
+
+The same package has a second export, `@bpmnkit/patterns/templates`. It holds the
+[runnable process templates](/docs/guides/templates) behind the [gallery](/templates):
+complete, deployable processes with test scenarios. A pattern gives an AI model context to
+write its own process. A template is a finished process you copy and change. Use
+`casen pattern` for patterns and `casen template` for templates.
+
 ## Using patterns from code
 
 You can access the pattern library directly in TypeScript:

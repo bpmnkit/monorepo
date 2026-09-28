@@ -1,5 +1,197 @@
 # Features
 
+## Camunda version compatibility and exact bpmnlint parity (2026-09-25)
+
+- Lint checks a diagram against the Camunda 8 version it targets, as Camunda Modeler does
+  (all 65 `bpmnlint-plugin-camunda-compat` rules: 62 reproduced, 3 via existing findings); all 28 bpmnlint built-in rules match
+  bpmnlint exactly, proven by a parity test over every `.bpmn` in the repository; labels render
+  in their `BPMNLabelStyle` font.
+
+## Reebe: process instance modification and DMN versions (2026-09-24)
+
+- Activate, terminate and move instructions over REST and gRPC; DMN decisions versioned and
+  evaluable by id or key; gRPC deploys work end to end; the embedded SQLite backend runs
+  processes and decisions.
+
+## Reebe: link events, compensation, ad-hoc inner elements (2026-09-24)
+
+- Link events, compensation handlers, ad-hoc sub-processes that activate their inner elements
+  (by `activeElementsCollection` or an AI agent's job result), and Zeebe's gateway incident and
+  retry rules.
+
+## Reebe: event sub-processes and inclusive joins (2026-09-24)
+
+- Timer, message and signal event sub-processes (interrupting and not), inclusive gateway
+  joins that wait for reachable branches, and join tokens that keep their scope open.
+
+## Reebe: start events and restart safety (2026-09-24)
+
+- Timer start events (dates, `R…` cycles, cron) and message start events create instances;
+  sub-processes complete by Zeebe's rule; a restarted server resumes where it stopped instead
+  of replaying its log.
+
+## Reebe: boundary events, event-based gateway, multi-instance everywhere (2026-09-24)
+
+- Timer, message and signal boundary events (interrupting and not, cycles), the event-based
+  gateway's first-wins race, and parallel/sequential multi-instance on every activity type.
+  Workers now receive the process variables their job can see.
+
+## Editor in ten languages (2026-09-24)
+
+- German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese
+  (Simplified) as `@bpmnkit/editor/locales/<code>`, with `createTranslate`; language pickers in
+  the bpmnkit.com editor and Drop.
+
+## Process documentation export (2026-09-24)
+
+- A print-ready HTML (→ PDF), Markdown or Word document of a process — diagram, lanes, every
+  step with its settings in flow order, linked DMN tables and forms — from the editor's More
+  menu, Drop's Docs button, `casen doc export`, or `renderDocumentationHtml` in core.
+
+## Product tiers (2026-09-24)
+
+- Core / Tools / Experimental, defined once in `scripts/published-packages.mjs`, enforced by
+  `check-packages.mjs`, and shown on the homepage, every product doc page, the stability page
+  and every README.
+
+## `casen test` on Reebe: error propagation, user tasks, ad-hoc jobs (2026-09-24)
+
+- Reebe throws and catches errors and escalations across sub-processes, event sub-processes
+  and call activities; `runScenarioWasm` completes native user tasks and delivers the message
+  a receive task waits for. All 59 template scenarios pass on both engines.
+
+## Agentic BPMN testing (2026-09-24)
+
+- `mockAiAgent` in `@bpmnkit/engine/testing` scripts an AI Agent's tool calls turn by turn
+  inside its ad-hoc sub-process, with record/replay cassettes, a `toHaveCalledTools` matcher
+  and tool coverage. The simulator runs ad-hoc sub-processes driven by a job worker.
+
+## Camunda 7 → 8 migration (2026-09-24)
+
+- `convertCamunda7` / `analyzeCamunda7` / `translateJuelToFeel` in `@bpmnkit/core` and
+  `casen migrate c7`: converts `camunda:` extensions to `zeebe:` ones, translates provable JUEL
+  to FEEL, and reports every construct as convertible, manual or unsupported.
+
+## Auto-layout routing parity (2026-09-24)
+
+- No connection routed through a shape on bpmn-auto-layout 2.0's 160 fixtures (upstream: 10),
+  fewer crossings than upstream, at about 15× its speed; `packages/core/scripts/layout-quality.mjs`
+  reproduces the comparison.
+
+## BPMN in Markdown — `@bpmnkit/markdown` (2026-09-24)
+
+- ```` ```bpmn ```` and ```` ```bpmn-compact ```` fences rendered to accessible, themeable inline
+  SVG at build time: `remarkBpmn` (Astro, Docusaurus, MDX), `markdownItBpmn` (VitePress),
+  `renderBpmnInHtml`, and the `bpmnkit-md` CLI that pre-renders README diagrams (`--check` for CI).
+
+## Drop: review comments and @mentions (2026-09-24)
+
+- Element-anchored and whole-file comment threads with replies, resolve/reopen, live delivery,
+  canvas markers, display names and @mention notices for viewers who have the drop open.
+
+## Template gallery (2026-09-24)
+
+- 25 runnable Camunda 8 templates (18 business, 7 AI-agent patterns) in
+  `@bpmnkit/patterns/templates`, each with test scenarios; `casen template list|use`;
+  `/templates` gallery with "Open in editor" on bpmnkit.com.
+
+## TypeScript simulator: full BPMN semantics (2026-09-24)
+
+- Call activities, event sub-processes, event-based gateways, message/signal/non-interrupting
+  boundary events, signals, escalations, multi-instance, link events and compensation, with
+  Zeebe variable propagation; `engine.broadcastSignal`, `deliverMessage(name, vars, key)`.
+
+## Developer loop: `casen dev`, test helpers, typed codegen (2026-09-24)
+
+- **`casen dev`** — local engine, editor and checks panel in one command: lint and scenarios
+  re-run on every save, on the TS engine or Reebe WASM (`--engine wasm`).
+- **`@bpmnkit/engine/testing`** (+ `/testing/vitest`) — start instances, complete jobs, mock
+  connectors, assert paths and variables, control timers with a fake clock.
+- **`casen generate types`** — TypeScript types for job types, variables and messages from
+  BPMN, with `--check` / `--check-workers` contract checks and typed `worker-client` generics.
+
+## Reebe WASM: message correlation and job results (2026-09-24)
+
+- Messages correlate on FEEL-evaluated `zeebe:subscription` keys, and job and message
+  variables reach the process as in Zeebe.
+
+## BPMN Model Interchange (MIWG) round trip (2026-09-24)
+
+- **All 22 OMG MIWG reference models** open, keep their diagram interchange and round-trip to
+  the same model, checked on every build (`packages/core/tests/roundtrip-corpus.test.ts`).
+- **Default-namespace BPMN** is written back unprefixed, as the file had it.
+- **`exportPreserving`** returns an unchanged foreign file byte for byte, including `30.0`
+  coordinates and empty `<extensionElements/>`.
+
+## FEEL: Camunda parity suite and Camunda's built-ins (2026-09-24)
+
+- **Camunda parity** (`packages/feel/tests/camunda-parity.test.ts`) — every runnable worked
+  example in Camunda 8's FEEL documentation, read from `@bpmnkit/camunda-docspack` at test
+  time and compared with the documented result: 375 of 378 match, and the three that do not
+  are listed with reasons in `KNOWN_DIFFERENCES`.
+- **Example extractor** (`packages/feel/tasks/extract-camunda-examples.mjs`) — `--skipped`
+  lists every example that cannot run standalone, with the reason.
+- **Camunda built-ins** — `assert`, `is empty`, `partition`, `duplicate values`, `is blank`,
+  `trim`, `extract`, `uuid`, `to base64`, `from base64`, `to json`, `from json`, `fromAi` and
+  `date and time(value, timezone)`. 101 built-ins in all.
+- **Temporal fixes** — `last day of month` returns a date; time ± duration, time − time and
+  duration ÷ duration evaluate; `time("T…")` and `…+02:00[Europe/Berlin]` parse.
+- **DMN TCK** — 1,941 of 2,053 FEEL cases (from 1,939), after `overlaps before` /
+  `overlaps after` were brought in line with DMN at open range ends.
+
+## Inbound connector and linked-resource templates (2026-09-24)
+
+- **`applyTemplateToElement(definitions, elementId, template, values)`**
+  (`@bpmnkit/connectors`) — writes an element template onto an element of a parsed model,
+  every binding kind included: the root `bpmn:message` an event or receive task references,
+  its `zeebe:subscription` correlation key, `zeebe:properties` (`inbound.type` …),
+  `zeebe:linkedResources`, the `elementType` conversion and message event definition, and the
+  `zeebe:modelerTemplate` stamps.
+- **Messages reused, not multiplied** — referenced by name when one exists, the element's own
+  renamed when nothing else uses it, created otherwise.
+- **Deterministic generated names** — an inbound message name Camunda would generate as a random
+  UUID is derived from the template and element ids; applying twice changes nothing.
+- **Builder path reports what it cannot carry** — `applyElementTemplate` returns `messageName` /
+  `correlationKey` for inbound events and names linked resources and a start event's
+  correlation key as problems.
+
+## bpmnlint compatibility — your `.bpmnlintrc` is honoured (2026-09-24)
+
+- **`.bpmnlintrc` discovery.** `casen lint` and the VS Code Problems panel use the nearest
+  `.bpmnlintrc`, starting in the diagram's folder. `--no-bpmnlintrc` and
+  `bpmnkit.lint.bpmnlintrc` turn this off.
+- **All 28 bpmnlint built-in rules are mapped.** The config's levels and `off` apply to BPMN
+  Kit's equivalent findings. Rules BPMN Kit lacked are implemented natively and run only when
+  the config enables them. The mapping table in `guides/bpmnlint` marks each rule as exact
+  or approximate.
+- **Your own bpmnlint and its plugins.** When the project has `bpmnlint` and `bpmn-moddle`
+  installed, BPMN Kit loads them from the project and runs the config with them, so
+  `bpmnlint-plugin-*` rules work. Its findings replace BPMN Kit's equivalents and are not
+  shown a second time.
+- **Nothing is ignored silently.** A plugin rule, an unknown rule or a `plugin:` config that
+  cannot be applied is reported.
+- **For hosts.** `@bpmnkit/core` provides `parseBpmnlintConfig`, `resolveBpmnlintConfig`,
+  `applyBpmnlintConfig`, `BPMNLINT_RULE_MAP` and `lintDiagram({ bpmnlint })`, all with no
+  dependencies and usable in a browser. `@bpmnkit/core/node` provides `findBpmnlintrc`,
+  `prepareBpmnlint` and `runBpmnlint`.
+
+## Conformance page, release pipelines for VS Code and desktop, MCP Registry listing (2026-09-23)
+
+- **Conformance** (`/docs/getting-started/conformance`) — FEEL against the DMN TCK
+  (1,939 / 2,053), BPMN descriptor coverage (109 modelled, 34 preserved, 6 dropped), an
+  element-by-component support matrix, and every known gap in one list.
+- **VS Code releases** (`.github/workflows/release-vscode.yml`) — a `.vsix` on a
+  `vscode-v<version>` GitHub Release whenever the extension's version moves; Marketplace and
+  Open VSX publishing when their tokens are set.
+- **Desktop installers** (`.github/workflows/release-desktop.yml`) — Linux, Windows, macOS
+  (Apple silicon and Intel) builds into a `desktop-v<version>` release, unsigned for now.
+- **MCP Registry** (`.github/workflows/publish-mcp.yml`, `apps/cli/server.json`) —
+  `casen proxy mcp` listed as `io.github.bpmnkit/bpmnkit` after each release.
+- **Opt-in analytics** — Cloudflare Web Analytics on bpmnkit.com when the build sets
+  `PUBLIC_CF_WEB_ANALYTICS_TOKEN`.
+- **`/compare/bpmn-js`** — the licence difference, quoted from the bpmn-js LICENSE.
+- **Launch post** — "BPMN Kit 1.0: twelve packages take the stability promise".
+
 ## Edit a shared FEEL statement from its link (2026-09-21)
 
 - **Edit on a FEEL tab** (`apps/drop`) — the composer's two boxes, opened on what the drop
@@ -1903,8 +2095,12 @@ Tools: `get_diagram`, `add_elements`, `remove_elements`, `update_element`, `set_
 
 Adapters supported:
 - **Claude** (`claude -p --mcp-config --allowedTools --strict-mcp-config`) — full MCP
-- **Copilot** (`copilot -p --additional-mcp-config --allow-all-tools`, new `@github/copilot` GA Feb 2026) — full MCP
-- **Gemini** (`gemini -p --yolo`) — fallback to system-prompt approach (no per-invocation MCP)
+- **Copilot** (`copilot -p --additional-mcp-config`) — full MCP
+- **Gemini** (`gemini -p`) — fallback to system-prompt approach (no per-invocation MCP)
+
+Since 2026-09-27 every adapter runs without built-in tools or permission bypass: only the
+`mcp__bpmn__` diagram tools are allowed, each run starts in an empty folder, and model code in
+`compose_diagram` runs in an isolated-vm isolate (see `doc/progress.md`).
 
 All diagram changes go through `expand()` + `Bpmn.export()` in core; the client receives validated XML via `{ type: "xml" }` SSE and never manipulates BPMN directly.
 

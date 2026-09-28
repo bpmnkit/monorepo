@@ -323,6 +323,18 @@ pub async fn cancel_jobs_by_process_instance(pool: &DbPool, process_instance_key
 }
 
 #[cfg(any(feature = "postgres", feature = "sqlite"))]
+pub async fn cancel_jobs_by_element_instance(pool: &DbPool, element_instance_key: i64) -> Result<u64> {
+    let result = sqlx::query(
+        r#"UPDATE jobs SET state = 'CANCELED', worker = NULL, deadline = NULL
+           WHERE element_instance_key = $1 AND state IN ('ACTIVATABLE', 'ACTIVATED')"#,
+    )
+    .bind(element_instance_key)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+#[cfg(any(feature = "postgres", feature = "sqlite"))]
 fn row_to_job(r: crate::DbRow) -> Job {
     use sqlx::Row;
     Job {

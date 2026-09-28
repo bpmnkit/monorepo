@@ -6,6 +6,7 @@ use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
 use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
+use super::throw_event::element_was_terminated;
 
 pub struct UserTaskProcessor;
 
@@ -39,6 +40,12 @@ impl UserTaskProcessor {
         state: &EngineState,
         writers: &mut Writers,
     ) -> EngineResult<()> {
+        // The element may have been terminated (by a caught error or escalation)
+        // between queuing this command and processing it.
+        if element_was_terminated(state, &record.payload).await {
+            return Ok(());
+        }
+
         let key_gen = KeyGenerator::new(Arc::clone(&state.backend), state.partition_id);
         let payload = &record.payload;
         let tenant_id = record.tenant_id.clone();

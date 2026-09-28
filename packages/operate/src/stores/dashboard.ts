@@ -11,7 +11,7 @@ export class DashboardStore extends Store<DashboardData> {
 			this.setUnsub(
 				createMockStream(
 					getMockDashboard,
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -20,11 +20,11 @@ export class DashboardStore extends Store<DashboardData> {
 
 		const params = new URLSearchParams({ topic: "dashboard" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		this.setUnsub(
 			createStream<DashboardData>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

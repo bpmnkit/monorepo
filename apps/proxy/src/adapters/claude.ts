@@ -1,13 +1,14 @@
 import { spawn } from "node:child_process"
-import { mkdirSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import {
+	BPMN_MCP_SERVER,
+	BPMN_MCP_TOOL_NAMES,
+	type Message,
+	inEmptyDir,
+	renderConversation,
+	withUntrustedInputRule,
+} from "./shared.js"
 
 export const supportsMcp = true
-
-interface Message {
-	role: string
-	content: string
-}
 
 interface StreamEvent {
 	type: string
@@ -91,6 +92,51 @@ export async function available(): Promise<boolean> {
 	})
 }
 
+/** Tool names the CLI knows the proxy's diagram tools by. */
+export const ALLOWED_TOOLS = BPMN_MCP_TOOL_NAMES.map((name) => `mcp__${BPMN_MCP_SERVER}__${name}`)
+
+/**
+ * The argv for one run.
+ *
+ * - `--tools ""` removes every built-in tool: no Bash, no file tools, no web.
+ * - `--strict-mcp-config` loads only the MCP server in `mcpConfigFile`, if any —
+ *   none of the developer's own.
+ * - `--setting-sources ""` loads none of the developer's settings files, so
+ *   their permission rules, hooks and plugins stay out.
+ * - `--permission-mode dontAsk` refuses any tool call `--allowedTools` does not
+ *   name, where bypass mode would have run it.
+ * - `--system-prompt` replaces the coding-agent prompt; the conversation goes on
+ *   stdin.
+ */
+export function buildArgs(options: {
+	systemPrompt: string
+	mcpConfigFile: string | null
+	partialMessages: boolean
+}): string[] {
+	const args = [
+		"-p",
+		"--output-format",
+		"stream-json",
+		"--verbose",
+		"--system-prompt",
+		withUntrustedInputRule(options.systemPrompt),
+		"--tools",
+		"",
+		"--strict-mcp-config",
+		"--setting-sources",
+		"",
+		"--permission-mode",
+		"dontAsk",
+		"--disable-slash-commands",
+		"--no-session-persistence",
+	]
+	if (options.mcpConfigFile) {
+		args.push("--mcp-config", options.mcpConfigFile, "--allowedTools", ALLOWED_TOOLS.join(","))
+	}
+	if (options.partialMessages) args.push("--include-partial-messages")
+	return args
+}
+
 export async function stream(
 	messages: Message[],
 	systemPrompt: string,
@@ -103,54 +149,11 @@ export async function stream(
 	 */
 	onToolInput?: (text: string) => void,
 ): Promise<void> {
-	// Build conversation as a single prompt string
-	const parts = [systemPrompt, ""]
-	for (const msg of messages) {
-		parts.push(`${msg.role === "user" ? "Human" : "Assistant"}: ${msg.content}`)
-	}
-	parts.push("Assistant:")
-	const fullPrompt = parts.join("\n")
-
-	const MCP_TOOLS = [
-		"mcp__bpmn__get_diagram",
-		"mcp__bpmn__compose_diagram",
-		"mcp__bpmn__add_elements",
-		"mcp__bpmn__remove_elements",
-		"mcp__bpmn__update_element",
-		"mcp__bpmn__set_condition",
-		"mcp__bpmn__add_http_call",
-		"mcp__bpmn__replace_diagram",
-	]
-
-	const args = [
-		"-p",
-		fullPrompt,
-		"--output-format",
-		"stream-json",
-		"--verbose",
-		"--dangerously-skip-permissions",
-		"--permission-mode",
-		"bypassPermissions",
-	]
-
-	if (onToolInput) args.push("--include-partial-messages")
-
-	// Write a project-level .claude/settings.json that pre-approves all bpmn tools,
-	// then spawn claude with cwd pointing there so it reads the settings.
-	let spawnCwd: string | undefined
-	if (mcpConfigFile) {
-		const tmpDir = dirname(mcpConfigFile)
-		spawnCwd = tmpDir
-		const claudeDir = join(tmpDir, ".claude")
-		mkdirSync(claudeDir, { recursive: true })
-		writeFileSync(
-			join(claudeDir, "settings.json"),
-			JSON.stringify({ permissions: { allow: MCP_TOOLS } }),
-		)
-		args.push("--mcp-config", mcpConfigFile)
-		args.push("--allowedTools", MCP_TOOLS.join(","))
-		args.push("--strict-mcp-config")
-	}
+	const args = buildArgs({
+		systemPrompt,
+		mcpConfigFile,
+		partialMessages: onToolInput !== undefined,
+	})
 
 	// Strip CLAUDECODE so the nested-session guard in the CLI doesn't block us.
 	const spawnEnv: Record<string, string | undefined> = { ...process.env }
@@ -158,43 +161,49 @@ export async function stream(
 
 	console.log(`[claude] spawning with MCP: ${mcpConfigFile !== null}`)
 
-	await new Promise<void>((resolve, reject) => {
-		const proc = spawn("claude", args, {
-			cwd: spawnCwd,
-			env: spawnEnv,
-			stdio: ["ignore", "pipe", "pipe"],
-		})
+	await inEmptyDir(
+		(cwd) =>
+			new Promise<void>((resolve, reject) => {
+				const proc = spawn("claude", args, {
+					cwd,
+					env: spawnEnv,
+					stdio: ["pipe", "pipe", "pipe"],
+				})
+				// A CLI that exits before reading its input says so through its exit code.
+				proc.stdin?.on("error", () => {})
+				proc.stdin?.end(renderConversation(messages))
 
-		let buf = ""
-		let stderrBuf = ""
-		/** Content-block index → tool name, for the blocks currently open. */
-		const toolBlocks = new Map<number, string>()
+				let buf = ""
+				let stderrBuf = ""
+				/** Content-block index → tool name, for the blocks currently open. */
+				const toolBlocks = new Map<number, string>()
 
-		proc.stdout?.on("data", (chunk: Buffer) => {
-			buf += chunk.toString()
-			const lines = buf.split("\n")
-			buf = lines.pop() ?? ""
-			for (const line of lines) readStreamJsonLine(line, toolBlocks, onToken, onToolInput)
-		})
+				proc.stdout?.on("data", (chunk: Buffer) => {
+					buf += chunk.toString()
+					const lines = buf.split("\n")
+					buf = lines.pop() ?? ""
+					for (const line of lines) readStreamJsonLine(line, toolBlocks, onToken, onToolInput)
+				})
 
-		proc.stderr?.on("data", (chunk: Buffer) => {
-			const text = chunk.toString()
-			stderrBuf += text
-			process.stderr.write(`[claude stderr] ${text}`)
-		})
+				proc.stderr?.on("data", (chunk: Buffer) => {
+					const text = chunk.toString()
+					stderrBuf += text
+					process.stderr.write(`[claude stderr] ${text}`)
+				})
 
-		proc.on("error", (err) => {
-			console.error(`[claude] spawn error: ${String(err)}`)
-			reject(err)
-		})
-		proc.on("close", (code) => {
-			console.log(`[claude] exited with code ${code}`)
-			if (code === 0) {
-				resolve()
-			} else {
-				const detail = stderrBuf.trim() ? `: ${stderrBuf.trim()}` : ""
-				reject(new Error(`claude exited with code ${code}${detail}`))
-			}
-		})
-	})
+				proc.on("error", (err) => {
+					console.error(`[claude] spawn error: ${String(err)}`)
+					reject(err)
+				})
+				proc.on("close", (code) => {
+					console.log(`[claude] exited with code ${code}`)
+					if (code === 0) {
+						resolve()
+					} else {
+						const detail = stderrBuf.trim() ? `: ${stderrBuf.trim()}` : ""
+						reject(new Error(`claude exited with code ${code}${detail}`))
+					}
+				})
+			}),
+	)
 }

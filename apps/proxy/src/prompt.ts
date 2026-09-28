@@ -1,4 +1,5 @@
 import type { CompactDiagram } from "@bpmnkit/core"
+import { fenceUntrusted } from "./adapters/shared.js"
 
 // ── Shared format blocks (used by non-MCP fallback adapters) ──────────────────
 
@@ -107,12 +108,14 @@ export function buildMcpImprovePrompt(findings: FindingInfo[]): string {
 	]
 
 	if (findings.length > 0) {
-		lines.push("Fix ALL of these detected issues:")
+		// Findings quote element names and ids from the diagram, so they are fenced.
+		const found: string[] = []
 		for (const f of findings) {
 			const els = f.elementIds.length > 0 ? ` [elements: ${f.elementIds.join(", ")}]` : ""
-			lines.push(`- [${f.category}] ${f.message}${els}`)
-			lines.push(`  → ${f.suggestion}`)
+			found.push(`- [${f.category}] ${f.message}${els}`)
+			found.push(`  → ${f.suggestion}`)
 		}
+		lines.push("Fix ALL of these detected issues:", fenceUntrusted(found.join("\n")))
 	} else {
 		lines.push("No structural issues detected. Apply general best practices:")
 		lines.push("- Group 3+ consecutive related tasks (no branching) into a subProcess.")
@@ -275,18 +278,24 @@ export function buildOperateChatSystemPrompt(stats: OperateStats | null): string
 	]
 
 	if (stats) {
+		// The counts come from the request body; only numbers reach the system prompt.
+		const count = (value: unknown): number => {
+			const n = Number(value)
+			return Number.isFinite(n) ? n : 0
+		}
+		const incidents = count(stats.activeIncidents)
 		lines.push(
 			"## Current cluster state",
-			`- Running instances: ${stats.runningInstances}`,
-			`- Active incidents: ${stats.activeIncidents}`,
-			`- Pending user tasks: ${stats.pendingTasks}`,
-			`- Deployed process definitions: ${stats.deployedDefinitions}`,
-			`- Active jobs: ${stats.activeJobs}`,
+			`- Running instances: ${count(stats.runningInstances)}`,
+			`- Active incidents: ${incidents}`,
+			`- Pending user tasks: ${count(stats.pendingTasks)}`,
+			`- Deployed process definitions: ${count(stats.deployedDefinitions)}`,
+			`- Active jobs: ${count(stats.activeJobs)}`,
 			"",
 		)
-		if (stats.activeIncidents > 0) {
+		if (incidents > 0) {
 			lines.push(
-				`There are ${stats.activeIncidents} active incident(s) — these are blocking process execution.`,
+				`There are ${incidents} active incident(s) — these are blocking process execution.`,
 				"When asked what to do next, prioritize resolving incidents first.",
 				"",
 			)
@@ -385,12 +394,13 @@ export function buildImproveUserMessage(ctx: ImproveContext): string {
 }
 
 // ── Form / DMN creation prompt builders ──────────────────────────────────────
+// The task description is request data, so it travels in the user message,
+// fenced, rather than in the system prompt.
 
-export function buildFormCreateSystemPrompt(taskName: string, taskContext: string): string {
+export function buildFormCreateSystemPrompt(): string {
 	return [
 		"You are a Camunda Form expert.",
-		`Task name: ${taskName}`,
-		`Process context: ${taskContext}`,
+		"The user message describes a user task and its process context.",
 		"",
 		"Generate a Camunda Form JSON for this user task.",
 		"",
@@ -410,20 +420,19 @@ export function buildFormCreateSystemPrompt(taskName: string, taskContext: strin
 	].join("\n")
 }
 
-export function buildDmnCreateSystemPrompt(decisionId: string, taskContext: string): string {
+export function buildDmnCreateSystemPrompt(): string {
 	return [
 		"You are a DMN expert.",
-		`Decision ID: ${decisionId}`,
-		`Process context: ${taskContext}`,
+		"The user message describes a decision and its process context.",
 		"",
 		"Generate a complete, valid DMN 1.3 decision table XML for this decision.",
 		"",
 		"Requirements:",
 		"- <definitions> with namespace https://www.omg.org/spec/DMN/20191111/MODEL/",
-		`- <decision id="${decisionId}"> containing a <decisionTable>`,
+		"- a <decision> containing a <decisionTable>",
 		"- At least one input column, one output column, and one rule row.",
 		"",
-		"Infer sensible inputs and outputs from the decision ID and process context.",
+		"Infer sensible inputs and outputs from the decision and process context.",
 		"Return ONLY the DMN XML inside a ```xml code block — no explanation.",
 	].join("\n")
 }
@@ -431,18 +440,30 @@ export function buildDmnCreateSystemPrompt(decisionId: string, taskContext: stri
 // ── Fallback prompt builders (for non-MCP adapters like Gemini) ───────────────
 
 /** Full system prompt for non-MCP adapters that must return a CompactDiagram JSON block. */
-export function buildSystemPrompt(context: unknown): string {
-	const lines = [
+export function buildSystemPrompt(): string {
+	return [
 		"You are a BPMN expert assistant. Help users create and modify BPMN 2.0 process diagrams.",
 		"",
 		COMPACT_FORMAT,
 		"",
 		"Return exactly one JSON code block containing the complete updated CompactDiagram. Explain your changes briefly.",
-	]
+	].join("\n")
+}
 
-	if (context !== null && context !== undefined) {
-		lines.push("", "Current diagram:", "```json", JSON.stringify(context, null, 2), "```")
-	}
-
-	return lines.join("\n")
+/**
+ * Appends the current diagram to the last user turn. It used to sit in the
+ * system prompt; it comes from the request, so it now travels with the user's
+ * words, inside the fence the adapters put around them.
+ */
+export function withDiagramContext(
+	messages: Array<{ role: string; content: string }>,
+	context: unknown,
+): Array<{ role: string; content: string }> {
+	if (context === null || context === undefined) return messages
+	const diagram = ["", "Current diagram:", "```json", JSON.stringify(context, null, 2), "```"]
+	const lastUser = messages.map((m) => m.role).lastIndexOf("user")
+	if (lastUser === -1) return [...messages, { role: "user", content: diagram.join("\n").trim() }]
+	return messages.map((m, i) =>
+		i === lastUser ? { role: m.role, content: `${m.content}\n${diagram.join("\n")}` } : m,
+	)
 }

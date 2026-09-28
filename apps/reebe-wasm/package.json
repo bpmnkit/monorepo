@@ -1,7 +1,7 @@
 {
 	"name": "@bpmnkit/reebe-wasm",
 	"type": "module",
-	"description": "WebAssembly playground for the Reebe BPMN workflow engine",
+	"description": "The Reebe dev/test BPMN engine, compiled to WebAssembly — not for production",
 	"version": "0.1.7",
 	"license": "MIT",
 	"files": [

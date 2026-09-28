@@ -89,6 +89,9 @@ pub fn call_builtin(name: &str, args: Vec<FeelValue>) -> Result<FeelValue, FeelE
         "is defined" | "is_defined" => builtin_is_defined(args),
         "get or else" | "get_or_else" => builtin_get_or_else(args),
 
+        // Camunda extension: tags a value as supplied by an AI agent and returns it.
+        "fromai" => Ok(args.into_iter().next().unwrap_or(FeelValue::Null)),
+
         name => Err(FeelError::UndefinedFunction(name.to_string())),
     }
 }

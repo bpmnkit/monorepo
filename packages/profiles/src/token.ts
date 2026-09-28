@@ -1,6 +1,7 @@
 import type { AuthConfig, CamundaClientInput } from "@bpmnkit/api"
 
-// Simple in-memory token cache keyed by clientId
+// In-memory token cache, keyed by everything that selects the token: one client id can
+// hold different tokens per identity provider, audience and scope
 const tokenCache = new Map<string, { token: string; expiresAt: number }>()
 
 /**
@@ -41,7 +42,8 @@ async function fetchOAuth2Token(
 	audience?: string,
 	scope?: string,
 ): Promise<string> {
-	const cached = tokenCache.get(clientId)
+	const cacheKey = JSON.stringify([tokenUrl, clientId, audience ?? "", scope ?? ""])
+	const cached = tokenCache.get(cacheKey)
 	if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token
 
 	const body = new URLSearchParams({
@@ -63,6 +65,6 @@ async function fetchOAuth2Token(
 
 	const json = (await res.json()) as { access_token: string; expires_in?: number }
 	const expiresIn = json.expires_in ?? 3600
-	tokenCache.set(clientId, { token: json.access_token, expiresAt: Date.now() + expiresIn * 1000 })
+	tokenCache.set(cacheKey, { token: json.access_token, expiresAt: Date.now() + expiresIn * 1000 })
 	return json.access_token
 }

@@ -184,31 +184,23 @@ fn test_path_expression_three_levels() {
 }
 
 #[test]
-fn test_missing_variable_returns_error() {
+fn test_missing_variable_is_null() {
+    // Zeebe's FEEL engine evaluates a variable that does not exist to null.
     let ctx = empty_ctx();
-    let result = evaluate("missing_var", &ctx);
-    assert!(
-        result.is_err(),
-        "Accessing an undefined variable should return an error"
+    assert_eq!(evaluate("missing_var", &ctx).expect("should evaluate"), FeelValue::Null);
+    assert_eq!(
+        evaluate(r#"if missing_var = null then "none" else missing_var"#, &ctx)
+            .expect("should evaluate"),
+        FeelValue::String("none".to_string()),
     );
-    match result {
-        Err(reebe_feel::FeelError::UndefinedVariable(name)) => {
-            assert_eq!(name, "missing_var");
-        }
-        Err(other) => panic!("Expected UndefinedVariable error, got: {:?}", other),
-        Ok(v) => panic!("Expected error for missing variable, got: {:?}", v),
-    }
 }
 
 #[test]
 fn test_missing_variable_in_comparison_is_null() {
     // In FEEL, comparing null > 5 yields null (not true/false)
     let ctx = empty_ctx();
-    // The missing variable evaluates to UndefinedVariable error here, so the
-    // comparison itself returns an error — confirm it doesn't panic.
     let result = evaluate("missing_var > 5", &ctx);
-    // Either an error (UndefinedVariable propagated) or Null is acceptable;
-    // what matters is no panic and no successful true result.
+    // What matters is no panic and no successful true result.
     match &result {
         Ok(FeelValue::Bool(true)) => {
             panic!("missing_var > 5 should not evaluate to true");
@@ -249,8 +241,8 @@ fn test_scope_parent_not_affected_by_child() {
     let result = evaluate("z", &parent).expect("z should be in parent");
     assert_eq!(result, FeelValue::Integer(5));
 
-    let missing = evaluate("w", &parent);
-    assert!(missing.is_err(), "Parent should not see child's 'w' variable");
+    let missing = evaluate("w", &parent).expect("a missing variable is null");
+    assert_eq!(missing, FeelValue::Null, "Parent should not see child's 'w' variable");
 }
 
 // ============================================================

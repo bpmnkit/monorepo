@@ -1,4 +1,15 @@
 import type { BpmnDefinitions } from "./bpmn-model.js"
+import {
+	type ResolvedBpmnlintConfig,
+	type UnsupportedBpmnlintRule,
+	applyBpmnlintConfig,
+} from "./bpmnlint.js"
+import {
+	applyCamundaCompatConfig,
+	dedupeCamundaCompat,
+	isCamundaCompatFinding,
+	splitCamundaCompatConfig,
+} from "./camunda-compat.js"
 import { optimize } from "./optimize/index.js"
 import type {
 	OptimizationCategory,
@@ -29,8 +40,8 @@ export interface DetectedPlatform {
  * Zeebe extensions, every other category either stays quiet or reports
  * something structural that holds regardless, while `deploy` reports
  * "serviceTask has no zeebe:taskDefinition type" as an **error** — a demand the
- * author never signed up for. `connector` and `agentic` are the same kind of
- * claim about the same engine.
+ * author never signed up for. `connector` and `agentic` (and the `compat/…` findings `deploy` carries) are the same
+ * kind of claim about the same engine.
  */
 const ENGINE_CATEGORIES: readonly OptimizationCategory[] = ["deploy", "connector", "agentic"]
 
@@ -51,6 +62,8 @@ export interface LintDiagnostic {
 	plane?: string
 	/** Whether the live report carries an automatic fix for this finding. */
 	fixable: boolean
+	/** The bpmnlint rule it was reported under, when a `.bpmnlintrc` governs it. */
+	bpmnlintRule?: string
 }
 
 export interface LintReport {
@@ -61,6 +74,11 @@ export interface LintReport {
 	categories: OptimizationCategory[]
 	counts: Record<OptimizationSeverity, number>
 	total: number
+	/**
+	 * Present when a `.bpmnlintrc` was applied: the configured rules (or
+	 * `extends` entries) BPMN Kit has no equivalent for.
+	 */
+	bpmnlintUnsupported?: UnsupportedBpmnlintRule[]
 }
 
 export interface LintOptions extends OptimizeOptions {
@@ -69,6 +87,17 @@ export interface LintOptions extends OptimizeOptions {
 	 * an engine-neutral diagram should not be told it is undeployable.
 	 */
 	forceEngineRules?: boolean
+	/**
+	 * A resolved `.bpmnlintrc` to apply — see `applyBpmnlintConfig`. Its
+	 * severities govern the findings that stand in for bpmnlint rules, and the
+	 * native equivalents of the rules it enables are run.
+	 */
+	bpmnlint?: ResolvedBpmnlintConfig
+	/**
+	 * Real bpmnlint already reported the configured rules; drop BPMN Kit's
+	 * equivalents instead of re-levelling them. Only meaningful with `bpmnlint`.
+	 */
+	bpmnlintDelegated?: boolean
 }
 
 /**
@@ -132,13 +161,41 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 	const platform = detectExecutionPlatform(definitions)
 	const engineRules = options.forceEngineRules === true || platform.id !== "none"
 
-	const { forceEngineRules: _ignored, ...optimizeOptions } = options
-	const report = optimize(definitions, optimizeOptions)
+	const { forceEngineRules: _ignored, bpmnlint, bpmnlintDelegated, ...optimizeOptions } = options
+	// A `.bpmnlintrc` extending `plugin:camunda-compat/camunda-cloud-X-Y`, or an
+	// explicit `camundaVersion`, pins the version the `compat/…` findings check —
+	// even on a model that names no platform.
+	const split = bpmnlint === undefined ? undefined : splitCamundaCompatConfig(bpmnlint)
+	const pinned = split?.compat?.version ?? optimizeOptions.camundaVersion
+	const report = optimize(definitions, {
+		...optimizeOptions,
+		...(pinned !== undefined ? { camundaVersion: pinned } : {}),
+	})
 
 	const requested = optimizeOptions.categories
-	const findings = engineRules
+	const engineFiltered = engineRules
 		? report.findings
-		: report.findings.filter((f) => !ENGINE_CATEGORIES.includes(f.category))
+		: report.findings.filter(
+				(f) =>
+					!ENGINE_CATEGORIES.includes(f.category) ||
+					(isCamundaCompatFinding(f) && pinned !== undefined),
+			)
+	const compat =
+		split?.compat === undefined
+			? undefined
+			: applyCamundaCompatConfig(engineFiltered, split.compat, {
+					delegated: bpmnlintDelegated === true,
+				})
+	const applied =
+		split === undefined
+			? undefined
+			: applyBpmnlintConfig(definitions, compat?.findings ?? engineFiltered, split.rest, {
+					delegated: bpmnlintDelegated === true,
+					...(requested !== undefined ? { categories: requested } : {}),
+				})
+	// bpmnlint's own rules run last, so a compatibility finding one of them now
+	// reports on the same element (`link-event`) is dropped here.
+	const findings = applied === undefined ? engineFiltered : dedupeCamundaCompat(applied.findings)
 
 	const planes = planeIndex(definitions)
 	const diagnostics: LintDiagnostic[] = findings.map((finding) => {
@@ -152,6 +209,7 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 			processId: finding.processId,
 			elementIds: finding.elementIds,
 			fixable: finding.applyFix !== undefined,
+			...(finding.bpmnlintRule !== undefined ? { bpmnlintRule: finding.bpmnlintRule } : {}),
 		}
 		return plane === undefined ? base : { ...base, plane }
 	})
@@ -162,9 +220,15 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 	return {
 		diagnostics,
 		platform,
-		categories: lintCategories(definitions, options),
+		categories: lintCategories(definitions, {
+			...options,
+			...(pinned !== undefined ? { camundaVersion: pinned } : {}),
+		}),
 		counts,
 		total: diagnostics.length,
+		...(applied !== undefined
+			? { bpmnlintUnsupported: [...applied.unsupported, ...(compat?.unsupported ?? [])] }
+			: {}),
 	}
 }
 
@@ -192,15 +256,19 @@ const ALL_CATEGORIES: readonly OptimizationCategory[] = [
  * that `LintDiagnostic` deliberately drops. Both ask here which rules apply.
  *
  * @param definitions - The model whose execution platform decides.
- * @param options - `categories` to narrow to, and `forceEngineRules` to keep
- *   the engine layer on a model that names no platform.
+ * @param options - `categories` to narrow to, `forceEngineRules` to keep the
+ *   engine layer on a model that names no platform, and `camundaVersion` — a
+ *   version a `.bpmnlintrc` pins — to keep `compat` on such a model.
  */
 export function lintCategories(
 	definitions: BpmnDefinitions,
-	options: Pick<LintOptions, "categories" | "forceEngineRules"> = {},
+	options: Pick<LintOptions, "categories" | "forceEngineRules" | "camundaVersion"> = {},
 ): OptimizationCategory[] {
 	const base = options.categories ?? ALL_CATEGORIES
 	const engineRules =
 		options.forceEngineRules === true || detectExecutionPlatform(definitions).id !== "none"
-	return engineRules ? [...base] : base.filter((c) => !ENGINE_CATEGORIES.includes(c))
+	if (engineRules) return [...base]
+	// A pinned `camundaVersion` still runs the compatibility check: `optimize`
+	// runs it whenever a version is given, and `lintDiagram` keeps its findings.
+	return base.filter((c) => !ENGINE_CATEGORIES.includes(c))
 }

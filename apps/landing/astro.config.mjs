@@ -1,4 +1,5 @@
 import sitemap from "@astrojs/sitemap"
+import { remarkBpmn } from "@bpmnkit/markdown"
 import { defineConfig } from "astro/config"
 import { inkTheme } from "./shiki-theme.mjs"
 
@@ -26,6 +27,8 @@ export default defineConfig({
 	},
 	markdown: {
 		shikiConfig: { theme: inkTheme },
+		// ```bpmn / ```bpmn-compact fences in docs and blog posts render as inline SVG diagrams
+		remarkPlugins: [[remarkBpmn, { maxWidth: 760 }]],
 	},
 	integrations: [sitemap()],
 })

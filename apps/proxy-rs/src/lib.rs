@@ -1,3 +1,4 @@
+pub mod access;
 pub mod adapters;
 pub mod ai_server;
 pub mod bridge;

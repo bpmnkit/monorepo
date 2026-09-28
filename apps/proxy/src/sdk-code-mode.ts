@@ -1,4 +1,3 @@
-import vm from "node:vm"
 import {
 	Bpmn,
 	analyzeVariableFlow,
@@ -7,9 +6,13 @@ import {
 	expand,
 	optimize,
 } from "@bpmnkit/core"
+import { runSandboxedSync } from "./sandbox.js"
 import { SDK_SPEC } from "./sdk-spec.js"
 
-function buildSdkContext(xml?: string): Record<string, unknown> {
+function buildSdkContext(xml?: string): {
+	xml: string
+	sdk: Record<string, (...args: unknown[]) => unknown>
+} {
 	return {
 		xml: xml ?? "",
 		sdk: {
@@ -46,24 +49,39 @@ function buildSdkContext(xml?: string): Record<string, unknown> {
 	}
 }
 
-function runInVm(code: string, ctx: Record<string, unknown>, timeoutMs: number): unknown {
-	const context = vm.createContext(ctx)
+/**
+ * Runs model-written code in a separate isolate. `sdk` functions are reached
+ * through copies of their arguments and results only; under node:vm the
+ * functions themselves, and even the `spec` object, led back to the host.
+ */
+function runInSandbox(
+	code: string,
+	data: Record<string, unknown>,
+	sdk: Record<string, (...args: unknown[]) => unknown> | null,
+	timeoutMs: number,
+): unknown {
+	const functions: Record<string, (...args: unknown[]) => unknown> = {}
+	let bootstrap: string | undefined
+	if (sdk) {
+		for (const [name, fn] of Object.entries(sdk)) functions[`__sdk_${name}`] = fn
+		bootstrap = `const sdk = { ${Object.keys(sdk)
+			.map((name) => `${name}: __sdk_${name}`)
+			.join(", ")} }`
+	}
 	try {
-		return vm.runInContext(`(function(){\n${code}\n})()`, context, {
-			timeout: timeoutMs,
-		})
+		return runSandboxedSync(code, { data, functions, bootstrap }, timeoutMs)
 	} catch (err) {
 		throw new Error(`Code execution failed: ${err instanceof Error ? err.message : String(err)}`)
 	}
 }
 
 export function handleSdkSearch(code: string): string {
-	// JSON round-trip ensures Object.keys works on plain objects inside the vm context
-	const result = runInVm(code, { spec: JSON.parse(JSON.stringify(SDK_SPEC)) }, 5000)
+	const result = runInSandbox(code, { spec: SDK_SPEC }, null, 5000)
 	return JSON.stringify(result)
 }
 
 export function handleSdkExecute(code: string, xml?: string): string {
-	const result = runInVm(code, buildSdkContext(xml), 10000)
+	const ctx = buildSdkContext(xml)
+	const result = runInSandbox(code, { xml: ctx.xml }, ctx.sdk, 10000)
 	return JSON.stringify(result)
 }

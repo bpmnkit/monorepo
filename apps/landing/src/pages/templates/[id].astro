@@ -1,0 +1,138 @@
+---
+import "../../styles/global.css"
+import "../../styles/templates.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+import { TEMPLATE_VIEWS } from "../../data/templates"
+import type { TemplateView } from "../../data/templates"
+
+export function getStaticPaths() {
+	return TEMPLATE_VIEWS.map((view) => ({ params: { id: view.template.id }, props: { view } }))
+}
+
+const { view } = Astro.props as { view: TemplateView }
+const { template, category } = view
+
+// Inline, the diagram scales to the column; the exporter's fixed size would not.
+const svg = view.svg.replace(/ width="[\d.]+" height="[\d.]+"/, "")
+const related = TEMPLATE_VIEWS.filter((v) => v.category.id === category.id && v !== view)
+
+const FILE_ROLE: Array<[string, string]> = [
+	[".bpmn.tests.json", "Test scenarios (runScenario format)"],
+	[".bpmn", "Process model"],
+	[".dmn", "DMN decision"],
+	[".form", "Camunda form"],
+]
+const roleOf = (path: string) => FILE_ROLE.find(([ext]) => path.endsWith(ext))?.[1] ?? ""
+
+const pageUrl = `https://bpmnkit.com/templates/${template.id}`
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Templates", url: "https://bpmnkit.com/templates" },
+	{ name: template.title, url: pageUrl },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`${template.title} — Camunda 8 Process Template — BPMN Kit`}
+    description={template.description}
+    jsonLd={jsonLd}
+  />
+</head>
+<body>
+  <Nav />
+  <main class="tpl-main" id="main-content">
+    <div class="tpl-wrap">
+      <div class="tpl-crumbs">
+        <a href="/templates">Templates</a> / <a href={`/templates#${category.id}`}>{category.label}</a> / {template.id}
+      </div>
+      <h1 class="tpl-h1">{template.title}</h1>
+      <p class="tpl-lede">{template.description}</p>
+      <div class="chips tpl-tags">
+        {template.tags.map((tag) => <span class="chip">{tag}</span>)}
+      </div>
+
+      <div class="tpl-actions">
+        <a class="btn-primary" href={view.editorHref}>Open in editor</a>
+        <a class="btn-ghost" href={view.bpmnHref} download={`${template.id}.bpmn`}>Download .bpmn</a>
+        <div class="tpl-cmd">
+          <code>{view.command}</code>
+          <button type="button" data-copy={view.command} aria-label="Copy command">copy</button>
+        </div>
+      </div>
+
+      <figure class="tpl-diagram" aria-label={`${template.title} process diagram`}>
+        <Fragment set:html={svg} />
+      </figure>
+
+      <div class="tpl-sections">
+        <section class="tpl-section">
+          <h2>Scenarios · {view.scenarios.length}</h2>
+          <ul class="tpl-rows">
+            {view.scenarios.map((s) => (
+              <li>
+                {s.name}
+                <span class="tpl-path">{(s.expect?.path ?? []).join(" → ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section class="tpl-section">
+          <h2>Job types · {view.jobTypes.length}</h2>
+          <ul class="tpl-rows">
+            {view.jobTypes.map((j) => (
+              <li>
+                <code>{j.type}</code>
+                <span class="tpl-sub">{j.elements.join(", ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section class="tpl-section tpl-section--wide">
+          <h2>Files · {view.files.length}</h2>
+          <ul class="tpl-rows">
+            {view.files.map((f) => (
+              <li>
+                <a class="tpl-mono" href={view.fileHref(f.path)} download={f.path}>{f.path}</a>
+                <span class="tpl-sub">{roleOf(f.path)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <p class="tpl-note">
+        Every scenario passes on <code>@bpmnkit/engine</code>'s <code>runScenario</code> in the
+        package's tests. <code>casen template use {template.id} [dir]</code> writes the files above
+        into your project — see <a href="/docs/guides/templates">the templates guide</a> for running
+        the scenarios and deploying.
+      </p>
+
+      {related.length > 0 && (
+        <div class="tpl-sections tpl-related">
+          <section class="tpl-section tpl-section--wide">
+            <h2>More in {category.label}</h2>
+            <ul class="tpl-rows">
+              {related.map((r) => (
+                <li><a href={`/templates/${r.template.id}`}>{r.template.title}</a></li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
+    </div>
+  </main>
+  <Footer />
+  <script>
+    import "../../scripts/templates.ts"
+  </script>
+</body>
+</html>

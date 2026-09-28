@@ -1,12 +1,12 @@
 [package]
-name = "bpmn-sdk-desktop"
+name = "bpmnkit-desktop"
 version = "0.1.0"
-description = "BPMN SDK Desktop Editor"
+description = "BPMN Kit desktop editor"
 edition = "2021"
-default-run = "bpmn-sdk-desktop"
+default-run = "bpmnkit-desktop"
 
 [lib]
-name = "bpmn_sdk_desktop_lib"
+name = "bpmnkit_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

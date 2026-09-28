@@ -32,6 +32,10 @@ const MOCK_DMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </decision>
 </definitions>`
 
+/**
+ * @internal Exported for BPMN Kit Studio, which embeds the detail views. Not a
+ * stable API: it may change in any release. Use `createOperate()` instead.
+ */
 export function createDecisionDetailView(
 	definitionKey: string,
 	store: DecisionsStore,

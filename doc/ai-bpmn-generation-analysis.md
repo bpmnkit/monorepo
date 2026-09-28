@@ -30,8 +30,9 @@ Claude Code skill (/implement, /bpmnkit:generate)
   → MCP tool bpmn_create            (apps/proxy/src/aikit-mcp.ts)
     → POST /chat on local proxy      (SSE, requires `casen proxy start`)
       → claude adapter SPAWNS A NESTED `claude` CLI
-        (apps/proxy/src/adapters/claude.ts — --dangerously-skip-permissions,
-         temp settings, CLAUDECODE guard stripped)
+        (apps/proxy/src/adapters/claude.ts — at the time with permission checks
+         bypassed; since 2026-09-27 no built-in tools, bpmn MCP tools only,
+         empty run folder, CLAUDECODE guard stripped)
         → nested model drives editor MCP tools (compose_diagram, add_elements,
           add_http_call, set_condition …  apps/proxy/src/mcp-server.ts)
           → CompactDiagram JSON → expand() → applyAutoLayout() → BPMN XML

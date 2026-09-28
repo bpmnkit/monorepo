@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use base64::Engine as Base64Engine;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use reebe_db::{create_pool, DbConfig, DbPool};
-use reebe_engine::{Engine, EngineHandle};
+use reebe_db::{create_pool, DbConfig, DbPool, SqlxBackend};
+use reebe_engine::{Engine, EngineHandle, RealClock};
 
 // ---------------------------------------------------------------------------
 // Minimal BPMN: StartEvent → EndEvent, no tasks, completes immediately.
@@ -52,7 +52,7 @@ async fn setup() -> Option<(DbPool, EngineHandle)> {
     .ok()?;
     reebe_db::pool::run_migrations(&pool).await.ok()?;
 
-    let (engine, handle) = Engine::new(pool.clone(), 1);
+    let (engine, handle) = Engine::new(Arc::new(SqlxBackend::new(pool.clone())), 1, Arc::new(RealClock));
     tokio::spawn(Arc::new(engine).run());
 
     // Deploy the benchmark process once.

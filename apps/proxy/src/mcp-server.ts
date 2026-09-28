@@ -15,9 +15,8 @@
  *   - BPMN XML  → BpmnDefinitions (default)
  */
 
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { createInterface } from "node:readline"
-import vm from "node:vm"
 import {
 	Bpmn,
 	type BpmnDefinitions,
@@ -49,6 +48,7 @@ import {
 } from "@bpmnkit/core"
 import type { BpmnElementType, CompactDmn, CompactForm } from "@bpmnkit/core"
 import { elementTypeDescription } from "./element-vocabulary.js"
+import { runSandboxedSync } from "./sandbox.js"
 import { handleSdkExecute, handleSdkSearch } from "./sdk-code-mode.js"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -134,11 +134,27 @@ function buildBpmnDiagram(proc: BpmnProcess): BpmnDiagram {
  *
  * BPMN goes through the same check `writeBpmn` makes — serialise, parse back,
  * compare the semantic hash — so a serialisation that lost something fails the
- * tool call instead of quietly replacing the user's file. It cannot call
+ * tool call instead of quietly replacing the user's file, and every kind is
+ * written atomically, as `writeBpmn` does. It cannot call
  * `writeBpmn` itself: the code-mode bridge invokes tools synchronously inside a
- * `vm` context, and that function is async. Adopting it here means giving the
+ * sandbox, and that function is async. Adopting it here means giving the
  * bridge an async path first.
  */
+/**
+ * Writes `text` to `path` so the file is either the old one or the new one, never
+ * half of each: a temporary file in the same directory, renamed into place.
+ */
+function writeFileAtomic(path: string, text: string): void {
+	const temporary = `${path}.${process.pid}.${Date.now()}.tmp`
+	try {
+		writeFileSync(temporary, text)
+		renameSync(temporary, path)
+	} catch (error) {
+		rmSync(temporary, { force: true })
+		throw error
+	}
+}
+
 function saveState(): void {
 	if (!outputFile) return
 	if (state.kind === "bpmn") {
@@ -150,12 +166,12 @@ function saveState(): void {
 				"Serialising the model did not reproduce it; nothing was written. This is a bug in @bpmnkit/core — please report the model that triggered it.",
 			)
 		}
-		writeFileSync(outputFile, xml)
+		writeFileAtomic(outputFile, xml)
 	} else if (state.kind === "dmn") {
 		const laid = layoutDmn(state.data)
-		writeFileSync(outputFile, Dmn.export(laid))
+		writeFileAtomic(outputFile, Dmn.export(laid))
 	} else {
-		writeFileSync(outputFile, Form.export(state.data))
+		writeFileAtomic(outputFile, Form.export(state.data))
 	}
 }
 
@@ -680,10 +696,19 @@ function callTool(name: string, args: Record<string, unknown>): string {
 			const code = args.code as string
 
 			// Build Bridge object that mirrors bridge.ts API, extended for DMN/Form types.
+			// The code is the model's, so it runs in a separate isolate that sees
+			// only copies: under node:vm the Bridge functions themselves led back
+			// to the host's `process`.
 			const bridge = buildBridge()
-			const ctx = vm.createContext({ Bridge: bridge })
+			const functions: Record<string, (...args: unknown[]) => unknown> = {}
+			for (const [name, fn] of Object.entries(bridge)) {
+				functions[`__bridge_${name}`] = fn as (...args: unknown[]) => unknown
+			}
+			const bootstrap = `const Bridge = { ${Object.keys(bridge)
+				.map((name) => `${name}: __bridge_${name}`)
+				.join(", ")} }`
 			try {
-				const result = vm.runInContext(`(function(){\n${code}\n})()`, ctx, { timeout: 5000 })
+				const result = runSandboxedSync(code, { functions, bootstrap }, 5000)
 				return typeof result === "string" ? result : JSON.stringify(result ?? null)
 			} catch (err) {
 				throw new Error(

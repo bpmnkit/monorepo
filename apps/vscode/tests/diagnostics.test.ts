@@ -1,7 +1,12 @@
 import type { LintDiagnostic, LintReport } from "@bpmnkit/core"
 import { Bpmn, lintDiagram } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
-import { placeDiagnostics, summarise } from "../src/host/diagnostics.js"
+import {
+	bpmnlintNotice,
+	placeBpmnlintReports,
+	placeDiagnostics,
+	summarise,
+} from "../src/host/diagnostics.js"
 
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -109,6 +114,41 @@ describe("placeDiagnostics", () => {
 			expect(XML[placed.span.offset - 1]).toBe("<")
 			expect(spanText(XML, placed.span)).toMatch(/^[A-Za-z_][\w.:-]*$/)
 		}
+	})
+})
+
+describe(".bpmnlintrc", () => {
+	it("names the bpmnlint rule that governs a finding", () => {
+		const [placed] = placeDiagnostics(XML, report([finding({ bpmnlintRule: "fake-join" })]))
+		expect(placed?.message).toBe("Something is off. (fake-join)")
+		expect(placed?.source).toBe("bpmnkit")
+	})
+
+	it("places bpmnlint's own findings on their element, under their rule", () => {
+		const [onElement, unplaced] = placeBpmnlintReports(XML, [
+			{ rule: "acme/no-todo", severity: "warning", message: "Still a TODO", elementId: "approve" },
+			{ rule: "bpmnlint/import", severity: "error", message: "Import warning: x" },
+		])
+		expect(spanText(XML, onElement?.span ?? { offset: 0, length: 0 })).toBe("bpmn:userTask")
+		expect(onElement).toMatchObject({
+			code: "acme/no-todo",
+			source: "bpmnlint",
+			severity: "warning",
+		})
+		expect(unplaced?.span).toEqual({ offset: 0, length: 0 })
+	})
+
+	it("says once per file what the config asked for that could not be done", () => {
+		expect(bpmnlintNotice("/p/.bpmnlintrc", [], undefined)).toBeUndefined()
+		const notice = bpmnlintNotice(
+			"/p/.bpmnlintrc",
+			[{ name: "camunda-compat/timer", reason: "plugin-rule", severity: "error" }],
+			"cannot resolve config",
+		)
+		expect(notice?.severity).toBe("info")
+		expect(notice?.message).toBe(
+			"/p/.bpmnlintrc: the project's bpmnlint could not run (cannot resolve config); no BPMN Kit equivalent for camunda-compat/timer.",
+		)
 	})
 })
 

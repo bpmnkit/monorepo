@@ -2,11 +2,13 @@ mod ast;
 mod builtins;
 mod context;
 mod evaluator;
+mod from_ai;
 mod lexer;
 mod parser;
 pub mod types;
 
 pub use context::FeelContext;
+pub use from_ai::from_ai_parameters;
 pub use types::{FeelError, FeelValue};
 
 /// Check whether an expression string is a FEEL expression.

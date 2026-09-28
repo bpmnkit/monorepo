@@ -160,7 +160,7 @@
 		"@bpmnkit/editor": "workspace:^",
 		"@bpmnkit/feel": "workspace:^"
 	},
-	"description": "23 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
+	"description": "34 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
 	"keywords": ["bpmn", "plugins", "canvas", "minimap", "workflow", "typescript", "camunda"],
 	"license": "MIT",
 	"repository": {

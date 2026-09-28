@@ -123,6 +123,76 @@ Application is deterministic: property order and the emitted bindings depend onl
 template and the values, never on iteration order or the clock. That is what lets a diagram be
 rebuilt in CI and diffed.
 
+Builder options have no field for some bindings. A message start event's correlation key and
+`zeebe:linkedResource` come back as `problems` rather than being dropped, and an inbound
+template's message name — which Camunda generates per element — must be passed as
+`message.name`. To write every binding, apply to an element instead.
+
+## Applying to an element — inbound connectors and linked resources
+
+An inbound connector does not live on its element alone. Its message name and correlation key
+belong to a root `bpmn:message` the event references, and an RPA task's scripts to
+`zeebe:linkedResources`. `applyTemplateToElement` writes a template onto an element of a parsed
+model, all of it:
+
+```typescript
+import { applyTemplateToElement, getTemplate } from "@bpmnkit/connectors";
+import { Bpmn } from "@bpmnkit/core";
+
+const webhook = getTemplate("io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1")!;
+const { definitions, problems } = applyTemplateToElement(
+  Bpmn.parse(xml),
+  "payment-received",
+  webhook,
+  {
+    "inbound.context": "payments",
+    "message.correlationKey": "=orderId",
+    correlationKeyExpression: "=request.body.orderId",
+  },
+);
+
+Bpmn.export(definitions);
+// <bpmn:message id="Message_…" name="…">
+//   <bpmn:extensionElements>
+//     <zeebe:subscription correlationKey="=orderId" />
+//   </bpmn:extensionElements>
+// </bpmn:message>
+// <bpmn:intermediateCatchEvent id="payment-received"
+//     zeebe:modelerTemplate="io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1" …>
+//   <bpmn:extensionElements>
+//     <zeebe:properties>
+//       <zeebe:property name="inbound.type" value="io.camunda:webhook:1" /> …
+//   <bpmn:messageEventDefinition messageRef="Message_…" />
+```
+
+What it does, binding by binding:
+
+| Binding | Written to |
+|---|---|
+| `bpmn:Message#property` (`name`) | The root `bpmn:message` the event definition or receive task references |
+| `bpmn:Message#zeebe:subscription#property` (`correlationKey`) | That message's `zeebe:subscription` — where Camunda reads it. A copy on the event itself is removed |
+| `zeebe:property` (`inbound.type`, …) | The element's `zeebe:properties` |
+| `zeebe:linkedResource` | The element's `zeebe:linkedResources`, one `zeebe:linkedResource` per `linkName` |
+| everything else | As `applyElementTemplate` resolves it, on the element |
+
+- **The element's type follows the template.** `elementType` converts the element, keeping its
+  id, name and flows; `elementType.eventDefinition` makes an event a message event. A template
+  whose `appliesTo` does not cover the element is refused and the model comes back unchanged —
+  `bpmn:Task` covers every task type, as it does in the Modeler.
+- **Messages are reused, not multiplied.** A message already carrying the name is referenced; the
+  element's own message is renamed when nothing else uses it; otherwise a new one is created.
+- **A generated message name is deterministic.** Camunda generates an inbound message's name as
+  a UUID. Here it keeps the name of the message the element already references, or is derived
+  from the template and element ids — never from a clock or random source.
+- **Re-applying is safe.** Each extension kind the template declares is replaced whole, so
+  switching a dropdown off removes what it wrote, and applying twice gives the model applying
+  once does. `zeebe:modelerTemplate`, `…Version` and `…Icon` are stamped the same way.
+- **The input is never mutated.** The result is a copy.
+
+The keys for these properties, where the template gives no `id`, are `message.name`,
+`message.correlationKey` and `linkedResource.<linkName>.<property>` — for example
+`linkedResource.RPAScript.resourceId`. `listConnectors` reports them like any other input.
+
 ## Workspace templates
 
 A project can ship its own `.camunda/element-templates/`. The filesystem half lives behind its
@@ -140,6 +210,46 @@ import { discoverElementTemplates, collectElementTemplates } from "@bpmnkit/conn
 `registerElementTemplates` merges what you found into the catalog, later registration winning
 on an id collision, so `listConnectors`, `searchConnectors` and `getTemplate` then see a
 project's own templates alongside the bundled ones. `clearRegisteredTemplates` undoes it.
+
+### Which host resolves how
+
+Per-file resolution is what Camunda Desktop Modeler does: a diagram in `a/` sees
+`a/.camunda/element-templates/` and every folder above it up to the project root, and never
+`b/`'s. When two folders define the same id, the one nearer the diagram wins.
+
+| Host | Resolution |
+|---|---|
+| `casen lint`, `casen dev` checks | Per file. Each diagram's `connector/*` findings use the templates from its folder up to the project root (`casen lint`: the current directory; `casen dev`: the served folder), then the bundled catalog. |
+| VS Code extension | Per file. The extension host calls `discoverElementTemplates` directly — no proxy — with the workspace folder as the root, and the Problems panel checks connector inputs against them. |
+| Studio (project opened from disk) | Per file. The connector-catalog plugin asks the proxy for `GET /element-templates?root=<project>&file=<model path>` and swaps the set when you open another model. |
+| `casen connector list/search/show` | Upward from the current directory. |
+| `casen connector validate` | Downward: every template in the project (`collectElementTemplates`). |
+| bpmnkit.com/editor, Drop | Bundled templates only. A browser with no filesystem has no path to resolve from. |
+
+In a browser host, the [connector-catalog plugin](/docs/packages/plugins) does the swapping:
+
+```typescript
+const catalog = createConnectorCatalogPlugin(configPanelBpmn, palette, {
+  proxyUrl: "http://localhost:3033",
+  workspaceRoot: "/home/me/project",
+  diagramPath: "processes/orders/order.bpmn", // absolute, or relative to workspaceRoot
+});
+
+// The user opened another diagram:
+await catalog.setDiagramPath("processes/billing/invoice.bpmn");
+```
+
+The proxy serves `/element-templates` only for a `workspaceRoot` it accepts as a workspace: a
+folder passed with `casen proxy start --root`, or a project folder that is not your home
+directory, the filesystem root or a hidden folder. The diagram path must resolve inside that
+root. See [Local proxy](/docs/cli/casen#local-proxy).
+
+The previous diagram's templates are unregistered before the next diagram's are registered, and
+a bundled template they shadowed comes back, so the properties panel's connector picker lists
+only the current diagram's templates plus the bundled and built-in ones. A host that resolves
+templates itself (with its own filesystem access) passes them with
+`catalog.setWorkspaceTemplates(templates)` instead. Without `diagramPath`, `workspaceRoot` keeps
+the project-wide merge (`GET /element-templates?root=…`).
 
 ## Validating a template
 
@@ -177,6 +287,7 @@ for CI and takes `--format json`.
 | `propertyKey(property)` | The variable name a template property binds to |
 | `applyConnectorTemplate(id, values)` | Catalog template → builder options + problems |
 | `applyElementTemplate(template, values)` | Template object → builder options + problems |
+| `applyTemplateToElement(definitions, elementId, template, values)` | Template written onto an element of a parsed model → `{ definitions, problems }` |
 | `validateElementTemplate(template)` | `{ valid, problems, warnings }` |
 | `readTemplateDocument(text)` | Parse a file holding one template or many |
 | `registerElementTemplates(templates)` | Merge templates into the catalog |

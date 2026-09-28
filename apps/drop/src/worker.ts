@@ -1,10 +1,12 @@
 import type { Env } from "./env.js"
+import { pruneWriteCounters } from "./lib/comments.js"
 import { deleteExpired } from "./lib/db.js"
 import { html, json } from "./lib/http.js"
 import { adminPage, dropPage, policyPage } from "./lib/pages.js"
 import { DocRoom } from "./room.js"
 import { handleAdmin } from "./routes/admin.js"
 import { handleAiReview } from "./routes/ai-review.js"
+import { handleComments } from "./routes/comments.js"
 import {
 	handleDiffPage,
 	handleJson,
@@ -64,6 +66,10 @@ async function route(request: Request, env: Env): Promise<Response> {
 			env,
 			now,
 		)
+	}
+	const comments = rest.match(/^\/api\/comments\/([\w-]+)(?:\/([\w-]+))?$/)
+	if (comments) {
+		return handleComments(request, comments[1] as string, comments[2] ?? null, env, now)
 	}
 	const presence = rest.match(/^\/api\/presence\/([\w-]+)$/)
 	if (presence) {
@@ -145,7 +151,8 @@ export default {
 		return route(request, env)
 	},
 	scheduled(_event, env, ctx) {
-		ctx.waitUntil(deleteExpired(env.DB, Date.now()))
+		const now = Date.now()
+		ctx.waitUntil(Promise.all([deleteExpired(env.DB, now), pruneWriteCounters(env.DB, now)]))
 	},
 } satisfies ExportedHandler<Env>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { applyConnectorTemplate } from "../src/index.js"
+import { applyConnectorTemplate, getTemplate, summarizeTemplate } from "../src/index.js"
 
 describe("applyConnectorTemplate", () => {
 	it("returns a problem for an unknown template id", () => {
@@ -101,5 +101,72 @@ describe("applyConnectorTemplate", () => {
 		expect(outputs).toContainEqual({ source: "=agent", target: "triageResult" })
 		const adHocOutputCollection = result.adHocSubProcess?.outputCollection
 		expect(adHocOutputCollection).toBe("toolCallResults")
+	})
+	it("maps an inbound intermediate template's message name and correlation key onto intermediateEvent", () => {
+		const result = applyConnectorTemplate(
+			"io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1",
+			{
+				"inbound.context": "paid",
+				"message.name": "order-paid",
+				"message.correlationKey": "=orderId",
+				correlationKeyExpression: "=request.body.orderId",
+			},
+		)
+		expect(result.problems).toEqual([])
+		expect(result.intermediateEvent?.messageName).toBe("order-paid")
+		expect(result.intermediateEvent?.correlationKey).toBe("=orderId")
+	})
+
+	it("reports a per-element generated message name it cannot derive, without calling it missing-required", () => {
+		const result = applyConnectorTemplate(
+			"io.camunda.connectors.webhook.WebhookConnectorBoundary.v1",
+			{
+				"inbound.context": "c",
+				"message.correlationKey": "=k",
+				correlationKeyExpression: "=k",
+			},
+		)
+		expect(result.boundaryEvent?.correlationKey).toBe("=k")
+		expect(result.boundaryEvent?.messageName).toBeUndefined()
+		expect(result.problems).toHaveLength(1)
+		expect(result.problems[0]?.key).toBe("message.name")
+		expect(result.problems[0]?.kind).toBeUndefined()
+		expect(result.problems[0]?.message).toMatch(/applyTemplateToElement/)
+	})
+
+	it("reports bindings builder options cannot carry rather than dropping them", () => {
+		const rpa = applyConnectorTemplate("camunda.connectors.rpa", {
+			"linkedResource.RPAScript.resourceId": "bot",
+		})
+		expect(rpa.problems.map((p) => p.message)).toEqual([
+			expect.stringMatching(/zeebe:linkedResource bindings cannot be carried/),
+		])
+
+		const start = applyConnectorTemplate(
+			"io.camunda.connectors.webhook.WebhookConnectorStartMessage.v1",
+			{
+				"inbound.context": "c",
+				"message.name": "order-placed",
+				correlationRequired: "required",
+				"message.correlationKey": "=k",
+				correlationKeyExpression: "=k",
+			},
+		)
+		expect(start.startEvent?.messageName).toBe("order-placed")
+		expect(start.problems.map((p) => p.message)).toEqual([
+			expect.stringMatching(/correlation key cannot be carried/),
+		])
+	})
+
+	it("gives the inbound-message and linked-resource properties input keys", () => {
+		const webhook = getTemplate("io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1")
+		const rpa = getTemplate("camunda.connectors.rpa")
+		if (!webhook || !rpa) throw new Error("bundled templates missing")
+		expect(summarizeTemplate(webhook).requiredInputs.map((i) => i.key)).toContain(
+			"message.correlationKey",
+		)
+		expect(summarizeTemplate(rpa).requiredInputs.map((i) => i.key)).toContain(
+			"linkedResource.RPAScript.resourceId",
+		)
 	})
 })

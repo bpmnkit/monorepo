@@ -476,9 +476,12 @@ reach the editor at all.
 
 **Left open, deliberately:**
 
-- [ ] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
+- [x] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
       template that depends on one still applies to nothing. This is inbound-connector support,
-      a feature of its own rather than part of this phase
+      a feature of its own rather than part of this phase — done as
+      `applyTemplateToElement(definitions, elementId, template, values)`, which writes onto a
+      parsed model because the message and its `zeebe:subscription` are root elements no
+      builder option reaches; `applyElementTemplate` reports what it cannot carry
 - [ ] Per-file template resolution in a browser host. A host registers one merged set for the
       whole project (deeper directories win, by the breadth-first order); the CLI resolves per
       file correctly, the editor does not. Needs the config panel to re-resolve as the open file
@@ -715,6 +718,40 @@ publisher asking to distribute templates, and answer trust before search.
 
 - [x] **A formatting-preserving writer**, so a visual edit reads as an edit. Left open with
       this phase and built next — see the section below.
+
+### Phase 8 — A team's `.bpmnlintrc`, honoured ✅
+
+Teams arriving from bpmn.io bring a `.bpmnlintrc` and, often, `bpmnlint-plugin-*` rules.
+Ignoring both was a switching cost. See [`guides/bpmnlint`](../apps/landing/src/content/docs/guides/bpmnlint.md)
+for the rule-by-rule table.
+
+- [x] Parse `.bpmnlintrc` in `@bpmnkit/core` (pure, zero dependencies): `extends` string or
+      array, the `bpmnlint:recommended|all|correctness` presets, rule levels as names or `0`–`3`,
+      `[level, options]`, bpmnlint's rule-name normalisation
+- [x] Map all 28 built-in rules onto BPMN Kit findings; the config's levels (and `off`) apply to
+      them. 19 rules BPMN Kit had no finding for are implemented natively and run only when a
+      config enables them, so the default report is unchanged
+- [x] Report what cannot be honoured (plugin rules, unknown rules, `plugin:` configs) instead
+      of dropping it
+- [x] Run the project's own bpmnlint when it is installed (`@bpmnkit/core/node`, dynamic
+      `import()` from the `.bpmnlintrc`'s folder, never a dependency), prefer it for the rules
+      it ran, and drop BPMN Kit's equivalents of those so nothing is reported twice
+- [x] `casen lint` finds the file from the diagram's folder upwards (`--no-bpmnlintrc` to
+      ignore it) and prints the rule name; the VS Code Problems panel honours the same file
+      (`bpmnkit.lint.bpmnlintrc`)
+- [ ] Walk sub-processes in the existing flow and naming rules. `fake-join`,
+      `no-gateway-join-fork`, `superfluous-gateway`, `label-required`, `no-implicit-start` and
+      `no-implicit-end` are approximate mostly because BPMN Kit's own rules only look at the
+      top-level scope
+- [ ] `flow/unreachable` and `flow/dead-end` report data objects and data stores, which carry
+      no sequence flows. That is a false positive in the default report too, not only against
+      bpmnlint
+- [x] The parser drops an activity's `default` attribute (only gateways keep it), so
+      `no-implicit-split` and `superfluous-label` cannot recognise an activity's default flow.
+      Done 2026-09-24: an activity's `default` is kept in `unknownAttributes`, and both rules read
+      it — they now match bpmnlint exactly.
+- [ ] Browser hosts (the canvas lint plugin, the studio) can apply a config through
+      `lintDiagram({ bpmnlint })` but have no file to find one in yet
 
 ## Formatting-Preserving Writes
 

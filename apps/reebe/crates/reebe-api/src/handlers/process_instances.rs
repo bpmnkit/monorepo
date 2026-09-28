@@ -306,16 +306,158 @@ pub async fn migrate_process_instance() -> impl IntoResponse {
     )
 }
 
-pub async fn modify_process_instance() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({
-            "type": "about:blank",
-            "title": "Not Implemented",
-            "status": 501,
-            "detail": "This endpoint is not yet implemented"
-        })),
-    )
+/// A key of the REST API: a string of digits, or a number.
+fn rest_key(value: &serde_json::Value, field: &str, violations: &mut Vec<String>) -> i64 {
+    let text = match value {
+        serde_json::Value::Null => return -1,
+        serde_json::Value::String(text) => text.clone(),
+        other => other.to_string(),
+    };
+    text.parse().unwrap_or_else(|_| {
+        violations.push(format!(
+            "The provided {field} '{text}' is not a valid key. Expected a numeric value. Did you pass an entity id instead of an entity key?"
+        ));
+        -1
+    })
+}
+
+/// `ModifyProcessInstanceVariableInstruction`s as the engine's variable instructions.
+fn rest_variable_instructions(value: &serde_json::Value, violations: &mut Vec<String>) -> Vec<serde_json::Value> {
+    value
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|vi| {
+            let variables = vi["variables"].as_object().cloned().unwrap_or_default();
+            if variables.is_empty() && !violations.iter().any(|v| v == "No variables provided") {
+                violations.push("No variables provided".to_string());
+            }
+            json!({ "elementId": vi["scopeId"].as_str().unwrap_or_default(), "variables": variables })
+        })
+        .collect()
+}
+
+/// The engine command for `POST /v2/process-instances/{key}/modification`, from the body
+/// the specification defines (`ProcessInstanceModificationInstruction`), checked as
+/// Zeebe's `ProcessInstanceRequestValidator` checks it; `Err` is a 400.
+pub fn modification_payload(key: &str, body: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+    let mut violations = Vec::new();
+    let once = |violations: &mut Vec<String>, message: &str| {
+        if !violations.iter().any(|v| v == message) {
+            violations.push(message.to_string());
+        }
+    };
+    let process_instance_key = rest_key(&json!(key), "processInstanceKey", &mut violations);
+    let activate: Vec<serde_json::Value> = body["activateInstructions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            if a["elementId"].as_str().is_none() {
+                once(&mut violations, "No elementId provided");
+            }
+            json!({
+                "elementId": a["elementId"].as_str().unwrap_or_default(),
+                "ancestorScopeKey": rest_key(&a["ancestorElementInstanceKey"], "ancestorElementInstanceKey", &mut violations),
+                "variableInstructions": rest_variable_instructions(&a["variableInstructions"], &mut violations),
+            })
+        })
+        .collect();
+    let terminate: Vec<serde_json::Value> = body["terminateInstructions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|t| {
+            if t.get("elementInstanceKey").is_some() {
+                json!({ "elementInstanceKey": rest_key(&t["elementInstanceKey"], "elementInstanceKey", &mut violations) })
+            } else {
+                let id = t["elementId"].as_str().unwrap_or_default();
+                if id.trim().is_empty() {
+                    once(&mut violations, "No elementId provided");
+                }
+                json!({ "elementId": id })
+            }
+        })
+        .collect();
+    let moves: Vec<serde_json::Value> = body["moveInstructions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|m| {
+            let source = &m["sourceElementInstruction"];
+            let (source_id, source_key) = match source["sourceType"].as_str() {
+                _ if source.is_null() => {
+                    once(&mut violations, "No sourceElementInstruction provided");
+                    (String::new(), -1)
+                }
+                Some("byKey") => (
+                    String::new(),
+                    rest_key(&source["sourceElementInstanceKey"], "sourceElementInstanceKey", &mut violations),
+                ),
+                _ => {
+                    let id = source["sourceElementId"].as_str().unwrap_or_default().to_string();
+                    if id.trim().is_empty() {
+                        once(&mut violations, "No sourceElementId provided");
+                    }
+                    (id, -1)
+                }
+            };
+            let target = m["targetElementId"].as_str().unwrap_or_default();
+            if target.trim().is_empty() {
+                once(&mut violations, "No targetElementId provided");
+            }
+            let ancestor = &m["ancestorScopeInstruction"];
+            let scope_type = ancestor["ancestorScopeType"].as_str().unwrap_or("direct");
+            let ancestor_key = if ancestor.is_null() || scope_type != "direct" {
+                -1
+            } else {
+                rest_key(&ancestor["ancestorElementInstanceKey"], "ancestorElementInstanceKey", &mut violations)
+            };
+            json!({
+                "sourceElementId": source_id,
+                "sourceElementInstanceKey": source_key,
+                "targetElementId": target,
+                "ancestorScopeKey": ancestor_key,
+                "inferAncestorScopeFromSourceHierarchy": scope_type == "inferred",
+                "useSourceParentKeyAsAncestorScopeKey": scope_type == "sourceParent",
+                "variableInstructions": rest_variable_instructions(&m["variableInstructions"], &mut violations),
+            })
+        })
+        .collect();
+    if !violations.is_empty() {
+        let mut detail = violations.join(". ");
+        if !detail.ends_with('.') {
+            detail.push('.');
+        }
+        return Err(ApiError::InvalidRequest(detail));
+    }
+    Ok(json!({
+        "processInstanceKey": process_instance_key.to_string(),
+        "activateInstructions": activate,
+        "terminateInstructions": terminate,
+        "moveInstructions": moves,
+    }))
+}
+
+/// Modify a process instance: 204, 404 for a process instance that is not active,
+/// 400 for instructions Zeebe rejects.
+pub async fn modify_process_instance(
+    State(state): State<ApiState>,
+    Path(key): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> ApiResult<impl IntoResponse> {
+    let payload = modification_payload(&key, &body)?;
+    state
+        .engine
+        .send_command(
+            "PROCESS_INSTANCE_MODIFICATION".to_string(),
+            "MODIFY".to_string(),
+            payload,
+            "<default>".to_string(),
+        )
+        .await
+        .map_err(ApiError::EngineError)?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn resolve_incident_for_process_instance(

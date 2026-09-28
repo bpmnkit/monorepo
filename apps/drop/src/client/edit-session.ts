@@ -24,7 +24,16 @@
  */
 import type { ViewportState } from "@bpmnkit/canvas"
 import { Bpmn, type BpmnDefinitions } from "@bpmnkit/core"
-import { BpmnEditor, type EditorOp, initEditorHud } from "@bpmnkit/editor"
+import {
+	AVAILABLE_LOCALES,
+	BpmnEditor,
+	type EditorOp,
+	type Locale,
+	type Translate,
+	createTranslate,
+	initEditorHud,
+	matchLocale,
+} from "@bpmnkit/editor"
 import { createHistoryPanel, saveCheckpoint } from "@bpmnkit/plugins/history"
 
 /** How long the editor must sit still before a local checkpoint is written. */
@@ -42,6 +51,8 @@ export interface EditSessionOptions {
 	filename: string
 	/** Sends one edit to the room. */
 	sendOp(op: EditorOp): void
+	/** The editor's language, from {@link loadEditorLocale}. English when absent. */
+	translate?: Translate
 }
 
 export interface EditSession {
@@ -49,6 +60,8 @@ export interface EditSession {
 	replace(xml: string): void
 	/** The document as edited, for the page to keep showing after Done. */
 	currentXml(): string
+	/** Where the writer is looking, so a rebuilt editor opens on the same view. */
+	viewport(): ViewportState
 	/** The local-checkpoint panel, for the page to place. */
 	historyPanel: HTMLElement
 	refreshHistory(): Promise<void>
@@ -66,6 +79,7 @@ export function startEditSession(options: EditSessionOptions): EditSession {
 		// `loadDefinitions` schedules no deferred fit, so a later `replace` cannot
 		// re-frame the diagram a frame after `setViewport` placed it.
 		fit: "none",
+		translate: options.translate,
 	})
 	editor.setViewport(options.viewport)
 	// The palette, the toolbar and the undo buttons. Only a writer ever gets
@@ -111,6 +125,7 @@ export function startEditSession(options: EditSessionOptions): EditSession {
 	// ── The local history panel ────────────────────────────────────────────────
 
 	const panel = createHistoryPanel({
+		translate: options.translate,
 		getCurrentContext: () => ({ projectId: options.shareId, fileId: options.filename }),
 		// Restoring is an ordinary edit: it goes to the room as a snapshot op like
 		// any other change, so the watchers follow it rather than being left behind.
@@ -139,6 +154,7 @@ export function startEditSession(options: EditSessionOptions): EditSession {
 			}
 		},
 		currentXml: () => editor.exportXml(),
+		viewport: () => editor.getViewport(),
 		historyPanel: panel.el,
 		refreshHistory: () => panel.refresh(),
 		destroy(): void {
@@ -148,5 +164,64 @@ export function startEditSession(options: EditSessionOptions): EditSession {
 			panel.el.remove()
 			editor.destroy()
 		},
+	}
+}
+
+// ── Language ─────────────────────────────────────────────────────────────────
+// Here rather than in the viewer so a reader never downloads any of it: the
+// language only matters once someone is editing, and this chunk is fetched then.
+
+const STORAGE_KEY = "bpmnkit-editor-locale"
+
+/** The languages the editor ships, each named in its own language. */
+export const EDITOR_LANGUAGES = AVAILABLE_LOCALES
+
+const LOADERS: Record<string, () => Promise<Locale>> = {
+	de: () => import("@bpmnkit/editor/locales/de").then((m) => m.de),
+	es: () => import("@bpmnkit/editor/locales/es").then((m) => m.es),
+	fr: () => import("@bpmnkit/editor/locales/fr").then((m) => m.fr),
+	it: () => import("@bpmnkit/editor/locales/it").then((m) => m.it),
+	ja: () => import("@bpmnkit/editor/locales/ja").then((m) => m.ja),
+	nl: () => import("@bpmnkit/editor/locales/nl").then((m) => m.nl),
+	pl: () => import("@bpmnkit/editor/locales/pl").then((m) => m.pl),
+	"pt-BR": () => import("@bpmnkit/editor/locales/pt-BR").then((m) => m.ptBR),
+	"zh-CN": () => import("@bpmnkit/editor/locales/zh-CN").then((m) => m.zhCN),
+}
+
+/** Remembers the writer's pick for the next edit, here and on later visits. */
+export function storeEditorLocale(code: string): void {
+	try {
+		localStorage.setItem(STORAGE_KEY, code)
+	} catch {
+		// Storage blocked: the choice lasts for this page only.
+	}
+}
+
+/**
+ * The language to edit in: the writer's earlier pick, else the browser's, else
+ * English — with its strings loaded. Pass `code` to load a specific one.
+ */
+export async function loadEditorLocale(
+	code?: string,
+): Promise<{ code: string; translate?: Translate }> {
+	const codes = EDITOR_LANGUAGES.map((l) => l.code)
+	let stored: string | null = null
+	try {
+		stored = localStorage.getItem(STORAGE_KEY)
+	} catch {
+		// Storage blocked: fall back to the browser's language.
+	}
+	const chosen =
+		code ??
+		(stored !== null && codes.includes(stored) ? stored : undefined) ??
+		matchLocale(navigator.languages ?? [navigator.language], codes) ??
+		"en"
+	const load = LOADERS[chosen]
+	if (!load) return { code: "en" }
+	try {
+		return { code: chosen, translate: createTranslate(await load()) }
+	} catch {
+		// A locale chunk that fails to arrive leaves the editor usable in English.
+		return { code: "en" }
 	}
 }

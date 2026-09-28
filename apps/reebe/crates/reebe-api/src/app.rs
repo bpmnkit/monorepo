@@ -146,6 +146,10 @@ pub async fn create_app(
         // Element instances
         .route("/v2/element-instances/search", post(handlers::element_instances::search))
         .route("/v2/element-instances/:key", get(handlers::element_instances::get))
+        .route(
+            "/v2/element-instances/ad-hoc-activities/:key/activation",
+            post(handlers::element_instances::activate_ad_hoc_activities),
+        )
 
         // Signals
         .route("/v2/signals/broadcast", post(handlers::signals::broadcast))
@@ -200,6 +204,7 @@ pub async fn create_app(
         .route("/v2/decision-requirements/search", post(handlers::decisions::search_decision_requirements))
 
         // Decision evaluation
+        .route("/v2/decision-definitions/evaluation", post(handlers::decisions::evaluate_decision))
         .route("/v2/decisions/evaluation", post(handlers::decisions::evaluate_decision))
 
         // Resources

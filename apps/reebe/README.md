@@ -1,31 +1,45 @@
 # Reebe
 
-A drop-in REST API replacement for [Zeebe](https://zeebe.io/) (Camunda 8 process engine), written in Rust.
-Compatible with the Camunda 8 REST API v2.
+A **dev/test** BPMN workflow engine in Rust that implements the [Camunda 8](https://camunda.com/)
+Orchestration Cluster REST API (`/v2/*`) and the Zeebe gateway gRPC service — for local
+development, tests and CI, without a JVM or Elasticsearch. **Do not run it in production.**
+
+> **Tier: Experimental — single-node, for development and testing only.** It may change or be
+> discontinued; see [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
+> Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public
+> documentation. It is not affiliated with or endorsed by Camunda. It is not a replacement for a
+> Camunda 8 cluster: there is no replication, no clustering and no exporter framework, and its
+> compatibility is checked by its own test suite rather than against Zeebe.
+>
+> "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH, used here only to name the API
+> that Reebe implements.
 
 ## What is Reebe?
 
-Reebe is a BPMN workflow engine that implements the Camunda 8 REST API (`/v2/*`) in Rust.
-It is designed as a direct replacement for the Zeebe broker — any HTTP client or SDK that targets
-the Camunda 8 REST API works unchanged against Reebe.
+Reebe implements the Camunda 8 REST API v2 and the Zeebe `gateway_protocol.Gateway` gRPC service,
+so a client or SDK that targets a Camunda 8 cluster can usually be pointed at it unchanged.
 
-Reebe uses PostgreSQL as its sole storage backend, replacing both RocksDB (the Zeebe journal) and
-Elasticsearch (the query side). The same append-only event log model that gives Zeebe its
-correctness guarantees is preserved, but implemented entirely in SQL.
+It stores everything in one SQL database — PostgreSQL, or SQLite embedded in the binary — in
+place of Zeebe's RocksDB journal and the Elasticsearch query side. The append-only event-log
+model Zeebe uses is kept, implemented in SQL.
 
 ## Why Reebe?
 
-| Property | Zeebe (Java) | Reebe (Rust) |
+| Property | Camunda 8 (self-managed) | Reebe |
 |---|---|---|
-| Memory usage | 1–2 GB (JVM heap) | ~50 MB |
-| Startup time | 15–30 s | < 1 s |
-| GC pauses | Yes (stop-the-world) | None |
-| Storage backends | RocksDB + Elasticsearch | PostgreSQL only |
-| Deployment | Multi-JAR + Elasticsearch cluster | Single binary |
-| gRPC API | Yes | No (REST only) |
+| Runtime | JVM | Single native binary |
+| Storage | RocksDB + Elasticsearch/OpenSearch or RDBMS | PostgreSQL, or embedded SQLite |
+| APIs | REST v2 + gRPC | REST v2 + gRPC gateway (port 26500) |
+| Clustering | Raft, multi-partition | Single node |
+| Licence | Camunda License 1.0 (production needs an Enterprise licence) | Apache-2.0 |
 
-Reebe is ideal for development environments, resource-constrained deployments, and any situation
-where running a full Camunda 8 stack is impractical.
+Reebe fits development machines, CI pipelines and demos — anywhere a full Camunda 8 stack is
+more than the job needs. For anything in production, use Camunda 8. `reebe-bench` measures throughput and latency on your own hardware;
+no benchmark figures are published yet.
+
+The same engine compiles to WebAssembly as
+[`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm), which
+`@bpmnkit/engine/wasm-runner` and `casen test` use to run scenarios in the browser and Node.js.
 
 ---
 
@@ -34,8 +48,8 @@ where running a full Camunda 8 stack is impractical.
 ### Option 1: Embedded SQLite (fastest, no dependencies)
 
 ```bash
-git clone https://github.com/urbanisierung/reebe
-cd reebe
+git clone https://github.com/bpmnkit/monorepo
+cd monorepo/apps/reebe
 just dev-embedded
 ```
 
@@ -44,8 +58,8 @@ Starts Reebe with a built-in SQLite database — no Docker or PostgreSQL needed.
 ### Option 2: Docker Compose (PostgreSQL)
 
 ```bash
-git clone https://github.com/urbanisierung/reebe
-cd reebe
+git clone https://github.com/bpmnkit/monorepo
+cd monorepo/apps/reebe
 docker-compose up
 ```
 
@@ -96,7 +110,8 @@ cargo build --release -p reebe-server
 
 ### Download binary
 
-Pre-built binaries will be available in future releases.
+There are no pre-built binaries yet; build from source as above, or with
+`cargo install --path crates/reebe-server`.
 
 ---
 
@@ -244,6 +259,36 @@ curl -X POST http://localhost:8080/v2/process-instances/search \
   }'
 ```
 
+#### Activate elements of an ad-hoc sub-process
+
+```bash
+curl -X POST http://localhost:8080/v2/element-instances/ad-hoc-activities/{key}/activation \
+  -H "Content-Type: application/json" \
+  -d '{"elements": [{"elementId": "search-kb", "variables": {"query": "delivery"}}]}'
+```
+
+#### Modify a process instance
+
+```bash
+curl -X POST http://localhost:8080/v2/process-instances/{key}/modification \
+  -H "Content-Type: application/json" \
+  -d '{
+    "activateInstructions": [{
+      "elementId": "review",
+      "variableInstructions": [{ "scopeId": "review", "variables": { "retry": true } }]
+    }],
+    "terminateInstructions": [{ "elementInstanceKey": "2251799813685260" }]
+  }'
+```
+
+#### Evaluate a decision
+
+```bash
+curl -X POST http://localhost:8080/v2/decision-definitions/evaluation \
+  -H "Content-Type: application/json" \
+  -d '{"decisionDefinitionId": "discount", "variables": {"total": 120}}'
+```
+
 #### Get topology
 
 ```bash
@@ -271,9 +316,14 @@ Reebe is a Cargo workspace with the following crates:
 
 Each command (e.g. `CREATE_PROCESS_INSTANCE`) is written to an append-only `partition_records`
 table in PostgreSQL. A single-threaded processing loop reads commands in order, runs the
-appropriate processor, and writes resulting events plus updated state projections — all in one
-database transaction. This is the same event-sourcing model used by Zeebe, re-implemented in
-Rust on top of PostgreSQL.
+appropriate processor, and writes resulting events plus updated state projections. This is the
+same event-sourcing model used by Zeebe, re-implemented in Rust on top of PostgreSQL.
+
+After each command, the engine stores its position in `processed_positions`. When the server
+restarts against an existing database, each partition resumes after the last processed command:
+commands appended but not processed yet run once, and nothing is replayed. (Before, every
+restart re-processed the whole log and duplicated jobs, timers and instances.) A command that
+was being processed when the server stopped abruptly is processed again.
 
 ---
 
@@ -284,6 +334,38 @@ Rust on top of PostgreSQL.
 ```bash
 cargo test --workspace
 ```
+
+The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`,
+`crates/reebe-grpc/tests/variables.rs` and `calls.rs`, which call the gRPC service, and
+`crates/reebe-api/tests/rest.rs`, which calls the REST API over HTTP) skip
+themselves unless `REEBE_DATABASE__URL` is set. To run them, start a throwaway PostgreSQL and
+point the tests at it:
+
+```bash
+docker run -d --rm --name reebe-test-pg -p 5432:5432 \
+  -e POSTGRES_USER=reebe -e POSTGRES_PASSWORD=reebe -e POSTGRES_DB=reebe postgres:16-alpine
+REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB=1 \
+  cargo test --workspace
+```
+
+- Each test creates its own database (`reebe_test_*`) on that server: tests run in parallel,
+  and an engine processes every unprocessed command on its partition, so tests sharing a
+  database would process each other's commands. The user in the URL needs the `CREATEDB`
+  privilege. The databases are not dropped afterwards, so do not point the tests at a server
+  you care about.
+- `REEBE_REQUIRE_DB=1` makes the tests fail, not skip, when the URL is missing or the database
+  cannot be reached. CI (`.github/workflows/reebe.yml`) sets it.
+- The throughput benchmark is `#[ignore]`d, with the reason in the attribute. Run it with
+  `cargo test --workspace -- --ignored`.
+- The embedded SQLite backend has one test, `crates/reebe-server/tests/embedded.rs`, which
+  deploys, versions and evaluates a DMN and runs a business rule task. It is compiled only
+  with the `embedded` feature:
+  `cargo test -p reebe-server --no-default-features --features embedded --test embedded`.
+  CI only checks that the embedded build compiles
+  (`cargo check -p reebe-server --no-default-features --features embedded`).
+- `test_timer_accuracy` runs the engine and scheduler on a virtual clock: it asserts that a
+  timer does not fire 1 ms before its due date and fires within 2 s (one 100 ms scheduler poll
+  plus slack for slow runners) once it is due.
 
 ### Running with Docker Compose
 
@@ -370,23 +452,232 @@ Reports PI/s (process instances per second), average latency, and error count.
 - Job activation (including long polling), completion, failure, and error
 - Message publication and correlation
 - Signal broadcasting
-- Timer events (boundary, intermediate, start)
+- Timer events: intermediate catch, boundary and start events. Deploying a process schedules
+  its timer start events (`timeDate` once; `timeCycle` as `R/…`, `Rn/…` or a Spring-style cron
+  expression such as `0 0 9-17 * * MON-FRI`), each firing creates an instance, and a new
+  version cancels the previous version's timers
+- Message start events: a published message whose name matches creates an instance with the
+  message variables; with a correlation key, at most one instance started by that key is
+  active at a time, and a new version closes the previous version's subscriptions
+- Scope completion as in Zeebe: an embedded sub-process or a process instance completes only
+  when nothing inside it is active any more; a terminate end event terminates the rest of its
+  own flow scope and completes that scope
+- Timer, message and signal boundary events, interrupting and non-interrupting: armed when
+  the activity starts and cancelled when it ends; a timer cycle repeats
+- Event-based gateways: the first event wins and the others are cancelled
+- Event sub-processes of every start event type. Timer (duration, date or cycle, evaluated
+  with FEEL against the scope), message (correlation key evaluated against the scope) and
+  signal start events are armed when their flow scope (the process or an embedded
+  sub-process) activates and disarmed when it completes or is terminated. An interrupting
+  one terminates everything else in the scope, triggers once and disarms the others; a
+  non-interrupting one runs alongside as often as it triggers (a timer cycle repeats). The
+  message or signal variables propagate as a catch event's do, so the event sub-process sees
+  them. Error and escalation event sub-processes catch throws. An event sub-process instance
+  has the element type `EVENT_SUB_PROCESS`
+- Error variables: the variables a job worker throws an error with go to the error boundary
+  event or error event sub-process that catches it, and propagate as a catch event's do
+  (an output mapping on a boundary event picks what leaves)
+- Exclusive gateways take the first flow whose condition holds, else the default flow. With
+  no match and no default flow they raise a `CONDITION_ERROR` incident with Zeebe's message,
+  `Expected at least one condition to evaluate to true, or to have a default flow`, and stay
+  activating; resolving the incident evaluates the gateway again. Default flows are recognised in
+  sub-processes and event sub-processes at every depth. Parallel gateways take every
+  outgoing flow and ignore conditions on them, as Zeebe does
+- A sequence-flow condition of an exclusive or inclusive gateway must evaluate to a boolean,
+  as in Zeebe: a missing variable is `null`, so `=x > 5` without `x` is `null`. Any other
+  result, or an expression that fails to evaluate, raises an `EXTRACT_VALUE_ERROR` incident
+  (`Expected result of the expression 'x > 5' to be 'BOOLEAN', but was 'NULL'.`) instead of
+  counting as false; resolving it, after the variable is fixed, evaluates the gateway again.
+  Conditions on the outgoing flows of any other element (an activity, an event) are ignored
+  and every flow is taken, as Zeebe does
+- Inclusive gateways: the split takes every flow whose condition holds, else the default
+  flow, else raises a `CONDITION_ERROR` incident that, like the exclusive gateway's, retries
+  the split when resolved; the join activates once every incoming flow has a token or can
+  no longer be reached in its flow scope (see below)
+- Complex gateways fail deployment with Zeebe's message, `Elements of type 'ComplexGateway'
+  are currently not supported. Please refer to the documentation for a list of supported
+  elements: https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/`, as
+  Zeebe does not execute them
+- Link events: a link throw event continues at the link catch event of the same name in its
+  scope (the process or a sub-process). Deployment fails for a throw event without a catch
+  event of its name, for two catch events with the same name in one scope, and for an empty
+  link name
+- Compensation: when an activity with a compensation boundary event completes, it is
+  recorded with its handler (the `isForCompensation` activity an association links to the
+  boundary event); a multi-instance activity is recorded once, when all its instances have
+  completed, and an activity that completes twice is recorded twice. A compensation
+  intermediate throw or end event starts, all at once, the handlers of the activities that
+  completed in its scope and in the completed sub-processes inside it, most recently
+  completed first, and waits until they have all completed. Active and terminated
+  activities and sub-processes are not compensated, and each completion is compensated
+  once. `activityRef` limits it to that activity of the throw event's scope. A throw event in
+  an event sub-process (for example the compensation end event of an error event
+  sub-process) compensates the event sub-process and the scope around it. Every handler
+  runs in the throw event's flow scope, as Zeebe activates it, and starts with no local
+  variables but those of its input mappings: it sees the variables of that scope, and its
+  result propagates like any task's. Only a handler that completes releases the throw
+  event, as in Zeebe: one that is terminated on its own (for example by a boundary event on
+  it) leaves the throw event waiting until its scope is terminated.
+  Deployment fails for an `activityRef` that is not
+  an activity with a compensation boundary event in the throw event's scope, and for a
+  compensation start event in an event sub-process, which Zeebe does not support
+- Ad-hoc sub-processes. Each activation of an inner element runs in its own
+  `AD_HOC_SUB_PROCESS_INNER_INSTANCE`, which keeps what its elements write; the element's
+  outgoing sequence flows are followed inside it. Run by Zeebe, `activeElementsCollection`
+  lists the elements to activate (an empty list, or none, activates nothing and the
+  sub-process waits; an id that is not an element without incoming flows raises an
+  incident), `completionCondition` is evaluated in the ad-hoc sub-process's own scope, as
+  Zeebe's `AdHocSubProcessProcessor` does, each time a path in it ends: an activation, or an
+  event sub-process inside it (a result that is not a boolean raises an
+  `EXTRACT_VALUE_ERROR` incident, `Failed to evaluate completion condition. Expected result
+  of the expression … to be 'BOOLEAN', but was …`, on the activation or event sub-process,
+  which stays completing; resolving it evaluates the condition again), and
+  `cancelRemainingInstances` (default `true`) terminates the rest when it holds; without a
+  condition, the sub-process completes when every activated element has. With a job worker
+  implementation (the AI Agent Sub-process), the job's `adHocSubProcess` result activates
+  elements (`activateElements`, each with variables for its activation), fulfils the
+  completion condition (`isCompletionConditionFulfilled`) and cancels or waits for the
+  remaining activations (`isCancelRemainingInstances`); the job is created again whenever an
+  activation completes, one job at a time. A job completed without activating elements or
+  fulfilling the condition completes the sub-process. An invalid result (activating and
+  fulfilling at once, or an element that cannot be activated) rejects the completion.
+  `outputElement` is collected into `outputCollection`, which is propagated when the
+  sub-process completes. Every ad-hoc sub-process creates the local variable
+  `adHocSubProcessElements` when it activates, in the shape of Zeebe's
+  `AdHocActivityMetadata`: for each element it can activate, in document order,
+  `elementId`, `elementName`, `documentation`, `properties` (its `zeebe:properties`, with
+  `null` for an empty value) and `parameters`, one per `fromAi(value, description, type,
+  schema, options)` call in its input mappings, positional or named. A parameter is named by
+  its whole reference (`toolCall.orderId`, or `b` for `fromAi(b)`), the description and type
+  are its string literals, the schema and options its contexts of literals, and the
+  arguments of a `fromAi()` call are not searched for more calls. A call that breaks those
+  rules fails the deployment with the message of Zeebe's `FromAiTaggedParameterExtractor`,
+  wrapped as `AdHocSubProcessTransformer` wraps it: `'<resource>': Failed to extract ad-hoc
+  activity parameters for element '<id>'. Expected fromAi() parameter 'description' to be a
+  string, but received '10'.` (a value that is not a reference, a description or type that
+  is not a string literal, `null` included, a schema or options that is not a context, or
+  one with an entry that is not a literal); the cases of Zeebe's
+  `TaggedParameterExtractorTest` are tests here, and `@bpmnkit/engine` rejects the same
+  calls. A field that is null or
+  empty is left out, as Zeebe's `@JsonInclude(NON_EMPTY)` does; the fields come out in
+  alphabetical order, where Zeebe's are in declaration order. The cases of Zeebe's
+  `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` are tests here,
+  and a test checks that `@bpmnkit/engine` gives the same variable for the
+  `ai-agent-tool-loop` template. `fromAi()` itself returns its
+  value. `POST /v2/element-instances/ad-hoc-activities/{key}/activation` activates elements
+  (each with its variables) in an active ad-hoc sub-process, first terminating what still
+  runs with `cancelRemainingInstances`; it answers 204, 404 for a key that is not an
+  ad-hoc sub-process instance or for elements it cannot activate (with Zeebe's rejection
+  messages), and 400 when the sub-process is no longer active or the body lacks `elements`
+  or an `elementId`. The gRPC `CompleteJob` call takes Zeebe's `JobResult` (`result = 3`,
+  with the ad-hoc and user task fields under Zeebe's field numbers) and passes it on as
+  the REST job completion does
+- The `variables` document of a gRPC call becomes variables, for `CreateProcessInstance`
+  (with or without result), `PublishMessage`, `BroadcastSignal`, `SetVariables` (local to
+  the element instance, or propagated from it to the scope that has each variable, else the
+  process), `CompleteJob`, `FailJob` (local to the job's task, as the REST call now does
+  too), `ThrowError` (to the catch event) and `EvaluateDecision`. As in Zeebe's gateway, an
+  empty document or `null` is no variables, and a document that is not JSON
+  (`Invalid JSON value: …`) or not an object (`Property 'variables' is invalid: Expected
+  document to be a root level object, but was 'ARRAY'`) is rejected with
+  `INVALID_ARGUMENT`; `ModifyProcessInstance` checks the documents of its variable
+  instructions the same way. `CreateProcessInstance` now reaches the engine's instance
+  creation and answers with the instance key. `DeployProcess` and `DeployResource` deploy
+  BPMN and DMN as the REST API does and answer process, decision and decision requirements
+  metadata; a gRPC test deploys both and then runs the process and evaluates the decision.
+  An engine rejection is `NOT_FOUND` for what does not exist and `INVALID_ARGUMENT` for an
+  invalid instruction or a deployment that fails, as Zeebe's gateway maps them (an invalid
+  state is `FAILED_PRECONDITION`)
+- Process instance modification, as Zeebe's `ProcessInstanceModificationModifyProcessor`
+  does it, through `POST /v2/process-instances/{key}/modification` (204) and gRPC
+  `ModifyProcessInstance`. Activate instructions activate an element in an instance of each
+  of its flow scopes: an active one is reused, and one is created when there is none,
+  activated without starting it (its boundary events and event sub-processes are armed);
+  when a flow scope has several active instances, `ancestorElementInstanceKey` chooses (the
+  instance itself or one around it is reused, below it a new one is created). Variable
+  instructions set variables local to the element or to the flow scope they name (the
+  process for an empty `scopeId`). Terminate instructions, by element instance key or by
+  element id, terminate the element instances with what runs inside them, resolve their
+  incidents, and terminate the flow scopes left with nothing to do, up to the process
+  instance. The move instructions of Camunda 8.9 (by source element id or key, with a
+  direct, inferred or source-parent ancestor) are an activation plus a termination.
+  Rejections carry Zeebe's messages: unknown elements, start events, sequence flows,
+  boundary events and events after an event-based gateway, an activation that would create
+  a multi-instance body or inner instance, several flow scope instances without an
+  ancestor, ancestors that are not active, of another process instance or not around the
+  element, variable scopes that do not exist or are not flow scopes, activations in a flow
+  scope being terminated, and terminating a process instance a call activity started.
+  Everything is checked before anything changes. The REST body is checked as Zeebe's
+  gateway checks it (`No elementId provided`, a key that is not numeric)
+- DMN: a deployed DMN is stored as a decision requirements graph and its decisions, with
+  versions as Zeebe's `DmnResourceTransformer` gives them: the same resource again (same
+  name, same content, its decisions still the latest in it) keeps its keys and versions;
+  changed content, or a duplicate deployed together with a new resource, is a new version.
+  A decision evaluates by its id (the latest version) or by its key
+  (`POST /v2/decision-definitions/evaluation`, gRPC `EvaluateDecision`), with Zeebe's
+  rejections (`Expected to evaluate decision '…', but no decision found for key '…'`); an
+  evaluation that fails answers with `failedDecisionId` and `failureMessage`. A business
+  rule task evaluates the latest version. DMN deploys and evaluates on PostgreSQL and on
+  the embedded SQLite backend
+- A business rule task keeps its incoming and outgoing sequence flows and its input and
+  output mappings; before, the parser gave them to the sub-process around it. An element
+  never passes to the sub-process around it what it cannot have itself (an end event's
+  outgoing flow or I/O mappings, a gateway's I/O mappings)
+- Undefined tasks (`bpmn:task`) and manual tasks pass through, with their I/O mappings and
+  multi-instance, as element types `TASK` and `MANUAL_TASK`
+- A flow element written as an empty tag (`<bpmn:userTask id="x"/>`, `<bpmn:task/>`,
+  gateways, events, sub-processes) is read as one with a start and an end tag; an empty
+  extension element with the same local name (`<zeebe:userTask/>`) is not
+- Resolving an incident raised while an element was activating (an I/O mapping, a gateway
+  condition, a multi-instance input collection, an ad-hoc `activeElementsCollection`) retries
+  that same element instance
+- Joins wait per flow scope and incoming sequence flow: a parallel join needs a token on each
+  incoming flow, and a token waiting at a join keeps its flow scope active, as in Zeebe, even
+  if the join can never activate
+- Multi-instance (parallel and sequential) on every task type, sub-process and call
+  activity, with `inputElement`, `outputCollection`/`outputElement` and `completionCondition`.
+  A `completionCondition` that does not evaluate to a boolean raises an
+  `EXTRACT_VALUE_ERROR` incident (`Expected result of the expression … to be 'BOOLEAN', but
+  was …`) on the inner instance, which stays completing; resolving it evaluates the
+  condition again
 - Variables (get, update, search)
 - Incidents (search, resolve)
 - User tasks
 - Topology endpoint
 - Multi-tenancy (basic)
 
+#### When an inclusive join activates
+
+A flow of the join can still be reached if a path of sequence flows leads to it from an
+element instance active in the join's flow scope, from an element a token is on its way to,
+or from another join of the scope with a waiting token. Boundary events of the elements on a
+path count as paths, and a path follows a link throw event to its link catch event; a path
+does not lead through the join itself, so a flow that has a token is not waited for again.
+The join is evaluated when a token reaches it and whenever an element of its flow scope
+completes. The analysis is static and per flow scope: it does not evaluate conditions (a flow
+whose condition can never hold still counts as reachable).
+
+### Known gaps
+
+- A decision evaluation reports no `evaluatedDecisions` (the matched rules and evaluated
+  inputs of each decision)
+- A redeployed BPMN process always gets a new version, even when it has not changed; only
+  DMN resources are recognised as duplicates
+- A process instance modification does not run execution listeners and has no
+  `operationReference`
+
 ### What is not supported
 
-- **gRPC API** — excluded by design; use the REST API instead
+- **gRPC API** — the gateway on port 26500 implements the Zeebe `Gateway` service's
+  job, instance (including modification), message, signal, variable, incident, decision
+  and deployment calls; the REST API is the better-tested surface
 - **Elasticsearch / OpenSearch exporters** — no exporter framework yet
 - **Camunda web apps** (Operate, Tasklist, Optimize) — not included
 - **Multi-node clustering (Raft)** — single-node only in current version
-- **Java gRPC SDK** — use a REST-based client or the Camunda 8 Java REST client
 
 ---
 
 ## License
 
-Apache 2.0 — see [LICENSE](./LICENSE) or https://www.apache.org/licenses/LICENSE-2.0
+Apache 2.0 — see [LICENSE](./LICENSE). The rest of the BPMN Kit monorepo is MIT; Reebe keeps the
+Apache-2.0 licence it was first published under.

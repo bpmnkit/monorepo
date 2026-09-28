@@ -12,7 +12,7 @@
  */
 
 import { execFile } from "node:child_process"
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readdir, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
@@ -98,7 +98,7 @@ function deriveDisplayName(pkgName: string): string {
 
 function deriveId(pkgName: string, author: string): string {
 	const safeName = pkgName.replace(/^@[^/]+\//, "").replace(/[^a-z0-9-]/g, "-")
-	const safeAuthor = author ? author.replace(/[^a-z0-9]/g, "").toLowerCase() : "example"
+	const safeAuthor = author ? author.toLowerCase().replace(/[^a-z0-9]/g, "") : "example"
 	return `com.${safeAuthor}.${safeName}`
 }
 
@@ -163,22 +163,24 @@ function genPluginSource(opts: {
 	id: string
 	groupName: string
 }): string {
+	// JSON string literals are valid TypeScript ones, quotes and backslashes escaped.
+	const str = JSON.stringify
 	return `import type { CasenPlugin } from "@bpmnkit/cli-sdk"
 
 const plugin: CasenPlugin = {
-  id: "${opts.id}",
-  name: "${opts.displayName}",
-  version: "${opts.version}",
+  id: ${str(opts.id)},
+  name: ${str(opts.displayName)},
+  version: ${str(opts.version)},
   groups: [
     {
-      name: "${opts.groupName}",
-      description: "${opts.displayName} commands",
+      name: ${str(opts.groupName)},
+      description: ${str(`${opts.displayName} commands`)},
       commands: [
         {
           name: "hello",
           description: "Example command — replace with your own",
           async run(ctx) {
-            ctx.output.ok("Hello from ${opts.displayName}!")
+            ctx.output.ok(${str(`Hello from ${opts.displayName}!`)})
           },
         },
       ],
@@ -261,6 +263,11 @@ async function main(): Promise<void> {
 	} else {
 		// isInteractive is false only when opts.name and opts.description are both set
 		name = opts.name ?? ""
+		if (!isValidPkgName(name)) {
+			throw new Error(
+				`Invalid package name "${name}". Use lowercase letters, numbers, and hyphens.`,
+			)
+		}
 		displayName = opts.displayName ?? deriveDisplayName(name)
 		description = opts.description ?? ""
 		author = opts.author ?? ""
@@ -279,6 +286,11 @@ async function main(): Promise<void> {
 	const version = "0.1.0"
 
 	process.stdout.write("\n")
+
+	const existing = await readdir(targetDir).catch(() => [])
+	if (existing.length > 0) {
+		throw new Error(`${targetDir} already exists and is not empty`)
+	}
 
 	await mkdir(join(targetDir, "src"), { recursive: true })
 

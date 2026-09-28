@@ -45,7 +45,7 @@ import {
 	zeebeExtensionsToXmlElements,
 } from "@bpmnkit/core"
 import type { InputVariableDef, ValidationVariableType } from "@bpmnkit/core"
-import { injectChromeStyles } from "@bpmnkit/editor"
+import { type Translate, defaultTranslate, injectChromeStyles } from "@bpmnkit/editor"
 import { ELEMENT_TYPE_LABELS } from "@bpmnkit/editor"
 import type { CreateShapeType } from "@bpmnkit/editor"
 import type {
@@ -124,6 +124,13 @@ for (const tpl of CAMUNDA_CONNECTOR_TEMPLATES) {
 }
 
 /**
+ * The bundled registrations, kept so `unregisterTemplate` can put one back
+ * after a workspace template that shadowed it goes away — the same object, so
+ * reference-equality in the renderer still holds.
+ */
+const BUNDLED_REGISTRY = new Map(TEMPLATE_REGISTRY)
+
+/**
  * Task definition type → template id mapping (first-wins; used for
  * backward-compat detection in `read` when `zeebe:modelerTemplate` is absent).
  */
@@ -134,6 +141,9 @@ for (const tpl of SERVICE_TASK_TEMPLATES) {
 		TASK_TYPE_TO_TEMPLATE_ID.set(taskType, tpl.id)
 	}
 }
+
+/** The bundled task-type mapping, restored by `unregisterTemplate`. */
+const BUNDLED_TASK_TYPES = new Map(TASK_TYPE_TO_TEMPLATE_ID)
 
 // ── General schema (all flow element types) ───────────────────────────────────
 
@@ -193,6 +203,9 @@ const CONNECTOR_OPTIONS: Array<{ value: string; label: string }> = [
 		extractTaskType(t) ? [{ value: t.id, label: t.name }] : [],
 	).sort((a, b) => a.label.localeCompare(b.label)),
 ]
+
+/** Bundled connector labels, restored when a workspace template shadowing one is dropped. */
+const BUNDLED_OPTION_LABELS = new Map(CONNECTOR_OPTIONS.map((o) => [o.value, o.label]))
 
 const GENERIC_SERVICE_TASK_SCHEMA: PanelSchema = {
 	compact: [{ key: "name", label: "Name", type: "text", placeholder: "Task name" }],
@@ -1633,7 +1646,7 @@ interface WizardRow {
  * Opens the input validation wizard modal.
  * Resolves with the variable definitions on confirm, or null on cancel.
  */
-function openValidationWizard(): Promise<InputVariableDef[] | null> {
+function openValidationWizard(t: Translate): Promise<InputVariableDef[] | null> {
 	injectValidationModalCss()
 	return new Promise((resolve) => {
 		const rows: WizardRow[] = [
@@ -1657,13 +1670,14 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 		overlay.appendChild(dialog)
 
 		const title = document.createElement("h2")
-		title.textContent = "Add Input Validation"
+		title.textContent = t("Add Input Validation")
 		dialog.appendChild(title)
 
 		const hint = document.createElement("p")
 		hint.className = "hint"
-		hint.textContent =
-			"Define the variables this process expects. A validation DMN table and wiring will be inserted after the start event."
+		hint.textContent = t(
+			"Define the variables this process expects. A validation DMN table and wiring will be inserted after the start event.",
+		)
 		dialog.appendChild(hint)
 
 		const tableWrap = document.createElement("div")
@@ -1675,14 +1689,14 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 			const table = document.createElement("table")
 			const thead = document.createElement("thead")
 			thead.innerHTML = `<tr>
-				<th style="width:22%">Name</th>
-				<th style="width:14%">Type</th>
-				<th style="width:8%;text-align:center">Req.</th>
-				<th style="width:10%">Min</th>
-				<th style="width:10%">Max</th>
-				<th style="width:10%">MinLen</th>
-				<th style="width:10%">MaxLen</th>
-				<th style="width:10%">Pattern</th>
+				<th style="width:22%">${escHtml(t("Name"))}</th>
+				<th style="width:14%">${escHtml(t("Type"))}</th>
+				<th style="width:8%;text-align:center">${escHtml(t("Req."))}</th>
+				<th style="width:10%">${escHtml(t("Min"))}</th>
+				<th style="width:10%">${escHtml(t("Max"))}</th>
+				<th style="width:10%">${escHtml(t("MinLen"))}</th>
+				<th style="width:10%">${escHtml(t("MaxLen"))}</th>
+				<th style="width:10%">${escHtml(t("Pattern"))}</th>
 				<th style="width:6%"></th>
 			</tr>`
 			table.appendChild(thead)
@@ -1696,6 +1710,7 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 				const isNum = row.type === "number"
 				const isStr = row.type === "string"
 
+				// i18n-ignore: FEEL type names, and placeholders that are code
 				tr.innerHTML = `
 					<td><input type="text" class="v-name" value="${escHtml(row.name)}" placeholder="variableName"/></td>
 					<td><select class="v-type">
@@ -1712,7 +1727,7 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 					<td><input type="number" class="v-minlen" value="${escHtml(row.minLength)}" placeholder="—"${!isStr ? " disabled" : ""}/></td>
 					<td><input type="number" class="v-maxlen" value="${escHtml(row.maxLength)}" placeholder="—"${!isStr ? " disabled" : ""}/></td>
 					<td><input type="text" class="v-pattern" value="${escHtml(row.pattern)}" placeholder="regex"${!isStr ? " disabled" : ""}/></td>
-					<td><button class="bpmnkit-val-del v-del" title="Remove">✕</button></td>
+					<td><button class="bpmnkit-val-del v-del" title="${escHtml(t("Remove"))}">✕</button></td>
 				`
 
 				const readRow = (idx: number) => {
@@ -1755,7 +1770,7 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 
 			const addBtn = document.createElement("button")
 			addBtn.className = "bpmnkit-val-add"
-			addBtn.textContent = "+ Add variable"
+			addBtn.textContent = `+ ${t("Add variable")}`
 			addBtn.addEventListener("click", () => {
 				rows.push({
 					name: "",
@@ -1781,7 +1796,7 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 
 		const cancelBtn = document.createElement("button")
 		cancelBtn.className = "bpmnkit-val-btn"
-		cancelBtn.textContent = "Cancel"
+		cancelBtn.textContent = t("Cancel")
 		cancelBtn.addEventListener("click", () => {
 			overlay.remove()
 			resolve(null)
@@ -1789,7 +1804,7 @@ function openValidationWizard(): Promise<InputVariableDef[] | null> {
 
 		const generateBtn = document.createElement("button")
 		generateBtn.className = "bpmnkit-val-btn bpmnkit-val-btn--primary"
-		generateBtn.textContent = "Generate Validation"
+		generateBtn.textContent = t("Generate Validation")
 		generateBtn.addEventListener("click", () => {
 			const defs = rows
 				.filter((r) => r.name)
@@ -1842,6 +1857,7 @@ interface ValidationGroupCallbacks {
 	applyChange?: (fn: (defs: BpmnDefinitions) => BpmnDefinitions) => void
 	onCreateValidationDmn?: (dmnXml: string, fileName: string, decisionId: string) => void
 	onEditValidationDmn?: (decisionId: string) => void
+	translate: Translate
 }
 
 function makeStartEventSchema(callbacks: ValidationGroupCallbacks): PanelSchema {
@@ -1873,7 +1889,7 @@ function makeStartEventSchema(callbacks: ValidationGroupCallbacks): PanelSchema 
 						hint: "Generate a DMN validation table and error path after this start event.",
 						condition: (values) => values._hasValidation !== true,
 						onClick: (_values, setValue) => {
-							void openValidationWizard().then(async (vars) => {
+							void openValidationWizard(callbacks.translate).then(async (vars) => {
 								if (!vars || vars.length === 0) return
 								const startEventId = _values._elementId as string | undefined
 								if (!startEventId) return
@@ -1985,6 +2001,12 @@ export interface ConfigPanelBpmnOptions {
 	 * Typically: `(fn) => editorRef.current?.applyChange(fn)`.
 	 */
 	applyChange?: (fn: (defs: BpmnDefinitions) => BpmnDefinitions) => void
+	/**
+	 * Translation hook for the input-validation dialog — pass the editor's. The
+	 * schema strings this plugin registers are translated by the config panel's
+	 * own `translate` option.
+	 */
+	translate?: Translate
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -2007,6 +2029,13 @@ export function createConfigPanelBpmnPlugin(
 ): CanvasPlugin & {
 	/** Register an additional element template to make it available in the UI. */
 	registerTemplate(template: ElementTemplate): void
+	/**
+	 * Remove a template registered with `registerTemplate`. A bundled Camunda
+	 * template with the same id comes back; any other id disappears from the
+	 * connector picker. Lets a host that switches diagrams drop the previous
+	 * diagram's templates rather than accumulate them.
+	 */
+	unregisterTemplate(id: string): void
 } {
 	const userTaskSchema = makeUserTaskSchema()
 	const businessRuleTaskSchema = makeBusinessRuleTaskSchema(options.onEditValidationDmn)
@@ -2018,6 +2047,7 @@ export function createConfigPanelBpmnPlugin(
 		applyChange: options.applyChange,
 		onCreateValidationDmn: options.onCreateValidationDmn,
 		onEditValidationDmn: options.onEditValidationDmn,
+		translate: options.translate ?? defaultTranslate,
 	}
 	const startEventSchema = makeStartEventSchema(validationCallbacks)
 	const startEventAdapter = makeStartEventAdapter(validationCallbacks)
@@ -2066,9 +2096,29 @@ export function createConfigPanelBpmnPlugin(
 			if (taskType && !TASK_TYPE_TO_TEMPLATE_ID.has(taskType)) {
 				TASK_TYPE_TO_TEMPLATE_ID.set(taskType, template.id)
 			}
-			if (!CONNECTOR_OPTIONS.some((o) => o.value === template.id)) {
-				CONNECTOR_OPTIONS.push({ value: template.id, label: template.name })
+			const option = CONNECTOR_OPTIONS.find((o) => o.value === template.id)
+			if (option) option.label = template.name
+			else CONNECTOR_OPTIONS.push({ value: template.id, label: template.name })
+		},
+
+		unregisterTemplate(id: string): void {
+			const bundled = BUNDLED_REGISTRY.get(id)
+			if (bundled) TEMPLATE_REGISTRY.set(id, bundled)
+			else TEMPLATE_REGISTRY.delete(id)
+
+			for (const [taskType, templateId] of TASK_TYPE_TO_TEMPLATE_ID) {
+				if (templateId !== id) continue
+				const original = BUNDLED_TASK_TYPES.get(taskType)
+				if (original) TASK_TYPE_TO_TEMPLATE_ID.set(taskType, original)
+				else TASK_TYPE_TO_TEMPLATE_ID.delete(taskType)
 			}
+
+			const index = CONNECTOR_OPTIONS.findIndex((o) => o.value === id)
+			if (index === -1) return
+			const bundledLabel = BUNDLED_OPTION_LABELS.get(id)
+			const option = CONNECTOR_OPTIONS[index]
+			if (bundledLabel !== undefined && option) option.label = bundledLabel
+			else CONNECTOR_OPTIONS.splice(index, 1)
 		},
 	}
 }

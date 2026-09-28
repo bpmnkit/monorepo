@@ -6,6 +6,9 @@ import { orderPools } from "../layout/collaboration/ordering.js"
 import { collapseCollinear } from "../layout/grid/grid-router.js"
 import type { LayoutEngine } from "../layout/layout-engine.js"
 import { layoutProcess } from "../layout/layout-engine.js"
+import type { Side } from "../layout/orthogonal.js"
+import type { ConnectionKind, PlaneEdge, PlaneShape } from "../layout/repair.js"
+import { repairRoutes } from "../layout/repair.js"
 import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
 	BpmnBounds,
@@ -604,19 +607,43 @@ function poolOwners(defs: BpmnDefinitions, collab: BpmnCollaboration): Map<strin
 	return owners
 }
 
-/** Message flows collapsed into weighted pool-to-pool relationships. */
-function poolLinks(collab: BpmnCollaboration, owners: Map<string, number>): PoolLink[] {
-	const weights = new Map<string, PoolLink>()
+/**
+ * Message flows as pool-to-pool relationships, one per flow, each carrying how
+ * deep inside its pool the message leaves and arrives.
+ */
+function poolLinks(
+	collab: BpmnCollaboration,
+	owners: Map<string, number>,
+	depth: (elementId: string) => number | undefined,
+): PoolLink[] {
+	const links: PoolLink[] = []
 	for (const flow of collab.messageFlows) {
 		const from = owners.get(flow.sourceRef)
 		const to = owners.get(flow.targetRef)
 		if (from === undefined || to === undefined || from === to) continue
-		const key = from < to ? `${from}:${to}` : `${to}:${from}`
-		const existing = weights.get(key)
-		if (existing) existing.weight++
-		else weights.set(key, { from, to, weight: 1 })
+		const link: PoolLink = { from, to, weight: 1 }
+		const fromDepth = depth(flow.sourceRef)
+		const toDepth = depth(flow.targetRef)
+		if (fromDepth !== undefined) link.fromDepth = fromDepth
+		if (toDepth !== undefined) link.toDepth = toDepth
+		links.push(link)
 	}
-	return [...weights.values()]
+	return links
+}
+
+/** Each laid-out element's vertical position within its own process, 0 top to 1 bottom. */
+function depthIndex(layouts: Iterable<LayoutResult>): Map<string, number> {
+	const depths = new Map<string, number>()
+	for (const layout of layouts) {
+		if (layout.nodes.length === 0) continue
+		const { minY, maxY } = contentBbox(layout.nodes)
+		const height = maxY - minY
+		if (height <= 0) continue
+		for (const node of layout.nodes) {
+			depths.set(node.id, (node.bounds.y + node.bounds.height / 2 - minY) / height)
+		}
+	}
+	return depths
 }
 
 /** Width of a laid-out process, ignoring where in space it happens to sit. */
@@ -721,6 +748,8 @@ export function applyAutoLayout(
 	// place in the stack; processes no participant references follow.
 	const processById = new Map(defs.processes.map((p) => [p.id, p]))
 	const pools: Array<{ participantId?: string; process?: BpmnProcess }> = []
+	/** Layouts computed early, for ordering; reused rather than run twice. */
+	const layoutOf = new Map<BpmnProcess, LayoutResult>()
 	if (collab) {
 		const participantPools = collab.participants.map((participant) => ({
 			participantId: participant.id,
@@ -728,7 +757,16 @@ export function applyAutoLayout(
 		}))
 		// Pools that exchange messages read better next to each other, so the
 		// stack follows the message flows rather than the declaration order.
-		const order = orderPools(participantPools.length, poolLinks(collab, poolOwners(defs, collab)))
+		for (const pool of participantPools) {
+			if (pool.process && !layoutOf.has(pool.process)) {
+				layoutOf.set(pool.process, layoutProcess(pool.process, engine, collapsed))
+			}
+		}
+		const depths = depthIndex(layoutOf.values())
+		const order = orderPools(
+			participantPools.length,
+			poolLinks(collab, poolOwners(defs, collab), (id) => depths.get(id)),
+		)
 		for (const index of order) {
 			const pool = participantPools[index]
 			if (pool) pools.push(pool)
@@ -743,7 +781,9 @@ export function applyAutoLayout(
 	// Lay every pool out first: alignment needs to see all of them before any
 	// geometry is committed.
 	const layouts = pools.map((pool) =>
-		pool.process ? layoutProcess(pool.process, engine, collapsed) : { nodes: [], edges: [] },
+		pool.process
+			? (layoutOf.get(pool.process) ?? layoutProcess(pool.process, engine, collapsed))
+			: { nodes: [], edges: [] },
 	)
 	const alignment = alignPools(
 		pools.length,
@@ -807,7 +847,9 @@ export function applyAutoLayout(
 		const engineLanes = result.lanes
 
 		// Pre-compute annotation positions in layout space so they're included in the bbox
-		const annBounds = process ? packAnnotations(process, result.nodes) : new Map<string, Bounds>()
+		const annBounds = process
+			? packAnnotations(process, result.nodes, result.edges)
+			: new Map<string, Bounds>()
 
 		const { minX, minY, maxX, maxY } = contentBbox(result.nodes, annBounds.values())
 		const contentW = maxX - minX
@@ -817,8 +859,12 @@ export function applyAutoLayout(
 		// aligns to the band space rather than to the content bounding box —
 		// otherwise the shapes drift out of the lanes drawn around them.
 		const laneBands = participantId && hasLanes ? engineLanes : undefined
-		const bandTop = laneBands?.[0]?.bounds.y ?? 0
-		const bandHeight = laneBands ? laneBands.reduce((sum, lane) => sum + lane.bounds.height, 0) : 0
+		// Bands arrive outermost first and nested lanes overlap their parent, so the
+		// pool spans their extent rather than the first band or the sum of heights.
+		const bandTop = laneBands ? Math.min(...laneBands.map((lane) => lane.bounds.y)) : 0
+		const bandHeight = laneBands
+			? Math.max(...laneBands.map((lane) => lane.bounds.y + lane.bounds.height)) - bandTop
+			: 0
 
 		let dx: number
 		let dy: number
@@ -997,6 +1043,10 @@ export function applyAutoLayout(
 		}
 	}
 
+	const repair = routeRepair(defs)
+	repair(allShapes, allEdges)
+	for (const plane of rootPlanes) repair(plane.shapes, plane.edges)
+
 	const planeBpmnElement = collab?.id ?? defs.processes[0]?.id ?? "plane"
 	const existingDiagram = defs.diagrams[0]
 
@@ -1026,5 +1076,127 @@ export function applyAutoLayout(
 			}),
 			...childPlaneDiagrams(childPlanes, defs, collapsed),
 		],
+	}
+}
+
+/**
+ * The final pass over a finished plane: any connection still running through a
+ * shape it is unrelated to gets an obstacle-aware route. Relatedness is what a
+ * route may touch — its endpoints, the scopes and pools holding them, and a
+ * boundary event's host (or a host's boundary events).
+ */
+function routeRepair(defs: BpmnDefinitions): (shapes: BpmnDiShape[], edges: BpmnDiEdge[]) => void {
+	const parent = new Map<string, string>()
+	const attachedTo = new Map<string, string>()
+	const attachers = new Map<string, string[]>()
+	const connections = new Map<string, { kind: ConnectionKind; source: string; target: string }>()
+	const containers = new Set<string>()
+
+	const participantOf = new Map<string, string>()
+	for (const collab of defs.collaborations) {
+		for (const participant of collab.participants) {
+			containers.add(participant.id)
+			if (participant.processRef) participantOf.set(participant.processRef, participant.id)
+		}
+		for (const flow of collab.messageFlows) {
+			connections.set(flow.id, { kind: "message", source: flow.sourceRef, target: flow.targetRef })
+		}
+		for (const a of collab.associations ?? []) {
+			connections.set(a.id, { kind: "association", source: a.sourceRef, target: a.targetRef })
+		}
+		for (const group of collab.groups ?? []) containers.add(group.id)
+	}
+
+	const walk = (elements: BpmnFlowElement[], owner: string | undefined): void => {
+		for (const element of elements) {
+			if (owner) parent.set(element.id, owner)
+			if (element.type === "boundaryEvent") {
+				attachedTo.set(element.id, element.attachedToRef)
+				const list = attachers.get(element.attachedToRef)
+				if (list) list.push(element.id)
+				else attachers.set(element.attachedToRef, [element.id])
+			}
+			const scope = element as unknown as {
+				flowElements?: BpmnFlowElement[]
+				sequenceFlows?: Array<{ id: string; sourceRef: string; targetRef: string }>
+			}
+			for (const flow of scope.sequenceFlows ?? []) {
+				connections.set(flow.id, {
+					kind: "sequence",
+					source: flow.sourceRef,
+					target: flow.targetRef,
+				})
+			}
+			if (scope.flowElements) walk(scope.flowElements, element.id)
+		}
+	}
+	for (const process of defs.processes) {
+		const owner = participantOf.get(process.id)
+		walk(process.flowElements, owner)
+		for (const flow of process.sequenceFlows ?? []) {
+			connections.set(flow.id, { kind: "sequence", source: flow.sourceRef, target: flow.targetRef })
+		}
+		for (const a of process.associations ?? []) {
+			connections.set(a.id, { kind: "association", source: a.sourceRef, target: a.targetRef })
+		}
+		for (const group of process.groups ?? []) containers.add(group.id)
+		const lanes = (set: BpmnProcess["laneSet"]): void => {
+			for (const lane of set?.lanes ?? []) {
+				containers.add(lane.id)
+				lanes(lane.childLaneSet)
+			}
+		}
+		lanes(process.laneSet)
+	}
+
+	const related = (id: string): string[] => {
+		const out: string[] = [...(attachers.get(id) ?? [])]
+		const host = attachedTo.get(id)
+		if (host) out.push(host)
+		for (let p = parent.get(id); p !== undefined; p = parent.get(p)) out.push(p)
+		return out
+	}
+
+	return (shapes, edges) => {
+		if (edges.length === 0) return
+		const onPlane = new Map(shapes.map((s) => [s.bpmnElement, s.bounds]))
+		const visible = (id: string): string => {
+			let current: string | undefined = id
+			while (current !== undefined && !onPlane.has(current)) current = parent.get(current)
+			return current ?? id
+		}
+		const planeShapes: PlaneShape[] = shapes.map((s) => ({
+			id: s.bpmnElement,
+			bounds: s.bounds,
+			container: containers.has(s.bpmnElement),
+		}))
+		const planeEdges: Array<PlaneEdge & { di: BpmnDiEdge }> = []
+		for (const di of edges) {
+			const connection = connections.get(di.bpmnElement)
+			if (!connection) continue
+			planeEdges.push({
+				kind: connection.kind,
+				sourceRef: visible(connection.source),
+				targetRef: visible(connection.target),
+				waypoints: di.waypoints,
+				di,
+			})
+		}
+		const boundarySide = (id: string): Side | undefined => {
+			const host = attachedTo.get(id)
+			const own = onPlane.get(id)
+			const hostBounds = host ? onPlane.get(host) : undefined
+			if (!own || !hostBounds) return undefined
+			return own.y + own.height / 2 <= hostBounds.y + 1 ? "top" : "bottom"
+		}
+		repairRoutes(planeShapes, planeEdges, related, boundarySide)
+		for (const edge of planeEdges) {
+			if (edge.waypoints !== edge.di.waypoints) {
+				edge.di.waypoints = edge.waypoints.map((wp) => ({
+					x: Math.round(wp.x),
+					y: Math.round(wp.y),
+				}))
+			}
+		}
 	}
 }

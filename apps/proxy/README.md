@@ -7,10 +7,12 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/proxy?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: tools](https://img.shields.io/badge/tier-tools-2563eb?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/apps/proxy/CHANGELOG.md)
 </div>
+
+> **Tools tier.** Maintained, on 0.x: a minor release can break, so pin a version. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
@@ -90,6 +92,41 @@ Or use the `X-Profile` request header to target a specific profile on the `/api/
 curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 ```
 
+## Security
+
+The proxy holds your Camunda credentials, reads and writes project files, and starts AI
+CLIs, so it is locked down by default:
+
+- **Loopback only.** It listens on `127.0.0.1` and `::1`. `--host` (or
+  `BPMNKIT_PROXY_HOST`) listens elsewhere and prints a warning.
+- **Allowed origins only.** Browser requests must come from `https://bpmnkit.com`,
+  `https://bpmnkit-studio.pages.dev`, the desktop app
+  (`tauri://localhost`, `http(s)://tauri.localhost`) or a `localhost` / `127.0.0.1` /
+  `[::1]` origin on any port. Any other origin gets `403` and no CORS headers; the allowed
+  origin is reflected, never `*`. Add origins with `--allow-origin` or
+  `BPMNKIT_PROXY_ALLOWED_ORIGINS` (comma-separated).
+- **Loopback Host only.** Requests must name the proxy as `localhost`, `127.0.0.1` or
+  `[::1]`, which stops DNS rebinding. Add names with `--allow-host` or
+  `BPMNKIT_PROXY_ALLOWED_HOSTS`.
+- **Workspace roots.** `/fs/*` and `/element-templates` work only inside folders passed
+  with `--root` / `BPMNKIT_PROXY_ROOTS` or opened by Studio. The proxy will not open the
+  filesystem root, your home directory or a hidden folder on a client's say-so, and only
+  touches `.bpmn`, `.dmn`, `.form` and `.md` files. `..` and symlinks out of a root
+  are refused.
+- **AI CLIs without tools.** `claude`, `copilot` and `gemini` run with permission checks
+  on, no built-in tools (no shell, file or web access), in an empty temporary folder, and
+  without your own MCP servers, settings or extensions. A `/chat` diagram edit may call only
+  the proxy's diagram MCP tools, and `compose_diagram` runs the model's code in an
+  `isolated-vm` isolate. Request data reaches the model fenced as untrusted input.
+  `askText` gives other callers, such as `casen ask`, the same lockdown.
+
+Programs that send no `Origin` header — the CLI, the MCP server, `curl` — are served as
+before.
+
+```sh
+casen proxy start --allow-origin https://modeler.example.com --root ~/work/processes
+```
+
 ---
 
 ## Related Packages
@@ -99,11 +136,12 @@ curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 | [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process simulator for tests and demos |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |

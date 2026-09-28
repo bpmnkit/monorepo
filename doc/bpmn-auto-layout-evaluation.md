@@ -291,3 +291,96 @@ its message flows, and collapsed sub-processes keep their own `BPMNDiagram` for 
 Auto-layout now emits DI for every element, connection and plane in the corpus — six fewer
 omissions than upstream, which leaves the non-visual `bpmn:DataObject` and unrelated input
 planes alone by design.
+
+## Routing parity pass (2026-09-24)
+
+The routing gap above is now closed on this corpus. The metric code is committed this time, so
+the numbers can be reproduced: `packages/core/scripts/layout-quality.mjs`.
+
+**Corpus.** `test/fixtures` of bpmn-io/bpmn-auto-layout at tag `v2.0.0-alpha.2`
+(commit `75a7f309`, MIT). The tag has 160 top-level fixtures, one fewer than the 161 counted
+above. The fixtures are not vendored. To reproduce:
+
+```sh
+git clone https://github.com/bpmn-io/bpmn-auto-layout && git -C bpmn-auto-layout checkout v2.0.0-alpha.2
+npm i --prefix /tmp/up bpmn-auto-layout@2.0.0-alpha.2
+pnpm --filter @bpmnkit/core build
+node packages/core/scripts/layout-quality.mjs --fixtures bpmn-auto-layout/test/fixtures \
+  --upstream /tmp/up/node_modules/bpmn-auto-layout/dist/index.js
+```
+
+**Metrics.** The script reproduces the published figures for the previous state exactly: 234
+crossings for us, 200 for upstream, with the same split by connection kind. Crossings count
+every intersection between segments of two connections on a plane, touching endpoints
+included, so flows converging on one join count. "Through other shapes" counts each connection
+that enters, or runs along the outline of, a shape it has no relation to. Its endpoints, the
+scopes and pools that contain them, and a boundary event's host do not count. This definition
+is a little stricter than the one behind the 37 / 13 above, because grazing an outline counts:
+the previous state measures 41 / 10 with it. "Through own end" is new. It counts connections
+that cut across their own source or target instead of docking on its outline. Deviation is
+`compareLayouts` against each file's original DI, as before. It is also given with the two
+diagrams' origins aligned, because we draw from about (16, 13) and hand-made diagrams start
+near (160, 80). Runtime is XML in to XML out, both engines measured back to back on one
+machine: the median of 15 runs per fixture for us, 3 for upstream.
+
+| 160 fixtures | ours, before | ours, now | `2.0.0-alpha.2` |
+|---|---|---|---|
+| Connections through other shapes | 41 | **0** | 10 |
+| Connections through their own endpoint | 83 | **0** | **0** |
+| Edge crossings | 234 | **184** | 200 |
+| — sequence × sequence | 101 | **99** | 118 |
+| — message × sequence | 112 | 63 | **54** |
+| — message × message | **11** | 15 | 21 |
+| — involving associations | 10 | 7 | 7 |
+| Deviation from the original DI | 268 px | 264 px | **234 px** |
+| — with origins aligned | 256 px | 255 px | **244 px** |
+| Diagram area | 142.5 Mpx | **140.3 Mpx** | 140.8 Mpx |
+| Edge bends | 768 | 815 | **703** |
+| Total edge length | 433k | **420k** | 428k |
+| Median / p90 / max runtime | **0.28 / 1.4 / 8 ms** | 0.35 / 2.2 / 12 ms | 4.4 / 46 / 1267 ms |
+
+What changed, largest effect first:
+
+- **Pool ordering weighs where each message leaves its pool** (`collaboration/ordering.ts`).
+  The cost used to count only how many pools a message passes. It now also counts how much of
+  its own process a message must cross to get out: an element at the bottom of its pool costs
+  more if the partner pool is above. This did what three rounds of stem re-routing could not.
+  Message × sequence crossings fell 107 → 65 and crossings overall 239 → 188. The earlier
+  analysis was right that the stems were the problem. The fix was to put the partner pool on
+  the side the stems already leave from, not to bend the stems.
+- **A final repair pass** (`layout/repair.ts`, `layout/orthogonal.ts`). Every connection on the
+  finished plane is checked against every unrelated shape, annotations and boundary events
+  included. A connection that hits one is re-routed by an A* search over the sparse grid of
+  lines just clear of each obstacle (an orthogonal visibility graph). Bends and crossings are
+  charged as extra length. The search only runs for connections that need it, so it costs
+  little. The sequence-flow router uses the same search as its last resort, which covers
+  collapsed sub-process planes, where the repair pass does not run.
+- **Detours dock on the side facing the corridor.** A detour whose corridor runs between its
+  two ends docked on the far side of one end, so the route crossed that shape. This happened
+  83 times in this corpus and 22 times in the round-trip corpus. The old metric did not
+  count it, because a route's own endpoints were exempt.
+- **Pools with lanes are framed by the extent of their lanes.** The frame took the first lane's
+  y and the sum of all lane heights. Lanes come outermost first, so that is the tallest lane,
+  and nested lanes are counted twice. In `healthcare-priorauth`, for example, the lanes and
+  their content were drawn above the pool, on top of the neighbouring pool. Lane membership
+  stayed exact, which is why the lane metric did not show it.
+- **Annotations are packed clear of routes.** Each route segment is an obstacle for the
+  annotation box, and an association line is penalised for each route it would cross.
+
+Tried and dropped: routing every message flow with the search and keeping the result when it
+crosses less (crossings 239 → 238). This is the same lesson as the stem experiments above.
+Once the element sits among sequence flows, no route out of it avoids them.
+
+**Where upstream is still ahead.** Our routes bend more (815 against 703). Most of that
+comes from detours and repaired routes taking extra corners where upstream runs straight.
+Message flows still cross sequence flows more often inside a pool (63 against 54). Upstream
+is also closer to the hand-made layouts. More than half of that gap is only where the
+drawing starts on the page: with origins aligned it is 255 px against 244 px.
+
+**The round-trip corpus** (`packages/core/tests/fixtures/roundtrip`, 29 files, the 22 MIWG
+reference models among them, DI discarded and laid out again): connections through other
+shapes 13 → 0, through their own endpoint 22 → 0, crossings 85 → 80.
+Median runtime is 1.35 ms. Upstream rejects 6 of these 29 files with a `LayoutError`, so
+totals over the other 23 are not comparable and are not given. On the files it does lay
+out, its median is 18 ms and its maximum 13 s. A test in `layout-routing.test.ts` now
+fails the build if any of these files routes through a shape or through its own endpoint.

@@ -11,9 +11,12 @@ use crate::state::element_instances::ElementInstance;
 use crate::state::variables::Variable;
 use crate::state::jobs::Job;
 use crate::state::incidents::Incident;
+use crate::state::decisions::{DecisionDefinition, DecisionRequirements};
 use crate::state::timers::Timer;
-use crate::state::messages::{Message, MessageSubscription};
+use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
+use crate::state::gateway_tokens::JoinToken;
+use crate::state::compensation::CompensationSubscription;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
 use crate::state::identity::{Tenant, User};
@@ -42,13 +45,18 @@ pub struct InMemoryStore {
     messages: BTreeMap<i64, Message>,
     message_subscriptions: BTreeMap<i64, MessageSubscription>,
     signal_subscriptions: BTreeMap<i64, SignalSubscription>,
-    gateway_tokens: std::collections::HashMap<(i64, String), i32>,
+    join_tokens: Vec<JoinToken>,
+    compensation_subscriptions: BTreeMap<i64, CompensationSubscription>,
     deployments: BTreeMap<i64, Deployment>,
     process_definitions: BTreeMap<i64, ProcessDefinition>,
-    decision_xml_by_id: std::collections::HashMap<String, String>,
+    decision_requirements: BTreeMap<i64, DecisionRequirements>,
+    decision_definitions: BTreeMap<i64, DecisionDefinition>,
     user_tasks: BTreeMap<i64, UserTask>,
     tenants: BTreeMap<i64, Tenant>,
     users: BTreeMap<String, User>,
+    processed_positions: std::collections::HashMap<i16, i64>,
+    message_start_subscriptions: Vec<MessageStartEventSubscription>,
+    message_start_correlations: Vec<MessageStartCorrelation>,
 }
 
 impl InMemoryStore {
@@ -65,13 +73,18 @@ impl InMemoryStore {
             messages: BTreeMap::new(),
             message_subscriptions: BTreeMap::new(),
             signal_subscriptions: BTreeMap::new(),
-            gateway_tokens: std::collections::HashMap::new(),
+            join_tokens: Vec::new(),
+            compensation_subscriptions: BTreeMap::new(),
             deployments: BTreeMap::new(),
             process_definitions: BTreeMap::new(),
-            decision_xml_by_id: std::collections::HashMap::new(),
+            decision_requirements: BTreeMap::new(),
+            decision_definitions: BTreeMap::new(),
             user_tasks: BTreeMap::new(),
             tenants: BTreeMap::new(),
             users: BTreeMap::new(),
+            processed_positions: std::collections::HashMap::new(),
+            message_start_subscriptions: Vec::new(),
+            message_start_correlations: Vec::new(),
         }
     }
 
@@ -159,9 +172,19 @@ impl InMemoryBackend {
         self.store.lock().unwrap().process_definitions.values().cloned().collect()
     }
 
+    /// List all message subscriptions (for snapshot API).
+    pub fn list_message_subscriptions(&self) -> Vec<MessageSubscription> {
+        self.store.lock().unwrap().message_subscriptions.values().cloned().collect()
+    }
+
     /// List all user tasks (for snapshot API).
     pub fn list_user_tasks(&self) -> Vec<UserTask> {
         self.store.lock().unwrap().user_tasks.values().cloned().collect()
+    }
+
+    /// List all signal subscriptions.
+    pub fn list_signal_subscriptions(&self) -> Vec<SignalSubscription> {
+        self.store.lock().unwrap().signal_subscriptions.values().cloned().collect()
     }
 }
 
@@ -199,6 +222,21 @@ impl StateBackend for InMemoryBackend {
         Ok(pos)
     }
 
+    async fn append_command(&self, mut record: DbRecord, on_position: Box<dyn FnOnce(i64) + Send>) -> Result<i64> {
+        let mut store = self.store.lock().unwrap();
+        if record.record_key == 0 {
+            let (position, key) = store.next_pos_and_key(record.partition_id);
+            record.position = position;
+            record.record_key = key;
+        } else {
+            record.position = store.next_pos(record.partition_id);
+        }
+        on_position(record.position);
+        let position = record.position;
+        store.records.push(record);
+        Ok(position)
+    }
+
     async fn insert_records_batch(&self, records: &[DbRecord]) -> Result<()> {
         let mut store = self.store.lock().unwrap();
         for r in records {
@@ -215,6 +253,42 @@ impl StateBackend for InMemoryBackend {
             .cloned()
             .collect();
         Ok(results)
+    }
+
+    async fn has_pending_activation(&self, partition_id: i16, after_position: i64, field: &str, value: &str) -> Result<bool> {
+        let store = self.store.lock().unwrap();
+        Ok(store.records.iter().any(|r| {
+            r.partition_id == partition_id
+                && r.position > after_position
+                && r.record_type == "COMMAND"
+                && r.value_type == "PROCESS_INSTANCE"
+                && r.intent == "ACTIVATE_ELEMENT"
+                && r.payload[field].as_str() == Some(value)
+        }))
+    }
+
+    async fn get_pending_activations(&self, partition_id: i16, after_position: i64, flow_scope_key: &str) -> Result<Vec<Value>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.records.iter()
+            .filter(|r| {
+                r.partition_id == partition_id
+                    && r.position > after_position
+                    && r.record_type == "COMMAND"
+                    && r.value_type == "PROCESS_INSTANCE"
+                    && r.intent == "ACTIVATE_ELEMENT"
+                    && r.payload["flowScopeKey"].as_str() == Some(flow_scope_key)
+            })
+            .map(|r| r.payload.clone())
+            .collect())
+    }
+
+    async fn get_processed_position(&self, partition_id: i16) -> Result<i64> {
+        Ok(self.store.lock().unwrap().processed_positions.get(&partition_id).copied().unwrap_or(0))
+    }
+
+    async fn set_processed_position(&self, partition_id: i16, position: i64) -> Result<()> {
+        self.store.lock().unwrap().processed_positions.insert(partition_id, position);
+        Ok(())
     }
 
     async fn insert_process_instance(&self, pi: &ProcessInstance) -> Result<()> {
@@ -394,6 +468,77 @@ impl StateBackend for InMemoryBackend {
         Ok(count)
     }
 
+    async fn cancel_jobs_by_element_instance(&self, element_instance_key: i64) -> Result<u64> {
+        let mut store = self.store.lock().unwrap();
+        let mut count = 0u64;
+        for job in store.jobs.values_mut() {
+            if job.element_instance_key == element_instance_key
+                && matches!(job.state.as_str(), "ACTIVATABLE" | "ACTIVATED")
+            {
+                job.state = "CANCELED".to_string();
+                job.worker = None;
+                job.deadline = None;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
+    async fn cancel_element_instance_waits(&self, element_instance_key: i64) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.element_instance_key == Some(element_instance_key) && timer.state == "ACTIVE" {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        for task in store.user_tasks.values_mut() {
+            if task.element_instance_key == element_instance_key && task.state == "CREATED" {
+                task.state = "CANCELED".to_string();
+            }
+        }
+        for sub in store.message_subscriptions.values_mut() {
+            if sub.element_instance_key == element_instance_key
+                && matches!(sub.state.as_str(), "OPENING" | "OPENED")
+            {
+                sub.state = "CLOSED".to_string();
+            }
+        }
+        store.signal_subscriptions.retain(|_, s| s.element_instance_key != element_instance_key);
+        Ok(())
+    }
+
+    async fn cancel_catch_waits(&self, element_instance_key: i64, element_ids: &[String], message_names: &[String]) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.element_instance_key == Some(element_instance_key)
+                && timer.state == "ACTIVE"
+                && element_ids.contains(&timer.element_id)
+            {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        for sub in store.message_subscriptions.values_mut() {
+            if sub.element_instance_key == element_instance_key
+                && matches!(sub.state.as_str(), "OPENING" | "OPENED")
+                && message_names.contains(&sub.message_name)
+            {
+                sub.state = "CLOSED".to_string();
+            }
+        }
+        store.signal_subscriptions.retain(|_, s| {
+            s.element_instance_key != element_instance_key || !element_ids.contains(&s.element_id)
+        });
+        Ok(())
+    }
+
+    async fn get_child_process_instance_keys(&self, parent_element_instance_key: i64) -> Result<Vec<i64>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.process_instances.values()
+            .filter(|p| p.parent_element_instance_key == Some(parent_element_instance_key) && p.state == "ACTIVE")
+            .map(|p| p.key)
+            .collect())
+    }
+
     async fn mark_timed_out_jobs(&self) -> Result<u64> {
         let now = Utc::now();
         let mut store = self.store.lock().unwrap();
@@ -433,6 +578,11 @@ impl StateBackend for InMemoryBackend {
         self.store.lock().unwrap().incidents.get(&key)
             .cloned()
             .ok_or_else(|| DbError::NotFound(format!("Incident {key}")))
+    }
+
+    async fn get_incidents_by_process_instance(&self, process_instance_key: i64) -> Result<Vec<Incident>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.incidents.values().filter(|i| i.process_instance_key == process_instance_key).cloned().collect())
     }
 
     async fn resolve_incident(&self, key: i64) -> Result<()> {
@@ -482,6 +632,19 @@ impl StateBackend for InMemoryBackend {
         results.sort_by_key(|t| t.due_date);
         results.truncate(limit as usize);
         Ok(results)
+    }
+
+    async fn cancel_start_timers(&self, process_definition_key: i64) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.process_definition_key == Some(process_definition_key)
+                && timer.element_instance_key.is_none()
+                && timer.state == "ACTIVE"
+            {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        Ok(())
     }
 
     async fn insert_message(&self, msg: &Message) -> Result<()> {
@@ -546,6 +709,49 @@ impl StateBackend for InMemoryBackend {
         }
     }
 
+    async fn replace_message_start_subscriptions(&self, bpmn_process_id: &str, tenant_id: &str, subs: &[MessageStartEventSubscription]) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        store.message_start_subscriptions.retain(|s| s.bpmn_process_id != bpmn_process_id || s.tenant_id != tenant_id);
+        store.message_start_subscriptions.extend(subs.iter().cloned());
+        Ok(())
+    }
+
+    async fn get_message_start_subscriptions_by_name(&self, message_name: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_subscriptions.iter()
+            .filter(|s| s.message_name == message_name && s.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn get_message_start_subscriptions_by_process(&self, bpmn_process_id: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_subscriptions.iter()
+            .filter(|s| s.bpmn_process_id == bpmn_process_id && s.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn insert_message_start_correlation(&self, correlation: &MessageStartCorrelation) -> Result<()> {
+        self.store.lock().unwrap().message_start_correlations.push(correlation.clone());
+        Ok(())
+    }
+
+    async fn get_message_start_correlations(&self, bpmn_process_id: &str, correlation_key: &str, tenant_id: &str) -> Result<Vec<MessageStartCorrelation>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_correlations.iter()
+            .filter(|c| c.bpmn_process_id == bpmn_process_id && c.correlation_key == correlation_key && c.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn get_message_start_correlation_by_instance(&self, process_instance_key: i64) -> Result<Option<MessageStartCorrelation>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_correlations.iter()
+            .find(|c| c.process_instance_key == process_instance_key)
+            .cloned())
+    }
+
     async fn insert_signal_subscription(&self, sub: &SignalSubscription) -> Result<()> {
         self.store.lock().unwrap().signal_subscriptions.insert(sub.key, sub.clone());
         Ok(())
@@ -565,15 +771,61 @@ impl StateBackend for InMemoryBackend {
         Ok(())
     }
 
-    async fn increment_and_get_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<i32> {
+    async fn add_join_token(&self, process_instance_key: i64, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
         let mut store = self.store.lock().unwrap();
-        let count = store.gateway_tokens.entry((process_instance_key, element_id.to_string())).or_insert(0);
-        *count += 1;
-        Ok(*count)
+        match store.join_tokens.iter_mut().find(|t| {
+            t.flow_scope_key == flow_scope_key && t.gateway_id == gateway_id && t.sequence_flow_id == sequence_flow_id
+        }) {
+            Some(token) => token.count += 1,
+            None => store.join_tokens.push(JoinToken {
+                process_instance_key,
+                flow_scope_key,
+                gateway_id: gateway_id.to_string(),
+                sequence_flow_id: sequence_flow_id.to_string(),
+                count: 1,
+            }),
+        }
+        Ok(())
     }
 
-    async fn delete_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<()> {
-        self.store.lock().unwrap().gateway_tokens.remove(&(process_instance_key, element_id.to_string()));
+    async fn take_join_token(&self, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for token in store.join_tokens.iter_mut().filter(|t| {
+            t.flow_scope_key == flow_scope_key && t.gateway_id == gateway_id && t.sequence_flow_id == sequence_flow_id
+        }) {
+            token.count -= 1;
+        }
+        store.join_tokens.retain(|t| t.count > 0);
+        Ok(())
+    }
+
+    async fn get_join_tokens(&self, process_instance_key: i64) -> Result<Vec<JoinToken>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.join_tokens.iter().filter(|t| t.process_instance_key == process_instance_key).cloned().collect())
+    }
+
+    async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()> {
+        self.store.lock().unwrap().join_tokens.retain(|t| t.flow_scope_key != flow_scope_key);
+        Ok(())
+    }
+
+    async fn upsert_compensation_subscription(&self, sub: &CompensationSubscription) -> Result<()> {
+        self.store.lock().unwrap().compensation_subscriptions.insert(sub.key, sub.clone());
+        Ok(())
+    }
+
+    async fn get_compensation_subscriptions(&self, process_instance_key: i64) -> Result<Vec<CompensationSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store
+            .compensation_subscriptions
+            .values()
+            .filter(|s| s.process_instance_key == process_instance_key)
+            .cloned()
+            .collect())
+    }
+
+    async fn delete_compensation_subscription(&self, key: i64) -> Result<()> {
+        self.store.lock().unwrap().compensation_subscriptions.remove(&key);
         Ok(())
     }
 
@@ -660,12 +912,33 @@ impl StateBackend for InMemoryBackend {
         Ok(())
     }
 
-    async fn insert_decision_xml(&self, decision_id: &str, dmn_xml: &str) -> Result<()> {
-        self.store.lock().unwrap().decision_xml_by_id.insert(decision_id.to_string(), dmn_xml.to_string());
+    async fn insert_decision_requirements(&self, drg: &DecisionRequirements) -> Result<()> {
+        self.store.lock().unwrap().decision_requirements.insert(drg.key, drg.clone());
         Ok(())
     }
 
-    async fn get_dmn_xml_by_decision_id(&self, decision_id: &str) -> Result<Option<String>> {
-        Ok(self.store.lock().unwrap().decision_xml_by_id.get(decision_id).cloned())
+    async fn get_latest_decision_requirements(&self, drg_id: &str, tenant_id: &str) -> Result<Option<DecisionRequirements>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.decision_requirements.values()
+            .filter(|d| d.drg_id == drg_id && d.tenant_id == tenant_id)
+            .max_by_key(|d| d.version)
+            .cloned())
+    }
+
+    async fn insert_decision_definition(&self, decision: &DecisionDefinition) -> Result<()> {
+        self.store.lock().unwrap().decision_definitions.insert(decision.key, decision.clone());
+        Ok(())
+    }
+
+    async fn get_latest_decision_definition(&self, decision_id: &str, tenant_id: &str) -> Result<Option<DecisionDefinition>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.decision_definitions.values()
+            .filter(|d| d.decision_id == decision_id && d.tenant_id == tenant_id)
+            .max_by_key(|d| d.version)
+            .cloned())
+    }
+
+    async fn get_decision_definition_by_key(&self, key: i64) -> Result<Option<DecisionDefinition>> {
+        Ok(self.store.lock().unwrap().decision_definitions.get(&key).cloned())
     }
 }

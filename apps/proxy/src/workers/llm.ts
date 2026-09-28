@@ -32,9 +32,11 @@ export async function handle(job: WorkerJob): Promise<Record<string, unknown>> {
 	if (!rawPrompt) throw new Error('llm worker requires a "prompt" variable or task header')
 
 	const prompt = interpolate(rawPrompt, job.variables)
+	// The adapters send the prompt fenced as data and tell the model to act only
+	// within the task the system prompt sets, so there always is one.
 	const system = job.customHeaders.system
 		? interpolate(job.customHeaders.system, job.variables)
-		: ""
+		: "Answer the prompt in the user message."
 	const preferredModel = job.customHeaders.model?.toLowerCase()
 	const resultVariable = job.customHeaders.resultVariable ?? "response"
 

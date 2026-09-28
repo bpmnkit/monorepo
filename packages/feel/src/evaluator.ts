@@ -28,6 +28,12 @@ function lookupVar(ctx: EvalContext, name: string): FeelValue {
 	return null
 }
 
+/** Whether `name` is bound in this scope or an enclosing one, even to `null`. */
+function isBound(ctx: EvalContext, name: string): boolean {
+	if (Object.hasOwn(ctx.vars, name)) return true
+	return ctx.parent ? isBound(ctx.parent, name) : false
+}
+
 function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): EvalContext {
 	return { vars, parent, input: parent.input }
 }
@@ -106,6 +112,7 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	if (isFeelDateTime(date) && isFeelYearsMonthsDuration(dur)) {
 		return { type: "date-time", date: shiftMonths(date.date, dur.months), time: date.time }
 	}
+	if (isFeelTime(date) && isFeelDayTimeDuration(dur)) return shiftTime(date, dur.seconds)
 	if (isFeelDayTimeDuration(date) && isFeelDayTimeDuration(dur)) {
 		return { type: "days-time-duration", seconds: date.seconds + dur.seconds }
 	}
@@ -115,8 +122,28 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	return null
 }
 
+/** A time moved by some seconds, around the clock: 23:00 plus two hours is 01:00. */
+function shiftTime(
+	t: import("./types.js").FeelTime,
+	seconds: number,
+): import("./types.js").FeelTime {
+	const total = (((t.hour * 3600 + t.minute * 60 + t.second + seconds) % 86400) + 86400) % 86400
+	return {
+		...t,
+		hour: Math.floor(total / 3600),
+		minute: Math.floor((total % 3600) / 60),
+		second: total % 60,
+	}
+}
+
 function subtractValues(a: FeelValue, b: FeelValue): FeelValue {
 	if (typeof a === "number" && typeof b === "number") return a - b
+	if (isFeelTime(a) && isFeelTime(b)) {
+		// Null when one is local and the other is not: they have no common clock.
+		const diff = compareValues(a, b)
+		return diff === null ? null : { type: "days-time-duration", seconds: diff }
+	}
+	if (isFeelTime(a) && isFeelDayTimeDuration(b)) return shiftTime(a, -b.seconds)
 	if (isFeelDate(a) && isFeelDate(b)) {
 		const diff = dateToEpochDays(a) - dateToEpochDays(b)
 		return { type: "days-time-duration", seconds: diff * 86400 }
@@ -229,10 +256,10 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 
 		case "name": {
 			if (node.name === "?") return ctx.input ?? null
-			// Check built-in
-			const builtin = getBuiltin(node.name)
-			if (builtin) return builtin
-			return lookupVar(ctx, node.name)
+			// A variable shadows a built-in of the same name (`count`, `sum`); calls
+			// resolve their callee separately, so `count(xs)` still reaches the built-in.
+			if (isBound(ctx, node.name)) return lookupVar(ctx, node.name)
+			return getBuiltin(node.name) ?? null
 		}
 
 		case "unary-minus": {
@@ -463,6 +490,11 @@ function evalBinary(
 			return { type: "days-time-duration", seconds: left.seconds / right }
 		if (isFeelYearsMonthsDuration(left) && typeof right === "number")
 			return { type: "years-months-duration", months: left.months / right }
+		// How many times one duration fits in another: P1Y / P1M is 12.
+		if (isFeelDayTimeDuration(left) && isFeelDayTimeDuration(right))
+			return right.seconds === 0 ? null : left.seconds / right.seconds
+		if (isFeelYearsMonthsDuration(left) && isFeelYearsMonthsDuration(right))
+			return right.months === 0 ? null : left.months / right.months
 		return null
 	}
 	if (op === "**") {
@@ -701,9 +733,39 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
  * Evaluates a unary test, keeping an unknown answer unknown. A range whose
  * bound is null, or an input of null, says nothing about membership.
  */
+/** Whether an expression reads the unary-test input `?`, explicitly or implicitly. */
+function readsInput(node: FeelNode): boolean {
+	if (node.kind === "name") return node.name === "?"
+	// These already test the input; their boolean is the outcome.
+	if (node.kind === "unary-not" || node.kind === "unary-test-list" || node.kind === "any-input") {
+		return true
+	}
+	for (const value of Object.values(node)) {
+		if (Array.isArray(value)) {
+			if (value.some((item) => isNode(item) && readsInput(item))) return true
+		} else if (isNode(value) && readsInput(value)) {
+			return true
+		}
+	}
+	return false
+}
+
+function isNode(value: unknown): value is FeelNode {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof (value as { kind?: unknown }).kind === "string"
+	)
+}
+
 function unaryTestValue(node: FeelNode, input: FeelValue, ctx: EvalContext): FeelValue {
 	const withInput: EvalContext = { ...ctx, input }
 	const result = evaluate(node, withInput)
+	// A boolean that does not depend on `?` (the literal `true` in a boolean input
+	// column) is a value to compare with, not the outcome of the test.
+	if (typeof result === "boolean" && typeof input === "boolean" && !readsInput(node)) {
+		return result === input
+	}
 	if (typeof result === "boolean") return result
 	// Range result in unary-test context → membership test
 	if (isFeelRange(result)) return testIncludes(result, input)

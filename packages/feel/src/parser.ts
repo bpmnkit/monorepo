@@ -50,6 +50,13 @@ const BUILTIN_NAMES = new Set([
 	"random number",
 	"starts with",
 	"ends with",
+	"duplicate values",
+	"is empty",
+	"is blank",
+	"to base64",
+	"from base64",
+	"to json",
+	"from json",
 ])
 
 // All strict prefixes of multi-word built-in names

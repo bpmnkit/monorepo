@@ -28,7 +28,7 @@ export class IncidentsStore extends Store<IncidentsPayload> {
 			this.setUnsub(
 				createMockStream(
 					getFiltered,
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -37,12 +37,12 @@ export class IncidentsStore extends Store<IncidentsPayload> {
 
 		const params = new URLSearchParams({ topic: "incidents" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		if (processInstanceKey) params.set("processInstanceKey", processInstanceKey)
 		this.setUnsub(
 			createStream<IncidentsPayload>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

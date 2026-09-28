@@ -1,5 +1,9 @@
 import type { ViewportState } from "@bpmnkit/canvas"
-import type { BpmnBounds } from "@bpmnkit/core"
+import type { BpmnBounds, LabelFontCss } from "@bpmnkit/core"
+
+/** The canvas's default label font (`.bpmnkit-label`), the fallback behind a DI font. */
+export const LABEL_FONT_FAMILY = "system-ui, -apple-system, sans-serif"
+export const LABEL_FONT_SIZE = 11
 
 /**
  * HTML `contenteditable` label editor positioned over the diagram element.
@@ -25,6 +29,8 @@ export class LabelEditor {
 		bounds: BpmnBounds,
 		viewport: ViewportState,
 		svgRect: DOMRect,
+		/** The label's resolved DI label style; omitted, the editor's own font applies. */
+		font?: LabelFontCss,
 	): void {
 		this.stop()
 
@@ -47,6 +53,13 @@ export class LabelEditor {
 		div.style.top = `${screenY - containerRect.top}px`
 		div.style.width = `${Math.max(screenW, 60)}px`
 		div.style.minHeight = `${Math.max(screenH, 16)}px`
+		if (font) {
+			div.style.fontFamily = font.fontFamily
+			div.style.fontSize = `${font.fontSize}px`
+			div.style.fontWeight = font.fontWeight
+			div.style.fontStyle = font.fontStyle
+			div.style.textDecoration = font.textDecoration
+		}
 
 		div.addEventListener("keydown", this._onKeyDown)
 		div.addEventListener("blur", this._onBlur)

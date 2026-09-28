@@ -20,9 +20,12 @@ import {
 import { completionGroup } from "./completion.js"
 import { connectorGroup } from "./connector.js"
 import { deployGroup } from "./deploy.js"
+import { devGroup } from "./dev.js"
 import { diffGroup } from "./diff.js"
+import { docGroup } from "./doc.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
+import { migrateGroup } from "./migrate.js"
 import { patternGroup } from "./pattern.js"
 import { planGroup } from "./plan.js"
 import { pluginGroup } from "./plugin.js"
@@ -34,6 +37,7 @@ import { settingsGroup } from "./settings.js"
 import { skillsGroup } from "./skills.js"
 import { storyGroup } from "./story.js"
 import { synthGroup } from "./synth.js"
+import { templateGroup } from "./template.js"
 import { testGroup } from "./test.js"
 import { viewGroup } from "./view.js"
 import { workerStartCmd } from "./worker-start.js"
@@ -83,9 +87,12 @@ const workerGroup: CommandGroup = {
 export const pinnedGroups: CommandGroup[] = [
 	askGroup,
 	deployGroup,
+	devGroup,
 	diffGroup,
+	docGroup,
 	generateGroup,
 	lintGroup,
+	migrateGroup,
 	patternGroup,
 	planGroup,
 	proxyGroup,
@@ -94,6 +101,7 @@ export const pinnedGroups: CommandGroup[] = [
 	storyGroup,
 	settingsGroup,
 	synthGroup,
+	templateGroup,
 	testGroup,
 	viewGroup,
 	workerGroup,

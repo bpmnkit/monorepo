@@ -30,6 +30,8 @@ pub enum Expr {
     Path(Box<Expr>, String),
     // Function call: func_name(arg1, arg2, ...)
     FunctionCall(String, Vec<Expr>),
+    // Function call with named arguments: func_name(a: expr, b: expr)
+    NamedFunctionCall(String, Vec<(String, Expr)>),
     // If-then-else
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     // List constructor: [e1, e2, ...]

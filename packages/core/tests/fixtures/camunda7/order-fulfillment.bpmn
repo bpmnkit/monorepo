@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1k3v0qa" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:message id="Message_PaymentConfirmed" name="PaymentConfirmed" />
+  <bpmn:process id="order-fulfillment" name="Order fulfillment" isExecutable="true" camunda:versionTag="3.1" camunda:historyTimeToLive="180">
+    <bpmn:extensionElements>
+      <camunda:executionListener class="com.acme.orders.AuditListener" event="start" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="StartEvent_order" name="Order received" camunda:initiator="starter">
+      <bpmn:outgoing>Flow_toReview</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_review" name="Review order" camunda:formRef="review-order" camunda:formRefBinding="deployment" camunda:assignee="${starter}" camunda:candidateGroups="sales,management" camunda:dueDate="${reviewDueDate}" camunda:priority="80">
+      <bpmn:extensionElements>
+        <camunda:taskListener class="com.acme.orders.NotifyReviewer" event="create" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_toApproved</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_approved" name="Approved?" default="Flow_rejected">
+      <bpmn:incoming>Flow_toApproved</bpmn:incoming>
+      <bpmn:outgoing>Flow_approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_rejected</bpmn:outgoing>
+      <bpmn:outgoing>Flow_vip</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_toReview" sourceRef="StartEvent_order" targetRef="Task_review" />
+    <bpmn:sequenceFlow id="Flow_toApproved" sourceRef="Task_review" targetRef="Gateway_approved" />
+    <bpmn:sequenceFlow id="Flow_approved" name="yes" sourceRef="Gateway_approved" targetRef="Task_charge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approved &amp;&amp; order.total &lt;= 1000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_vip" name="vip" sourceRef="Gateway_approved" targetRef="Task_charge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approved and order.customer.vip eq true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_rejected" name="no" sourceRef="Gateway_approved" targetRef="Task_notify" />
+    <bpmn:serviceTask id="Task_charge" name="Charge payment" camunda:asyncBefore="true" camunda:type="external" camunda:topic="charge-payment" camunda:jobPriority="10">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="amount">${order.total}</camunda:inputParameter>
+          <camunda:inputParameter name="currency">EUR</camunda:inputParameter>
+          <camunda:outputParameter name="paymentId">${transactionId}</camunda:outputParameter>
+        </camunda:inputOutput>
+        <camunda:failedJobRetryTimeCycle>R5/PT5M</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_approved</bpmn:incoming>
+      <bpmn:incoming>Flow_vip</bpmn:incoming>
+      <bpmn:outgoing>Flow_toConfirm</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="Task_awaitPayment" name="Await payment confirmation" messageRef="Message_PaymentConfirmed">
+      <bpmn:incoming>Flow_toConfirm</bpmn:incoming>
+      <bpmn:outgoing>Flow_toShippingCost</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:sequenceFlow id="Flow_toConfirm" sourceRef="Task_charge" targetRef="Task_awaitPayment" />
+    <bpmn:businessRuleTask id="Task_shippingCost" name="Determine shipping cost" camunda:resultVariable="shippingCost" camunda:decisionRef="shipping-cost" camunda:mapDecisionResult="singleEntry">
+      <bpmn:incoming>Flow_toShippingCost</bpmn:incoming>
+      <bpmn:outgoing>Flow_toInvoice</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:sequenceFlow id="Flow_toShippingCost" sourceRef="Task_awaitPayment" targetRef="Task_shippingCost" />
+    <bpmn:callActivity id="Task_invoice" name="Create invoice" calledElement="invoice-process" camunda:calledElementBinding="deployment">
+      <bpmn:extensionElements>
+        <camunda:in source="orderId" target="orderId" />
+        <camunda:in sourceExpression="${order.total + shippingCost}" target="invoiceTotal" />
+        <camunda:out source="invoiceId" target="invoiceId" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_toInvoice</bpmn:incoming>
+      <bpmn:outgoing>Flow_toShip</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="Flow_toInvoice" sourceRef="Task_shippingCost" targetRef="Task_invoice" />
+    <bpmn:serviceTask id="Task_ship" name="Ship order" camunda:class="com.acme.orders.ShipOrderDelegate">
+      <bpmn:incoming>Flow_toShip</bpmn:incoming>
+      <bpmn:outgoing>Flow_toWait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_toShip" sourceRef="Task_invoice" targetRef="Task_ship" />
+    <bpmn:intermediateCatchEvent id="Timer_wait" name="Wait for delivery window">
+      <bpmn:incoming>Flow_toWait</bpmn:incoming>
+      <bpmn:outgoing>Flow_toSummary</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_wait">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">${deliveryWindow}</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_toWait" sourceRef="Task_ship" targetRef="Timer_wait" />
+    <bpmn:scriptTask id="Task_summary" name="Build summary" scriptFormat="groovy" camunda:resultVariable="summary">
+      <bpmn:incoming>Flow_toSummary</bpmn:incoming>
+      <bpmn:outgoing>Flow_toDone</bpmn:outgoing>
+      <bpmn:script>"Order ${orderId} shipped at ${new Date()}"</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_toSummary" sourceRef="Timer_wait" targetRef="Task_summary" />
+    <bpmn:endEvent id="EndEvent_done" name="Order fulfilled">
+      <bpmn:incoming>Flow_toDone</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toDone" sourceRef="Task_summary" targetRef="EndEvent_done" />
+    <bpmn:serviceTask id="Task_notify" name="Notify customer" camunda:delegateExpression="${notificationService}">
+      <bpmn:incoming>Flow_rejected</bpmn:incoming>
+      <bpmn:outgoing>Flow_toRejectedEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_rejected" name="Order rejected">
+      <bpmn:incoming>Flow_toRejectedEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toRejectedEnd" sourceRef="Task_notify" targetRef="EndEvent_rejected" />
+    <bpmn:boundaryEvent id="Timer_reviewOverdue" name="3 days" cancelActivity="false" attachedToRef="Task_review">
+      <bpmn:outgoing>Flow_toEscalate</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_overdue">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P3D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="Task_escalate" name="Escalate review" camunda:expression="${escalation.raise(execution)}" camunda:resultVariable="escalationId">
+      <bpmn:incoming>Flow_toEscalate</bpmn:incoming>
+      <bpmn:outgoing>Flow_toEscalated</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_toEscalate" sourceRef="Timer_reviewOverdue" targetRef="Task_escalate" />
+    <bpmn:endEvent id="EndEvent_escalated" name="Escalated">
+      <bpmn:incoming>Flow_toEscalated</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_toEscalated" sourceRef="Task_escalate" targetRef="EndEvent_escalated" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="order-fulfillment">
+      <bpmndi:BPMNShape id="StartEvent_order_di" bpmnElement="StartEvent_order">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="133" y="225" width="75" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_review_di" bpmnElement="Task_review">
+        <dc:Bounds x="240" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_approved_di" bpmnElement="Gateway_approved" isMarkerVisible="true">
+        <dc:Bounds x="395" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="394" y="145" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_charge_di" bpmnElement="Task_charge">
+        <dc:Bounds x="500" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_awaitPayment_di" bpmnElement="Task_awaitPayment">
+        <dc:Bounds x="650" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_shippingCost_di" bpmnElement="Task_shippingCost">
+        <dc:Bounds x="800" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_invoice_di" bpmnElement="Task_invoice">
+        <dc:Bounds x="950" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ship_di" bpmnElement="Task_ship">
+        <dc:Bounds x="1100" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Timer_wait_di" bpmnElement="Timer_wait">
+        <dc:Bounds x="1252" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1228" y="225" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_summary_di" bpmnElement="Task_summary">
+        <dc:Bounds x="1340" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_done_di" bpmnElement="EndEvent_done">
+        <dc:Bounds x="1492" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1474" y="225" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_notify_di" bpmnElement="Task_notify">
+        <dc:Bounds x="500" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_rejected_di" bpmnElement="EndEvent_rejected">
+        <dc:Bounds x="652" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="634" y="365" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_escalate_di" bpmnElement="Task_escalate">
+        <dc:Bounds x="330" y="40" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_escalated_di" bpmnElement="EndEvent_escalated">
+        <dc:Bounds x="482" y="62" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="475" y="105" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Timer_reviewOverdue_di" bpmnElement="Timer_reviewOverdue">
+        <dc:Bounds x="272" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="304" y="123" width="33" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_toReview_di" bpmnElement="Flow_toReview">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="240" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toApproved_di" bpmnElement="Flow_toApproved">
+        <di:waypoint x="340" y="200" />
+        <di:waypoint x="395" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_approved_di" bpmnElement="Flow_approved">
+        <di:waypoint x="445" y="200" />
+        <di:waypoint x="500" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_vip_di" bpmnElement="Flow_vip">
+        <di:waypoint x="420" y="225" />
+        <di:waypoint x="420" y="260" />
+        <di:waypoint x="550" y="260" />
+        <di:waypoint x="550" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_rejected_di" bpmnElement="Flow_rejected">
+        <di:waypoint x="420" y="225" />
+        <di:waypoint x="420" y="340" />
+        <di:waypoint x="500" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toConfirm_di" bpmnElement="Flow_toConfirm">
+        <di:waypoint x="600" y="200" />
+        <di:waypoint x="650" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toShippingCost_di" bpmnElement="Flow_toShippingCost">
+        <di:waypoint x="750" y="200" />
+        <di:waypoint x="800" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toInvoice_di" bpmnElement="Flow_toInvoice">
+        <di:waypoint x="900" y="200" />
+        <di:waypoint x="950" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toShip_di" bpmnElement="Flow_toShip">
+        <di:waypoint x="1050" y="200" />
+        <di:waypoint x="1100" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toWait_di" bpmnElement="Flow_toWait">
+        <di:waypoint x="1200" y="200" />
+        <di:waypoint x="1252" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toSummary_di" bpmnElement="Flow_toSummary">
+        <di:waypoint x="1288" y="200" />
+        <di:waypoint x="1340" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toDone_di" bpmnElement="Flow_toDone">
+        <di:waypoint x="1440" y="200" />
+        <di:waypoint x="1492" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toRejectedEnd_di" bpmnElement="Flow_toRejectedEnd">
+        <di:waypoint x="600" y="340" />
+        <di:waypoint x="652" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toEscalate_di" bpmnElement="Flow_toEscalate">
+        <di:waypoint x="290" y="142" />
+        <di:waypoint x="290" y="80" />
+        <di:waypoint x="330" y="80" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toEscalated_di" bpmnElement="Flow_toEscalated">
+        <di:waypoint x="430" y="80" />
+        <di:waypoint x="482" y="80" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
