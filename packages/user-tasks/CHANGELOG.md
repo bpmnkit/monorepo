@@ -1,5 +1,43 @@
 # @bpmnkit/user-tasks
 
+## 0.1.2
+
+### Patch Changes
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 56ad670: After a failed claim or unclaim, the widget re-enables the button so the user can try again. Before, the button stayed disabled until the task was replaced.
+
+  With `theme: "auto"`, the form now follows the resolved OS theme like the rest of the widget. Before, it was drawn dark for every theme except `"light"`, so on a light OS the widget was light and its form dark.
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/api@1.0.1
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/plugins@1.1.0
+  - @bpmnkit/ui@0.3.1
+
 ## 0.1.1
 
 ### Patch Changes

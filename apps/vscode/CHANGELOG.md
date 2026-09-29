@@ -1,5 +1,88 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 56ad670: A team's `.bpmnlintrc` is honoured. `casen lint` and the VS Code Problems panel use the nearest `.bpmnlintrc`, starting in the diagram's folder. They apply its rule levels, including `off`, to BPMN Kit's equivalent findings. When the project has `bpmnlint` and `bpmn-moddle` installed, they run the project's own bpmnlint instead, so `bpmnlint-plugin-*` rules work too. BPMN Kit does not show its own finding a second time for any rule that bpmnlint ran.
+
+  `@bpmnkit/core` adds `parseBpmnlintConfig`, `resolveBpmnlintConfig`, `applyBpmnlintConfig`, `normalizeBpmnlintRuleName`, `bpmnlintRuleForFinding` and `BPMNLINT_RULE_MAP`, all pure and dependency-free. `lintDiagram` accepts `bpmnlint` and `bpmnlintDelegated`. `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and `LintReport` gains an optional `bpmnlintUnsupported` field. `@bpmnkit/core/node` adds `findBpmnlintrc`, `readBpmnlintrc`, `runBpmnlint` and `prepareBpmnlint`. bpmnlint is loaded with a dynamic `import()` from the project and is never a dependency.
+
+  All 28 bpmnlint built-in rules are mapped. 19 of them are new native checks, which run only when a `.bpmnlintrc` enables them, so the default report is unchanged. Rules that cannot be applied (plugin rules, unknown rules, `plugin:` configs without bpmnlint installed) are reported, not ignored.
+
+  `casen lint` gains `--no-bpmnlintrc` and prints the rule name for each governed finding. The VS Code extension gains the `bpmnkit.lint.bpmnlintrc` setting.
+
+- 56ad670: Lint now checks a diagram against the Camunda 8 version it targets, as Camunda Modeler does with `@camunda/linting`. Its findings (`compat/…`, in the existing `deploy` category) read `modeler:executionPlatformVersion` and report two kinds of problem. The first is a construct the target version cannot run, for example `Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.` The second is a property the target version requires, such as a timer value that does not parse or an error without an error code. The version table comes from `bpmnlint-plugin-camunda-compat` 2.61.0: 62 of its 65 rules are reproduced, and the other 3 are covered by existing findings. A problem that a `deploy/*` check already reports on the same element is not repeated. The check runs with the `deploy` category in `optimize()`, `lintDiagram()`, `casen lint`, the editor's lint panel and the VS Code Problems panel. A model with no Camunda 8 version gets no `compat` findings.
+
+  A `.bpmnlintrc` that extends `plugin:camunda-compat/camunda-cloud-X-Y` now runs this check against version X.Y and is no longer reported as "not applied". `camunda-compat/<rule>` entries re-level or turn off its findings. When the project's own bpmnlint runs the plugin, BPMN Kit's findings step aside.
+
+  `@bpmnkit/core` adds `analyzeCamundaCompat`, `splitCamundaCompatConfig`, `applyCamundaCompatConfig`, `normalizeCamundaVersion`, `CAMUNDA_COMPAT_RULES`, `CAMUNDA_COMPAT_VERSIONS` and `CAMUNDA_COMPAT_PLUGIN_VERSION`. `isCamundaCompatFinding` tells these findings apart. `OptimizeOptions` gains `camundaVersion`; `OptimizationCategory` is unchanged, since widening a union the API returns would be a major change.
+
+- 56ad670: Element templates now resolve per diagram, the way Camunda Desktop Modeler does: a diagram sees the `.camunda/element-templates/` folders from its own folder up to the project root, the nearest winning, and never a sibling folder's.
+  - `@bpmnkit/plugins`: `createConnectorCatalogPlugin` takes a `diagramPath` option and gains `setDiagramPath(path)` and `setWorkspaceTemplates(templates)`. Switching diagrams unregisters the previous diagram's templates first, and the plugin's workspace templates are also unregistered on uninstall. `createConfigPanelBpmnPlugin` gains `unregisterTemplate(id)`, which brings back a bundled template the removed one shadowed. `TemplateRegistrar` gains an optional `unregisterTemplate`. Registering a template whose id is already in the connector picker now updates its label.
+  - `@bpmnkit/proxy`: `GET /element-templates?root=<dir>&file=<path>` returns only the templates that apply to that diagram. `file` must lie inside `root`, and `configFolder` must be a single folder name. `?root=` alone is unchanged.
+  - `@bpmnkit/cli`: `casen lint` and the `casen dev` checks check a connector task's required inputs against the diagram's own templates as well as the bundled catalogue. The search stops at the current directory for `casen lint` and at the served folder for `casen dev`.
+  - VS Code: the Problems panel checks connector inputs against the file's own templates too, with the workspace folder as the root.
+
+### Patch Changes
+
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/editor@1.1.0
+  - @bpmnkit/plugins@1.1.0
+  - @bpmnkit/ui@0.3.1
+  - @bpmnkit/engine@1.1.0
+  - @bpmnkit/connectors@1.1.0
+  - @bpmnkit/canvas@1.0.1
+  - @bpmnkit/ascii@1.0.1
+  - @bpmnkit/profiles@0.0.21
+
 ## 0.4.11
 
 ### Patch Changes

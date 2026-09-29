@@ -2,7 +2,7 @@
 	"name": "@bpmnkit/reebe-wasm",
 	"type": "module",
 	"description": "The Reebe dev/test BPMN engine, compiled to WebAssembly — not for production",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"license": "MIT",
 	"files": [
 		"reebe_wasm_bg.wasm",

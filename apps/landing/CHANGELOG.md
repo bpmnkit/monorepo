@@ -1,5 +1,55 @@
 # @bpmnkit/landing
 
+## 0.0.45
+
+### Patch Changes
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/markdown@0.1.0
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/editor@1.1.0
+  - @bpmnkit/plugins@1.1.0
+  - @bpmnkit/engine@1.1.0
+  - @bpmnkit/feel@1.1.0
+  - @bpmnkit/connectors@1.1.0
+  - @bpmnkit/canvas@1.0.1
+  - @bpmnkit/operate@0.2.0
+  - @bpmnkit/astro-shared@0.1.2
+  - @bpmnkit/connector-gen@1.0.1
+  - @bpmnkit/patterns@0.1.0
+
 ## 0.0.44
 
 ### Patch Changes

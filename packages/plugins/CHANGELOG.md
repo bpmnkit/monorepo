@@ -1,5 +1,138 @@
 # @bpmnkit/plugins
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: The editor ships in ten languages. English stays built in; German, Spanish, French, Italian,
+  Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) are separate entry points
+  (`@bpmnkit/editor/locales/de` and so on), so a bundle carries only the languages it imports.
+  The translations are machine-assisted and use the BPMN terms Camunda Modeler uses; corrections
+  are welcome (see "Improving a translation" in `CONTRIBUTING.md`).
+  - `@bpmnkit/editor`: `createTranslate(locale)` builds the existing `Translate` hook from a
+    locale. Messages can be plural objects, chosen with `Intl.PluralRules` from `count`. Also new:
+    the `Locale`, `LocaleMessage` and `PluralMessage` types, `AVAILABLE_LOCALES` (every language
+    with its own name, for a picker), `matchLocale()` (the best match for `navigator.languages`),
+    and `createSideDock({ translate })`. The HUD, dock, menus, dialogs and screen-reader
+    announcements now translate every string. Before, many of them — the undo tooltips, the
+    more-actions menu, the start screen, the link buttons and the dock tabs — were always
+    English. A mouse wheel now scrolls the dock's tab strip when a long language overflows it,
+    and the element-group picker measures its own width, so a long group name does not push it
+    past the canvas edge.
+  - `@bpmnkit/plugins`: new optional `translate` option on `config-panel`, `config-panel-bpmn`,
+    `command-palette`, `command-palette-editor` (third argument), `main-menu`, `history`,
+    `process-runner`, `tabs` and `storage-tabs-bridge`. The properties panel translates schema
+    labels, hints, placeholders and option labels when it draws them. Strings it does not know,
+    such as connector template names, pass through unchanged. The panel header now shows the
+    element's name ("Service Task") instead of its type id ("serviceTask"). `main-menu` has an
+    optional Language section (`language: { current, options, onSelect }`), and `MenuAction`
+    has an optional `checked` flag. The play-mode chaos summary reads "unhandled errors: 2",
+    which avoids a wrong English plural.
+  - `@bpmnkit/ui`: `:lang(ja)` and `:lang(zh)` add CJK fallback faces to
+    `--bpmnkit-ds-font-sans` and `--bpmnkit-ds-font-mono`, so Japanese and Chinese text picks
+    the correct form of shared Han characters.
+
+- 56ad670: Element templates now resolve per diagram, the way Camunda Desktop Modeler does: a diagram sees the `.camunda/element-templates/` folders from its own folder up to the project root, the nearest winning, and never a sibling folder's.
+  - `@bpmnkit/plugins`: `createConnectorCatalogPlugin` takes a `diagramPath` option and gains `setDiagramPath(path)` and `setWorkspaceTemplates(templates)`. Switching diagrams unregisters the previous diagram's templates first, and the plugin's workspace templates are also unregistered on uninstall. `createConfigPanelBpmnPlugin` gains `unregisterTemplate(id)`, which brings back a bundled template the removed one shadowed. `TemplateRegistrar` gains an optional `unregisterTemplate`. Registering a template whose id is already in the connector picker now updates its label.
+  - `@bpmnkit/proxy`: `GET /element-templates?root=<dir>&file=<path>` returns only the templates that apply to that diagram. `file` must lie inside `root`, and `configFolder` must be a single folder name. `?root=` alone is unchanged.
+  - `@bpmnkit/cli`: `casen lint` and the `casen dev` checks check a connector task's required inputs against the diagram's own templates as well as the bundled catalogue. The search stops at the current directory for `casen lint` and at the served folder for `casen dev`.
+  - VS Code: the Problems panel checks connector inputs against the file's own templates too, with the workspace folder as the root.
+
+### Patch Changes
+
+- 56ad670: The TypeScript simulator now executes the BPMN semantics it used to skip:
+  - **Boundary events.** A non-interrupting boundary event no longer ends its activity: the
+    activity keeps running and the boundary path starts, once per repetition for a timer cycle.
+    Message and signal boundary events, interrupting or not, are new. An error a job worker
+    throws with `job.throwError(code, message)` is caught by an error boundary event or error
+    event sub-process like an error end event; uncaught, it still fails the instance.
+  - **Event-based gateway**: arms the message, timer and signal catch events (and receive
+    tasks) after it; the first to fire wins and the others are cancelled.
+  - **Call activities** run a process deployed in the same engine as a child instance, with
+    Zeebe's variable propagation (`propagateAllParentVariables`, `propagateAllChildVariables`,
+    input and output mappings). Errors and escalations the child does not catch reach the call
+    activity; a failed job in the child fails the caller. A process that is not deployed still
+    completes the call activity, now with an `element:warning` event.
+  - **Event sub-processes** with message, timer, signal, error and escalation start events,
+    interrupting or not, in a process or a sub-process.
+  - **Signals** (throw, end, catch, start, boundary) broadcast to every instance of the engine;
+    new `engine.broadcastSignal(name, variables?)` and `instance.deliverSignal(name, variables?)`.
+    **Escalations** propagate through scopes and call activities like errors, and do not fail
+    the instance when nobody catches them.
+  - **Multi-instance** tasks and sub-processes, parallel and sequential: `inputCollection`,
+    `inputElement`, `outputCollection`, `outputElement`, `loopCardinality` and
+    `completionCondition`.
+  - **Link events**, **compensation** (handlers of completed activities, in reverse order;
+    `activityRef`), and the **complex gateway** splitting like an inclusive one.
+  - **Messages**: `deliverMessage(name, variables?, correlationKey?)` matches the message name
+    as well as its id, merges the variables, honours `zeebe:subscription` correlation keys on
+    the event or its message, reaches waiting call-activity children, and returns whether
+    anything received it.
+  - **Variables** follow Zeebe's propagation: input mappings are local to their element, a
+    result updates the nearest scope that defines the variable or else the process scope, and
+    with output mappings only the mapped variables leave the element. New
+    `VariableStore.propagate`.
+  - New `element:terminated` and `element:warning` events. `engine.start` runs only the none
+    start events when a process also has event start events.
+  - Fixed: a split whose first branch ended at once finished the scope before its other
+    branches ran; a job result arriving after an interrupting event moved the token on.
+
+  `@bpmnkit/plugins`: token highlighting clears an element that an interrupting event
+  terminated.
+
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 56ad670: The process runner's timeline scrubber now redraws the canvas as well as the tabs: at a
+  scrubbed event, the elements holding a token then are shown active and the ones already
+  passed through as visited, and **Live** restores the tokens as the latest event left them.
+  The button that starts a new run from the scrubbed variables is renamed from "Replay from
+  here" to **Re-run with these variables**, which is what it does — it starts again at the start
+  event.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/editor@1.1.0
+  - @bpmnkit/feel@1.1.0
+  - @bpmnkit/connectors@1.1.0
+  - @bpmnkit/canvas@1.0.1
+  - @bpmnkit/ascii@1.0.1
+  - @bpmnkit/connector-gen@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

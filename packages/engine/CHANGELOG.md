@@ -1,5 +1,153 @@
 # @bpmnkit/engine
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: AI agents can be put under deterministic tests.
+  - The simulator runs an ad-hoc sub-process that has a job worker, such as Camunda's AI Agent
+    Sub-process connector, when a worker is registered for its job type. The job carries
+    `adHocSubProcessElements` (the tools, their documentation and their `fromAi()` parameters).
+    The worker completes it with an `adHocSubProcess` job result:
+    `job.complete(variables, { type: "adHocSubProcess", activateElements, isCompletionConditionFulfilled, isCancelRemainingInstances })`.
+    Each activated element runs in its own scope with its variables. When it ends,
+    `outputElement` is appended to `outputCollection` and the worker gets a new job. A
+    completion without a job result completes the sub-process as before, so existing mocks
+    keep working. New types: `JobResult`, `AdHocSubProcessJobResult`, `AdHocActivateElement`,
+    `AdHocSubProcessElement` and `AdHocToolParameter`. The `job:created` event now names its
+    `elementId`.
+  - `ProcessTest.mockAiAgent(elementId, turns | cassette | handler)` plays the connector. Each
+    model call takes the next turn: `{ toolCalls: [{ name, arguments }] }` activates those tools
+    with a `toolCall` variable, and `{ responseText, responseJson }` ends the agent with its
+    `agent` response. An unknown tool, arguments that do not match the tool's `fromAi()`
+    parameters, a script that runs out and the connector's `maxModelCalls` each fail the run
+    with a message that says so. The handle records `toolCalls` and `requests`, and the
+    `toHaveCalledTools([...])` matcher checks the calls in order, arguments included.
+  - Record and replay: `AgentCassette` is a versioned JSON format for an agent transcript.
+    `parseAgentCassette`, `readAgentCassette` and `writeAgentCassette` validate it, and
+    `handle.cassette()` records the turns that a handler of your own returned. No model or
+    network is called.
+  - `coverage().tools` and `formatCoverage` report which tools of AI agents the runs called.
+
+- 56ad670: The TypeScript simulator now executes the BPMN semantics it used to skip:
+  - **Boundary events.** A non-interrupting boundary event no longer ends its activity: the
+    activity keeps running and the boundary path starts, once per repetition for a timer cycle.
+    Message and signal boundary events, interrupting or not, are new. An error a job worker
+    throws with `job.throwError(code, message)` is caught by an error boundary event or error
+    event sub-process like an error end event; uncaught, it still fails the instance.
+  - **Event-based gateway**: arms the message, timer and signal catch events (and receive
+    tasks) after it; the first to fire wins and the others are cancelled.
+  - **Call activities** run a process deployed in the same engine as a child instance, with
+    Zeebe's variable propagation (`propagateAllParentVariables`, `propagateAllChildVariables`,
+    input and output mappings). Errors and escalations the child does not catch reach the call
+    activity; a failed job in the child fails the caller. A process that is not deployed still
+    completes the call activity, now with an `element:warning` event.
+  - **Event sub-processes** with message, timer, signal, error and escalation start events,
+    interrupting or not, in a process or a sub-process.
+  - **Signals** (throw, end, catch, start, boundary) broadcast to every instance of the engine;
+    new `engine.broadcastSignal(name, variables?)` and `instance.deliverSignal(name, variables?)`.
+    **Escalations** propagate through scopes and call activities like errors, and do not fail
+    the instance when nobody catches them.
+  - **Multi-instance** tasks and sub-processes, parallel and sequential: `inputCollection`,
+    `inputElement`, `outputCollection`, `outputElement`, `loopCardinality` and
+    `completionCondition`.
+  - **Link events**, **compensation** (handlers of completed activities, in reverse order;
+    `activityRef`), and the **complex gateway** splitting like an inclusive one.
+  - **Messages**: `deliverMessage(name, variables?, correlationKey?)` matches the message name
+    as well as its id, merges the variables, honours `zeebe:subscription` correlation keys on
+    the event or its message, reaches waiting call-activity children, and returns whether
+    anything received it.
+  - **Variables** follow Zeebe's propagation: input mappings are local to their element, a
+    result updates the nearest scope that defines the variable or else the process scope, and
+    with output mappings only the mapped variables leave the element. New
+    `VariableStore.propagate`.
+  - New `element:terminated` and `element:warning` events. `engine.start` runs only the none
+    start events when a process also has event start events.
+  - Fixed: a split whose first branch ended at once finished the scope before its other
+    branches ran; a job result arriving after an interrupting event moved the token on.
+
+  `@bpmnkit/plugins`: token highlighting clears an element that an interrupting event
+  terminated.
+
+- 56ad670: New `@bpmnkit/engine/testing` entry point for unit-testing BPMN processes in Vitest or Jest,
+  with no Docker and no cluster:
+  - `createProcessTest({ bpmn, dmn?, forms?, startTime? })` deploys models (parsed, XML, a path
+    or a `file:` URL) into an in-process engine.
+  - `mockJob(type, …)` completes, fails or throws a BPMN error for a job type, or computes the
+    result in a handler; `calls` records what it handled. Job types without a mock wait, and
+    `run.completeJob / failJob / throwError(elementIdOrType, …)` drive them — Camunda user
+    tasks included.
+  - `mockConnector(type, { response })` maps a fake connector response through the task's
+    `resultVariable` and `resultExpression`.
+  - `run.publishMessage(name)` correlates a message and throws when nothing waits for it.
+  - A virtual clock: `advanceTime("P1D")` fires due timers in order without real waiting.
+  - Matchers — `toHaveCompleted`, `toHaveFailed`, `toBeWaitingAt`, `toHavePassed`,
+    `toHavePassedInOrder`, `toHaveNotPassed`, `toHaveVariables` — registered by importing
+    `@bpmnkit/engine/testing/vitest` (typed for Vitest's `Assertion`), or with
+    `expect.extend(bpmnMatchers)` in Jest.
+  - `coverage()` and `formatCoverage()` report the flow nodes and sequence flows the runs
+    reached.
+
+  `vitest` is an optional peer dependency, needed only for `@bpmnkit/engine/testing/vitest`.
+
+- 56ad670: `runScenarioWasm` (and so `casen test`) now runs scenarios that the TypeScript `runScenario` runs. It completes native user tasks with the `userTask` mock, and it delivers the message a waiting receive task expects, with the subscription's correlation key, as the simulator passes a receive task. A `userTask` mock with `error` is reported as an error, and the task stays open. Expected variables are compared structurally, so the key order of an object no longer matters. The `.bpmn.tests.json` format is unchanged.
+
+  **Behaviour change:** a scenario whose path ends in an error end event that nothing catches now reports the `UNHANDLED_ERROR_EVENT` incident as an error and fails, as the same model would stop with an incident on Camunda 8. Before, the error end event ended the instance silently. Catch the error (an error boundary event or an error event sub-process), or model the outcome as a plain end event.
+
+### Patch Changes
+
+- 56ad670: `adHocSubProcessElements` now has Zeebe's shape, as Zeebe's `AdHocSubProcessElementsVariableTest` defines it. A `fromAi()` parameter is named by its whole reference: `toolCall.orderId`, not `orderId`. A `fromAi()` call on any reference is listed (`fromAi(b)` gives `b`), and the arguments of a `fromAi()` call are not searched for more calls. A description or type must be a string literal, and a schema or options must be a context of literals. A field that is null or empty is left out, so an element without `zeebe:properties` has no `properties` key. An empty property value is `null`. `AdHocSubProcessElement`'s `elementName`, `documentation`, `properties` and `parameters` are optional, and `properties` values are `string | null`.
+
+  `mockAiAgent` arguments keep the names a model sends: `{ orderId: "1042" }` for a `fromAi(toolCall.orderId)` parameter, as the AI Agent connector offers `toolCall.<name>` to the model as `<name>`. A tool call to a tool with a parameter the connector cannot offer (outside the `toolCall.` namespace, or nested) fails with the connector's message.
+
+  This is a patch. `AdHocSubProcessElement`, `AdHocToolParameter`, `mockAiAgent` and the job worker's `adHocSubProcessElements` were added after 1.0.0, in the unreleased minor change "AI agents can be put under deterministic tests". No released version has the old shape. The fix makes the new API match its documentation, which describes the variable Zeebe creates. The release that ships both is a minor.
+
+- 56ad670: A `fromAi()` call that Zeebe rejects at deployment now fails `Engine.deploy` with Zeebe's message, and nothing is deployed. Before, the call or its argument was left out of `adHocSubProcessElements`. The rules are those of Zeebe's `FromAiTaggedParameterExtractor`: the value must be a reference, the description and type must be string literals (`null` too is rejected), and the schema and options must be contexts of literals. The message is `Failed to extract ad-hoc activity parameters for element '<id>'. Expected fromAi() parameter 'description' to be a string, but received '10'.`, as Zeebe's `AdHocSubProcessTransformer` builds it. Reebe rejects the same calls with the same message.
+
+  `buildAiAgentSubProcess` wrote `null` as the schema of an optional tool parameter without a schema (`fromAi(toolCall.urgent, "…", "boolean", null, { required: false })`). Zeebe rejects that deployment. It now writes an empty context, `{}`, which Zeebe accepts and leaves out of the tool's parameters.
+
+  Both are patches: they fix output that Zeebe does not accept. `Engine.deploy` throws only for models that Zeebe would not deploy.
+
+- 56ad670: `runScenarioWasm` fills in a business rule task's result variable from its own DMN evaluation also when Reebe left the variable `null`, not only when Reebe left it out. Reebe now applies a business rule task's output mappings, including the one the runner adds for the result variable, so a decision Reebe could not evaluate gives `null` instead of no variable. This is a patch: scenario results stay as they were.
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/feel@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

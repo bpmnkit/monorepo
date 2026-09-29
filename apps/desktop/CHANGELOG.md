@@ -1,5 +1,78 @@
 # @bpmnkit/desktop
 
+## 0.1.43
+
+### Patch Changes
+
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- 56ad670: **Security hardening: the AI CLIs the proxy starts can no longer run commands, touch files or open URLs.**
+
+  `/chat` started `claude` with `--dangerously-skip-permissions --permission-mode bypassPermissions`, so anything that reached the route — an XSS on an allowed origin, or a prompt injection carried in a BPMN file, chat text or a process variable — could have the CLI run shell commands on your machine. `copilot` ran with `--yolo`, and so did the desktop app's `gemini`. The diagram tool `compose_diagram` (and `sdk_search` / `sdk_execute`) ran the model's code under `node:vm`, which a Bridge function's `constructor` escapes to `process`.
+  - **No built-in tools, no bypass.** Every run — `/chat`, `/improve`, `/operate/chat`, `/operate/incident-assist`, `/operate/ai-search`, the `io.bpmnkit:llm:1` worker, `casen ask` — gets permission checks on and no shell, file or web tools. `claude` runs with `--tools "" --strict-mcp-config --setting-sources "" --permission-mode dontAsk`; `copilot` with `--deny-tool=shell --deny-tool=write --deny-tool=url` and no `--allow-all-tools`; `gemini` with a policy that denies every tool, `--extensions none`, and `--skip-trust` for the empty run folder.
+  - **Only the proxy's diagram tools for diagram edits.** A `/chat` edit may call the eight `bpmn` MCP tools and nothing else; none of your own MCP servers, settings, plugins or project instructions load. Each run starts in an empty temporary folder.
+  - **`compose_diagram`, `sdk_search` and `sdk_execute` run in an `isolated-vm` isolate** that sees only copies of what the Bridge returns.
+  - **Request data is fenced.** Chat text, diagrams, incident details and variable values reach the model inside `<untrusted-input>` tags the system prompt marks as data. `claude` gets the conversation on stdin and `--system-prompt` in place of its coding-agent prompt.
+  - `@bpmnkit/proxy` exports `askText(cli, systemPrompt, userText)` for a one-off tool-less answer; `casen ask` now uses it.
+  - The desktop app's AI server (`proxy-rs`) applies the same flags, fencing and empty working folder, and no longer passes `--yolo` to `gemini`.
+
+  Features are unchanged: the AI panel still edits diagrams through the MCP tools, and `/improve`, incident assist and AI search still answer with text or JSON. A developer who set up Bedrock or Vertex for `claude` through `~/.claude/settings.json` `env` needs those variables in the proxy's environment instead, since user settings are no longer loaded.
+
+- 56ad670: **Security: the local proxy is no longer open to every web page and every machine on the network.** This changes default behaviour.
+
+  Until now the proxy listened on all interfaces, answered every request with `Access-Control-Allow-Origin: *`, and let its `/fs/*` routes read, write, move and delete any absolute path. While it ran, any web page you visited, and any host on your network, could read or overwrite local files, use your Camunda profiles through `/api/*`, read secrets through `/secrets/*`, and start AI CLIs through `/chat`.
+  - **Loopback only.** The proxy listens on `127.0.0.1` and `::1`. `casen proxy start --host <addr>` or `BPMNKIT_PROXY_HOST` listens elsewhere and prints a warning.
+  - **Allowed origins only.** Browser requests must come from `https://bpmnkit.com`, `https://studio.bpmnkit.com`, `https://bpmnkit-studio.pages.dev`, the desktop app (`tauri://localhost`, `http(s)://tauri.localhost`) or a `localhost` / `127.0.0.1` / `[::1]` origin on any port. Other origins get `403` with no CORS headers, and the allowed origin is reflected with `Vary: Origin` instead of `*`. Cross-site browser requests without an `Origin` are refused too. Add origins with `--allow-origin` or `BPMNKIT_PROXY_ALLOWED_ORIGINS`.
+  - **Loopback `Host` only**, against DNS rebinding. Add names with `--allow-host` or `BPMNKIT_PROXY_ALLOWED_HOSTS`.
+  - **Workspace roots.** `/fs/*` and `/element-templates` work only inside folders passed with `--root` / `BPMNKIT_PROXY_ROOTS` or opened by Studio. The proxy refuses to open the filesystem root, your home directory, a folder that contains it, or a hidden folder unless you pass it with `--root`. Inside a root, only `.bpmn`, `.dmn`, `.form` and `.md` files and their metadata can be touched; `..` and symlinks out of the root are refused. The `/fs/*` routes accept an optional `root` (query or body) naming the workspace the path belongs to.
+  - `@bpmnkit/proxy` exports `createProxyServer`, `listenProxy` and the `ProxyServerOptions` type; `startServer(port, options)` takes the same options.
+  - The desktop app's bundled AI server (`proxy-rs`) applies the same bind, `Host` and origin rules.
+
+  Programs that send no `Origin` header (the CLI, the MCP server, `curl`) work as before. First-party clients need no change; Studio now names its project root on every file call so saves keep working after the proxy restarts.
+
+  Why a minor for `@bpmnkit/cli` at 1.x: the command line is unchanged apart from four new optional flags. What changes is what the proxy lets in, and the only callers it now turns away are ones that were never meant to reach it — any web page and any host on the network. A web app on your own origin needs `--allow-origin`; a proxy you reach over the network needs `--host` and `--allow-host`. Closing a hole that let any site read your files does not wait for a major.
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/editor@1.1.0
+  - @bpmnkit/plugins@1.1.0
+  - @bpmnkit/canvas@1.0.1
+
 ## 0.1.42
 
 ### Patch Changes

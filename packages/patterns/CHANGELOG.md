@@ -1,5 +1,42 @@
 # @bpmnkit/patterns
 
+## 0.1.0
+
+### Minor Changes
+
+- 56ad670: - `@bpmnkit/patterns/templates` (new export): 25 runnable Camunda 8 process templates — order
+  to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven
+  AI agent patterns — each with DMN/forms where used and a `.bpmn.tests.json` scenario set that
+  passes on `@bpmnkit/engine`'s `runScenario`. `ALL_TEMPLATES`, `TEMPLATE_CATEGORIES`,
+  `getTemplate`, `templatesInCategory`, `templateFiles`, `listJobTypes`. The package now
+  depends on `@bpmnkit/core`.
+  - `casen template list [--category]` and `casen template use <id> [dir] [--force]` write a
+    template's files into a project.
+  - Core: `receiveTask(..., { correlationKey })` now writes the `zeebe:subscription` it
+    documented; it was silently dropped, so the task failed `deploy/message-catch-no-correlation`.
+
+### Patch Changes
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+
 ## 0.0.6
 
 ### Patch Changes

@@ -1,5 +1,86 @@
 # @bpmnkit/ai-server
 
+## 0.4.0
+
+### Minor Changes
+
+- 56ad670: Element templates now resolve per diagram, the way Camunda Desktop Modeler does: a diagram sees the `.camunda/element-templates/` folders from its own folder up to the project root, the nearest winning, and never a sibling folder's.
+  - `@bpmnkit/plugins`: `createConnectorCatalogPlugin` takes a `diagramPath` option and gains `setDiagramPath(path)` and `setWorkspaceTemplates(templates)`. Switching diagrams unregisters the previous diagram's templates first, and the plugin's workspace templates are also unregistered on uninstall. `createConfigPanelBpmnPlugin` gains `unregisterTemplate(id)`, which brings back a bundled template the removed one shadowed. `TemplateRegistrar` gains an optional `unregisterTemplate`. Registering a template whose id is already in the connector picker now updates its label.
+  - `@bpmnkit/proxy`: `GET /element-templates?root=<dir>&file=<path>` returns only the templates that apply to that diagram. `file` must lie inside `root`, and `configFolder` must be a single folder name. `?root=` alone is unchanged.
+  - `@bpmnkit/cli`: `casen lint` and the `casen dev` checks check a connector task's required inputs against the diagram's own templates as well as the bundled catalogue. The search stops at the current directory for `casen lint` and at the served folder for `casen dev`.
+  - VS Code: the Problems panel checks connector inputs against the file's own templates too, with the workspace folder as the root.
+
+- 56ad670: **Security hardening: the AI CLIs the proxy starts can no longer run commands, touch files or open URLs.**
+
+  `/chat` started `claude` with `--dangerously-skip-permissions --permission-mode bypassPermissions`, so anything that reached the route — an XSS on an allowed origin, or a prompt injection carried in a BPMN file, chat text or a process variable — could have the CLI run shell commands on your machine. `copilot` ran with `--yolo`, and so did the desktop app's `gemini`. The diagram tool `compose_diagram` (and `sdk_search` / `sdk_execute`) ran the model's code under `node:vm`, which a Bridge function's `constructor` escapes to `process`.
+  - **No built-in tools, no bypass.** Every run — `/chat`, `/improve`, `/operate/chat`, `/operate/incident-assist`, `/operate/ai-search`, the `io.bpmnkit:llm:1` worker, `casen ask` — gets permission checks on and no shell, file or web tools. `claude` runs with `--tools "" --strict-mcp-config --setting-sources "" --permission-mode dontAsk`; `copilot` with `--deny-tool=shell --deny-tool=write --deny-tool=url` and no `--allow-all-tools`; `gemini` with a policy that denies every tool, `--extensions none`, and `--skip-trust` for the empty run folder.
+  - **Only the proxy's diagram tools for diagram edits.** A `/chat` edit may call the eight `bpmn` MCP tools and nothing else; none of your own MCP servers, settings, plugins or project instructions load. Each run starts in an empty temporary folder.
+  - **`compose_diagram`, `sdk_search` and `sdk_execute` run in an `isolated-vm` isolate** that sees only copies of what the Bridge returns.
+  - **Request data is fenced.** Chat text, diagrams, incident details and variable values reach the model inside `<untrusted-input>` tags the system prompt marks as data. `claude` gets the conversation on stdin and `--system-prompt` in place of its coding-agent prompt.
+  - `@bpmnkit/proxy` exports `askText(cli, systemPrompt, userText)` for a one-off tool-less answer; `casen ask` now uses it.
+  - The desktop app's AI server (`proxy-rs`) applies the same flags, fencing and empty working folder, and no longer passes `--yolo` to `gemini`.
+
+  Features are unchanged: the AI panel still edits diagrams through the MCP tools, and `/improve`, incident assist and AI search still answer with text or JSON. A developer who set up Bedrock or Vertex for `claude` through `~/.claude/settings.json` `env` needs those variables in the proxy's environment instead, since user settings are no longer loaded.
+
+- 56ad670: **Security: the local proxy is no longer open to every web page and every machine on the network.** This changes default behaviour.
+
+  Until now the proxy listened on all interfaces, answered every request with `Access-Control-Allow-Origin: *`, and let its `/fs/*` routes read, write, move and delete any absolute path. While it ran, any web page you visited, and any host on your network, could read or overwrite local files, use your Camunda profiles through `/api/*`, read secrets through `/secrets/*`, and start AI CLIs through `/chat`.
+  - **Loopback only.** The proxy listens on `127.0.0.1` and `::1`. `casen proxy start --host <addr>` or `BPMNKIT_PROXY_HOST` listens elsewhere and prints a warning.
+  - **Allowed origins only.** Browser requests must come from `https://bpmnkit.com`, `https://studio.bpmnkit.com`, `https://bpmnkit-studio.pages.dev`, the desktop app (`tauri://localhost`, `http(s)://tauri.localhost`) or a `localhost` / `127.0.0.1` / `[::1]` origin on any port. Other origins get `403` with no CORS headers, and the allowed origin is reflected with `Vary: Origin` instead of `*`. Cross-site browser requests without an `Origin` are refused too. Add origins with `--allow-origin` or `BPMNKIT_PROXY_ALLOWED_ORIGINS`.
+  - **Loopback `Host` only**, against DNS rebinding. Add names with `--allow-host` or `BPMNKIT_PROXY_ALLOWED_HOSTS`.
+  - **Workspace roots.** `/fs/*` and `/element-templates` work only inside folders passed with `--root` / `BPMNKIT_PROXY_ROOTS` or opened by Studio. The proxy refuses to open the filesystem root, your home directory, a folder that contains it, or a hidden folder unless you pass it with `--root`. Inside a root, only `.bpmn`, `.dmn`, `.form` and `.md` files and their metadata can be touched; `..` and symlinks out of the root are refused. The `/fs/*` routes accept an optional `root` (query or body) naming the workspace the path belongs to.
+  - `@bpmnkit/proxy` exports `createProxyServer`, `listenProxy` and the `ProxyServerOptions` type; `startServer(port, options)` takes the same options.
+  - The desktop app's bundled AI server (`proxy-rs`) applies the same bind, `Host` and origin rules.
+
+  Programs that send no `Origin` header (the CLI, the MCP server, `curl`) work as before. First-party clients need no change; Studio now names its project root on every file call so saves keep working after the proxy restarts.
+
+  Why a minor for `@bpmnkit/cli` at 1.x: the command line is unchanged apart from four new optional flags. What changes is what the proxy lets in, and the only callers it now turns away are ones that were never meant to reach it — any web page and any host on the network. A web app on your own origin needs `--allow-origin`; a proxy you reach over the network needs `--host` and `--allow-host`. Closing a hole that let any site read your files does not wait for a major.
+
+### Patch Changes
+
+- 56ad670: The MCP servers no longer write a diagram they have not checked. `bpmn_create` and
+  `bpmn_update` in the AIKit server (`casen proxy mcp`) parse the model's XML and write it
+  through `writeBpmn`, which verifies the file reads back as the same model and replaces it
+  atomically; XML that does not parse is refused and the file is left alone, and
+  `bpmn_update` now reports how many elements it added, removed and changed. The editing MCP
+  server writes its BPMN, DMN and form files atomically too.
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 4e3bf2f: `@bpmnkit/proxy` now depends on `@types/node` and its declarations reference it. `createProxyServer` and `listenProxy` return `http.Server`, so a TypeScript consumer without Node's types in scope could not compile against the package.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/api@1.0.1
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/engine@1.1.0
+  - @bpmnkit/connectors@1.1.0
+  - @bpmnkit/profiles@0.0.21
+  - @bpmnkit/patterns@0.1.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/casen-worker-ai",
-	"version": "0.1.10",
+	"version": "0.1.11",
 	"private": false,
 	"description": "AI task worker plugin for casen — classify, summarize, extract, and decide using Claude",
 	"type": "module",

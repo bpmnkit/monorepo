@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/operate",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"description": "Lightweight monitoring and operations UI for Camunda 8 dev clusters, C8 Run and SaaS trials",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,5 +1,14 @@
 # @bpmnkit/casen-worker-http
 
+## 0.1.11
+
+### Patch Changes
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/cli-sdk@0.0.11
+
 ## 0.1.10
 
 ### Patch Changes

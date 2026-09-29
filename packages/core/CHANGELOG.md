@@ -1,5 +1,149 @@
 # @bpmnkit/core
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: A team's `.bpmnlintrc` is honoured. `casen lint` and the VS Code Problems panel use the nearest `.bpmnlintrc`, starting in the diagram's folder. They apply its rule levels, including `off`, to BPMN Kit's equivalent findings. When the project has `bpmnlint` and `bpmn-moddle` installed, they run the project's own bpmnlint instead, so `bpmnlint-plugin-*` rules work too. BPMN Kit does not show its own finding a second time for any rule that bpmnlint ran.
+
+  `@bpmnkit/core` adds `parseBpmnlintConfig`, `resolveBpmnlintConfig`, `applyBpmnlintConfig`, `normalizeBpmnlintRuleName`, `bpmnlintRuleForFinding` and `BPMNLINT_RULE_MAP`, all pure and dependency-free. `lintDiagram` accepts `bpmnlint` and `bpmnlintDelegated`. `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and `LintReport` gains an optional `bpmnlintUnsupported` field. `@bpmnkit/core/node` adds `findBpmnlintrc`, `readBpmnlintrc`, `runBpmnlint` and `prepareBpmnlint`. bpmnlint is loaded with a dynamic `import()` from the project and is never a dependency.
+
+  All 28 bpmnlint built-in rules are mapped. 19 of them are new native checks, which run only when a `.bpmnlintrc` enables them, so the default report is unchanged. Rules that cannot be applied (plugin rules, unknown rules, `plugin:` configs without bpmnlint installed) are reported, not ignored.
+
+  `casen lint` gains `--no-bpmnlintrc` and prints the rule name for each governed finding. The VS Code extension gains the `bpmnkit.lint.bpmnlintrc` setting.
+
+- 56ad670: The process builders now write a message catch's `zeebe:subscription` (its `correlationKey`) on the `bpmn:message` it refers to, where Zeebe reads it and where its schema allows it, instead of on the receive task, intermediate catch event or boundary event. Camunda's own linter rejects the old placement. Generated XML for models built with a `correlationKey` changes accordingly, which moves their `semanticHash`; released as a minor by decision of the maintainer, since the old output did not match Camunda's schema. If one message is used with two different correlation keys, which Zeebe cannot express, both subscriptions stay on their elements and lint reports them.
+- 56ad670: Lint now checks a diagram against the Camunda 8 version it targets, as Camunda Modeler does with `@camunda/linting`. Its findings (`compat/…`, in the existing `deploy` category) read `modeler:executionPlatformVersion` and report two kinds of problem. The first is a construct the target version cannot run, for example `Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.` The second is a property the target version requires, such as a timer value that does not parse or an error without an error code. The version table comes from `bpmnlint-plugin-camunda-compat` 2.61.0: 62 of its 65 rules are reproduced, and the other 3 are covered by existing findings. A problem that a `deploy/*` check already reports on the same element is not repeated. The check runs with the `deploy` category in `optimize()`, `lintDiagram()`, `casen lint`, the editor's lint panel and the VS Code Problems panel. A model with no Camunda 8 version gets no `compat` findings.
+
+  A `.bpmnlintrc` that extends `plugin:camunda-compat/camunda-cloud-X-Y` now runs this check against version X.Y and is no longer reported as "not applied". `camunda-compat/<rule>` entries re-level or turn off its findings. When the project's own bpmnlint runs the plugin, BPMN Kit's findings step aside.
+
+  `@bpmnkit/core` adds `analyzeCamundaCompat`, `splitCamundaCompatConfig`, `applyCamundaCompatConfig`, `normalizeCamundaVersion`, `CAMUNDA_COMPAT_RULES`, `CAMUNDA_COMPAT_VERSIONS` and `CAMUNDA_COMPAT_PLUGIN_VERSION`. `isCamundaCompatFinding` tells these findings apart. `OptimizeOptions` gains `camundaVersion`; `OptimizationCategory` is unchanged, since widening a union the API returns would be a major change.
+
+- 56ad670: Camunda 7 → 8 model migration. `casen migrate c7 <files...>` converts Camunda 7 models to Camunda 8. It writes `<name>.c8.bpmn` beside each input, or writes into `--out <dir>`, and never overwrites a file without `--force`. It reports every Camunda 7 construct as `convertible`, `manual` or `unsupported`, with the Camunda 8 equivalent. `--check` writes nothing and exits 1 while manual or unsupported findings remain. `--format json` gives the report as JSON.
+
+  `@bpmnkit/core` adds `convertCamunda7(definitions, { executionPlatformVersion? })`, `analyzeCamunda7` and `translateJuelToFeel`, all pure and dependency-free. They convert external tasks, IO mappings, conditions, timers, user-task assignment, schedule, priority and forms, decisions, call-activity variable passing, multi-instance collections, FEEL scripts, version tags and properties. Java delegates get a job type from a documented naming rule and keep the original as a task header. JUEL becomes FEEL only when the translation is provable; any other expression is kept and reported as manual.
+
+- 56ad670: Diagram labels now render in their `BPMNLabelStyle` font. A `BPMNLabel` whose `labelStyle`
+  references a `<bpmndi:BPMNLabelStyle>` is drawn in that style's `dc:Font` — family (with the
+  default stack behind it as fallback), size in px, bold, italic, underline and strike-through —
+  by the canvas, by `exportSvg`, and in the editor's inline label editor. Wrapping and line height
+  follow the resolved size, so a bigger or smaller font breaks lines accordingly; label positions
+  still come from the DI bounds. A label without a `labelStyle`, or with one that names no style,
+  keeps the default font: BPMN DI defines no diagram- or plane-level default style.
+
+  `@bpmnkit/core` (minor, new exports): `collectLabelStyles(defs)` indexes the document's label
+  styles by id, `resolveLabelFont(label, styles)` picks the one a DI label references, and
+  `labelFontCss(font, defaultFamily, defaultSize)` turns it into CSS values; types `BpmnLabelFont`
+  and `LabelFontCss`.
+
+  `@bpmnkit/canvas` (patch, a rendering fix): `RenderContext` gains an optional `labelStyles`,
+  filled by `buildRenderContext`.
+
+  `@bpmnkit/editor` (patch): moving an external label with `setLabelPosition` no longer drops the
+  label's `labelStyle` reference and other `BPMNLabel` attributes.
+
+- 56ad670: Opens and round-trips all 22 OMG BPMN Model Interchange (MIWG) reference models.
+  - **Parses DI elements that omit the optional `id` or `bpmnElement`** — seven reference
+    models failed to open. An absent one reads as `""` and is written back absent.
+  - **Writes a document whose default namespace is BPMN with unprefixed names.** It used to
+    write `<:process>`, which is not XML.
+  - **Keeps** a default flow on an activity, the `name` of `<definitions>` and of a
+    collaboration (new `BpmnCollaboration.name`), documentation and unknown children on
+    sequence flows (new `BpmnSequenceFlow.documentation` / `unknownChildren`), documentation and
+    extensions on data associations, the `id` of a multi-instance loop, empty timer parts and
+    conditions (new `BpmnConditionalEventDefinition.conditionAttributes`), and diagram
+    interchange from other tools: label styles, and attributes on diagrams, planes, labels and
+    waypoints (new optional `unknownAttributes` / `unknownChildren` on the DI types).
+  - **`exportPreserving`** keeps a number's original spelling (`30.0`) and empty elements such
+    as `<extensionElements/>` when re-reading proves the model unchanged. `preserveFormatting`
+    gains the `equalNumbers` and `droppedEmptyElements` options behind this.
+  - **`reconcileCompact`** treats an empty flow label or condition as none, instead of deleting
+    and re-adding the flow and losing its extensions.
+
+- 56ad670: Process documentation export: a document to circulate, built from the model.
+
+  `@bpmnkit/core` adds `renderDocumentationHtml`, `renderDocumentationMarkdown` and `renderDocumentationDocx`. They take parsed definitions plus optional DMN decisions and forms. The HTML is self-contained and print-ready: an inline SVG diagram on a landscape page, a table of contents, and a section per process or pool. Each section has its lanes, a steps table and a detail block for every element in flow order: type, documentation, lane, job type, headers, mappings, called decision, called process, form, assignment, timers, messages, errors and the conditions on outgoing flows. The decision tables and form fields follow. Print → Save as PDF gives a clean PDF on A4 or Letter. Markdown has the same content without the diagram. The Word file is a small hand-written OOXML package with the diagram as SVG. `buildProcessDocumentation` returns the structured content, and `documentationToHtml`, `documentationToMarkdown` and `documentationToDocx` render it. Output is deterministic and all model text is escaped.
+
+  `@bpmnkit/editor`: the HUD's More menu has **Export documentation…**. It offers a print view, HTML, Markdown and Word. The new `getDocumentationContext` option on `initEditorHud` supplies the linked decisions and forms. All new strings go through the editor's `translate` hook.
+
+  `@bpmnkit/cli`: `casen doc export <file.bpmn> [linked .dmn/.form…] --format html|md|docx [--out] [--title] [--paper a4|letter]`.
+
+  `@bpmnkit/drop`: a shared drop has a **Docs** button for anyone who can read it. It documents the drop's BPMN file together with every DMN and form file in the drop.
+
+- 56ad670: Typed code generation from BPMN, and a worker contract check.
+
+  `@bpmnkit/core` adds `generateProcessTypes(definitions | definitions[], options?)`, which returns TypeScript source, and `extractProcessContract`, which returns the same contract as data. Both are pure and deterministic. The source types the process ids and every static job type: its input variables, its output, its task headers as literal types, and the error codes that catch events handle. It also types message names (with correlation keys), signal names, error codes and escalation codes, and a `JobTypes` map for typed workers. Values are `unknown` and keys are exact. The typed workers guide documents the rules.
+
+  `casen generate types` (`casen gen types`) writes the file from BPMN files, directories or globs. `--check` exits 1 when the file is stale. `--check-workers <glob>` reports BPMN job types that have no worker and worker registrations that match no job type. This scan is a heuristic. `--strict` makes it exit 1 on a mismatch.
+
+  `@bpmnkit/worker-client`: `createWorkerClient<JobTypes>()` types `job.variables`, `job.complete()`, `job.throwError()` and the new `job.customHeaders` by job type. Without a type argument, the client is untyped as before.
+
+### Patch Changes
+
+- 56ad670: All 28 bpmnlint built-in rules now report exactly the elements bpmnlint reports. The seven
+  that were approximate (`conditional-flows`, `fake-join`, `label-required`,
+  `no-gateway-join-fork`, `no-implicit-end`, `no-implicit-start` and `superfluous-gateway`)
+  now check inside embedded, event and ad-hoc sub-processes and transactions, and apply
+  bpmnlint's exemptions: link events, compensation handlers and boundary events, event
+  sub-processes, the contents of ad-hoc sub-processes, data objects and data stores.
+
+  A patch, because it fixes the compatibility layer to do what its documentation promises. The
+  default `casen lint` report does not change: the new native checks
+  (`feel/missing-condition`, `naming/missing-label`, `flow/implicit-end`, `flow/implicit-start`,
+  and `flow/multi-incoming-task`, `flow/mixed-gateway` and `flow/redundant-gateway` inside
+  sub-processes) run only when a `.bpmnlintrc` enables their rule. While a config sets
+  `conditional-flows`, `label-required`, `no-implicit-end` or `no-implicit-start`, the native
+  check replaces BPMN Kit's own finding for that concern (`feel/empty-condition`, the
+  `naming/unlabeled-*`, `naming/split-gateway-no-label` and `naming/missing-flow-condition`
+  findings, `flow/dead-end`, `flow/unreachable`), which looks at a different set of elements.
+  `BpmnlintRuleMapping` gains an optional `replaces` field that lists them.
+
+  A test now runs real bpmnlint beside BPMN Kit under `bpmnlint:all` on every `.bpmn` file in
+  the repository (43, the MIWG models included) and requires the same elements for every rule.
+
+- 56ad670: The Camunda version check now covers every rule of `bpmnlint-plugin-camunda-compat` 2.61.0: 62 of its 65 rules are reproduced, and 3 are reported by existing findings. New are `compat/feel-compatibility` (a FEEL built-in newer than the target, from `@camunda/feel-builtins`), `compat/variable-name`, `compat/secrets`, `compat/unresolvable-secret-reference`, `compat/connector-properties`, `compat/duplicate-execution-listener-headers`, `compat/link-event`, `compat/no-loop`, and the agent rules `compat/agent-fromai-contract` and `compat/agent-tool-output-key`. These keep the plugin's messages. A `.bpmnlintrc` that configures them no longer lists them as not applied. When bpmnlint's own `link-event` runs, its `flow/link-event-mismatch` finding stands in for `compat/link-event` on the same element.
+- 56ad670: Keep the attributes of `<documentation>` (`id`, `textFormat`) on round trip, in a new optional `documentationAttributes` field next to `documentation`. This was the last content loss on the OMG MIWG reference models. `semanticHash` of a model whose documentation carries attributes changes accordingly.
+- 56ad670: A `fromAi()` call that Zeebe rejects at deployment now fails `Engine.deploy` with Zeebe's message, and nothing is deployed. Before, the call or its argument was left out of `adHocSubProcessElements`. The rules are those of Zeebe's `FromAiTaggedParameterExtractor`: the value must be a reference, the description and type must be string literals (`null` too is rejected), and the schema and options must be contexts of literals. The message is `Failed to extract ad-hoc activity parameters for element '<id>'. Expected fromAi() parameter 'description' to be a string, but received '10'.`, as Zeebe's `AdHocSubProcessTransformer` builds it. Reebe rejects the same calls with the same message.
+
+  `buildAiAgentSubProcess` wrote `null` as the schema of an optional tool parameter without a schema (`fromAi(toolCall.urgent, "…", "boolean", null, { required: false })`). Zeebe rejects that deployment. It now writes an empty context, `{}`, which Zeebe accepts and leaves out of the tool's parameters.
+
+  Both are patches: they fix output that Zeebe does not accept. `Engine.deploy` throws only for models that Zeebe would not deploy.
+
+- 56ad670: Keep foreign attributes (for example `camunda:collection`, `camunda:errorCodeVariable`, `camunda:type`) on event definitions and multi-instance loops. They were dropped on parse; they now travel in an optional `unknownAttributes` field and are written back.
+- 56ad670: Auto-layout no longer draws connections through shapes. Layout output changes; `semanticHash` does not, so per the stability policy this is not a breaking change.
+  - A final routing pass checks every sequence flow, message flow and association on each plane. A connection that runs through (or along the outline of) a shape it is not related to is re-routed by an obstacle-aware orthogonal search, with bends and crossings charged as extra length. The sequence-flow router uses the same search as its last resort.
+  - Detour routes dock on the side of each shape that faces the detour. Before, a route whose detour ran between its two ends docked on the far side of one of them and cut across that shape.
+  - Pools with lanes are framed by the extent of their lanes. Before, the frame took the first (tallest) lane's position and the sum of all lane heights, so a pool whose tallest lane was not its top lane, or whose lanes were nested, was drawn offset from its own content.
+  - Pool ordering also weighs where each message leaves its pool, so a partner pool goes on the side its messages leave from and message flows cross less of the process.
+  - Text annotations are packed clear of routed connections, and their association lines avoid crossing them.
+
+  On bpmn-auto-layout's 160 test fixtures: connections through other shapes 41 → 0, through their own endpoints 83 → 0, edge crossings 234 → 184. Median runtime is about the same (0.3 ms).
+
+- 56ad670: - `deploy/message-catch-no-correlation` accepts a correlation key on the referenced
+  `bpmn:message`'s `zeebe:subscription`, where Camunda reads it and Camunda Modeler and
+  `applyTemplateToElement` write it. It used to flag every such catch.
+  - Variable-flow analysis takes FEEL's built-in names from `@bpmnkit/feel`, so newer
+    built-ins such as `is empty`, `partition` or `fromAi` are no longer reported as undefined
+    variables.
+  - The bpmnlint rules `no-implicit-split` and `superfluous-label` recognise a default flow on
+    an activity, and now match bpmnlint exactly.
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 56ad670: - `@bpmnkit/patterns/templates` (new export): 25 runnable Camunda 8 process templates — order
+  to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven
+  AI agent patterns — each with DMN/forms where used and a `.bpmn.tests.json` scenario set that
+  passes on `@bpmnkit/engine`'s `runScenario`. `ALL_TEMPLATES`, `TEMPLATE_CATEGORIES`,
+  `getTemplate`, `templatesInCategory`, `templateFiles`, `listJobTypes`. The package now
+  depends on `@bpmnkit/core`.
+  - `casen template list [--category]` and `casen template use <id> [dir] [--force]` write a
+    template's files into a project.
+  - Core: `receiveTask(..., { correlationKey })` now writes the `zeebe:subscription` it
+    documented; it was silently dropped, so the task failed `deploy/message-catch-no-correlation`.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/feel@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

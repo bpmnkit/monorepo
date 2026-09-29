@@ -1,5 +1,150 @@
 # @bpmnkit/cli
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: A team's `.bpmnlintrc` is honoured. `casen lint` and the VS Code Problems panel use the nearest `.bpmnlintrc`, starting in the diagram's folder. They apply its rule levels, including `off`, to BPMN Kit's equivalent findings. When the project has `bpmnlint` and `bpmn-moddle` installed, they run the project's own bpmnlint instead, so `bpmnlint-plugin-*` rules work too. BPMN Kit does not show its own finding a second time for any rule that bpmnlint ran.
+
+  `@bpmnkit/core` adds `parseBpmnlintConfig`, `resolveBpmnlintConfig`, `applyBpmnlintConfig`, `normalizeBpmnlintRuleName`, `bpmnlintRuleForFinding` and `BPMNLINT_RULE_MAP`, all pure and dependency-free. `lintDiagram` accepts `bpmnlint` and `bpmnlintDelegated`. `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and `LintReport` gains an optional `bpmnlintUnsupported` field. `@bpmnkit/core/node` adds `findBpmnlintrc`, `readBpmnlintrc`, `runBpmnlint` and `prepareBpmnlint`. bpmnlint is loaded with a dynamic `import()` from the project and is never a dependency.
+
+  All 28 bpmnlint built-in rules are mapped. 19 of them are new native checks, which run only when a `.bpmnlintrc` enables them, so the default report is unchanged. Rules that cannot be applied (plugin rules, unknown rules, `plugin:` configs without bpmnlint installed) are reported, not ignored.
+
+  `casen lint` gains `--no-bpmnlintrc` and prints the rule name for each governed finding. The VS Code extension gains the `bpmnkit.lint.bpmnlintrc` setting.
+
+- 56ad670: Lint now checks a diagram against the Camunda 8 version it targets, as Camunda Modeler does with `@camunda/linting`. Its findings (`compat/…`, in the existing `deploy` category) read `modeler:executionPlatformVersion` and report two kinds of problem. The first is a construct the target version cannot run, for example `Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.` The second is a property the target version requires, such as a timer value that does not parse or an error without an error code. The version table comes from `bpmnlint-plugin-camunda-compat` 2.61.0: 62 of its 65 rules are reproduced, and the other 3 are covered by existing findings. A problem that a `deploy/*` check already reports on the same element is not repeated. The check runs with the `deploy` category in `optimize()`, `lintDiagram()`, `casen lint`, the editor's lint panel and the VS Code Problems panel. A model with no Camunda 8 version gets no `compat` findings.
+
+  A `.bpmnlintrc` that extends `plugin:camunda-compat/camunda-cloud-X-Y` now runs this check against version X.Y and is no longer reported as "not applied". `camunda-compat/<rule>` entries re-level or turn off its findings. When the project's own bpmnlint runs the plugin, BPMN Kit's findings step aside.
+
+  `@bpmnkit/core` adds `analyzeCamundaCompat`, `splitCamundaCompatConfig`, `applyCamundaCompatConfig`, `normalizeCamundaVersion`, `CAMUNDA_COMPAT_RULES`, `CAMUNDA_COMPAT_VERSIONS` and `CAMUNDA_COMPAT_PLUGIN_VERSION`. `isCamundaCompatFinding` tells these findings apart. `OptimizeOptions` gains `camundaVersion`; `OptimizationCategory` is unchanged, since widening a union the API returns would be a major change.
+
+- 56ad670: Camunda 7 → 8 model migration. `casen migrate c7 <files...>` converts Camunda 7 models to Camunda 8. It writes `<name>.c8.bpmn` beside each input, or writes into `--out <dir>`, and never overwrites a file without `--force`. It reports every Camunda 7 construct as `convertible`, `manual` or `unsupported`, with the Camunda 8 equivalent. `--check` writes nothing and exits 1 while manual or unsupported findings remain. `--format json` gives the report as JSON.
+
+  `@bpmnkit/core` adds `convertCamunda7(definitions, { executionPlatformVersion? })`, `analyzeCamunda7` and `translateJuelToFeel`, all pure and dependency-free. They convert external tasks, IO mappings, conditions, timers, user-task assignment, schedule, priority and forms, decisions, call-activity variable passing, multi-instance collections, FEEL scripts, version tags and properties. Java delegates get a job type from a documented naming rule and keep the original as a task header. JUEL becomes FEEL only when the translation is provable; any other expression is kept and reported as manual.
+
+- 56ad670: `casen dev [dir]` is a one-command local development loop. It needs no Docker, no cluster and no licence key. It finds every `.bpmn`, `.dmn` and `.form` file in the folder and serves a local web UI on `127.0.0.1` (port 4747 by default, `--port`). The UI opens each file in the BPMN Kit editor, with in-browser simulation on `@bpmnkit/engine` and the Tests tab bound to the `.bpmn.tests.json` sidecar. Saves are written back to disk into the existing file with its formatting kept, and each save is read back to check it. Changes made on disk reload the open diagram. Every change re-runs lint (the same analysis as `casen lint`, including a `.bpmnlintrc`) and the file's scenarios. Results show in the browser and as a compact status list in the terminal. `--engine wasm` runs the scenarios on reebe-wasm for Zeebe semantics. `--no-open` skips opening the browser. The UI is pre-bundled into the package's `dist`, so it adds no runtime dependencies.
+- 56ad670: Element templates now resolve per diagram, the way Camunda Desktop Modeler does: a diagram sees the `.camunda/element-templates/` folders from its own folder up to the project root, the nearest winning, and never a sibling folder's.
+  - `@bpmnkit/plugins`: `createConnectorCatalogPlugin` takes a `diagramPath` option and gains `setDiagramPath(path)` and `setWorkspaceTemplates(templates)`. Switching diagrams unregisters the previous diagram's templates first, and the plugin's workspace templates are also unregistered on uninstall. `createConfigPanelBpmnPlugin` gains `unregisterTemplate(id)`, which brings back a bundled template the removed one shadowed. `TemplateRegistrar` gains an optional `unregisterTemplate`. Registering a template whose id is already in the connector picker now updates its label.
+  - `@bpmnkit/proxy`: `GET /element-templates?root=<dir>&file=<path>` returns only the templates that apply to that diagram. `file` must lie inside `root`, and `configFolder` must be a single folder name. `?root=` alone is unchanged.
+  - `@bpmnkit/cli`: `casen lint` and the `casen dev` checks check a connector task's required inputs against the diagram's own templates as well as the bundled catalogue. The search stops at the current directory for `casen lint` and at the served folder for `casen dev`.
+  - VS Code: the Problems panel checks connector inputs against the file's own templates too, with the workspace folder as the root.
+
+- 56ad670: Process documentation export: a document to circulate, built from the model.
+
+  `@bpmnkit/core` adds `renderDocumentationHtml`, `renderDocumentationMarkdown` and `renderDocumentationDocx`. They take parsed definitions plus optional DMN decisions and forms. The HTML is self-contained and print-ready: an inline SVG diagram on a landscape page, a table of contents, and a section per process or pool. Each section has its lanes, a steps table and a detail block for every element in flow order: type, documentation, lane, job type, headers, mappings, called decision, called process, form, assignment, timers, messages, errors and the conditions on outgoing flows. The decision tables and form fields follow. Print → Save as PDF gives a clean PDF on A4 or Letter. Markdown has the same content without the diagram. The Word file is a small hand-written OOXML package with the diagram as SVG. `buildProcessDocumentation` returns the structured content, and `documentationToHtml`, `documentationToMarkdown` and `documentationToDocx` render it. Output is deterministic and all model text is escaped.
+
+  `@bpmnkit/editor`: the HUD's More menu has **Export documentation…**. It offers a print view, HTML, Markdown and Word. The new `getDocumentationContext` option on `initEditorHud` supplies the linked decisions and forms. All new strings go through the editor's `translate` hook.
+
+  `@bpmnkit/cli`: `casen doc export <file.bpmn> [linked .dmn/.form…] --format html|md|docx [--out] [--title] [--paper a4|letter]`.
+
+  `@bpmnkit/drop`: a shared drop has a **Docs** button for anyone who can read it. It documents the drop's BPMN file together with every DMN and form file in the drop.
+
+- 56ad670: **Security: the local proxy is no longer open to every web page and every machine on the network.** This changes default behaviour.
+
+  Until now the proxy listened on all interfaces, answered every request with `Access-Control-Allow-Origin: *`, and let its `/fs/*` routes read, write, move and delete any absolute path. While it ran, any web page you visited, and any host on your network, could read or overwrite local files, use your Camunda profiles through `/api/*`, read secrets through `/secrets/*`, and start AI CLIs through `/chat`.
+  - **Loopback only.** The proxy listens on `127.0.0.1` and `::1`. `casen proxy start --host <addr>` or `BPMNKIT_PROXY_HOST` listens elsewhere and prints a warning.
+  - **Allowed origins only.** Browser requests must come from `https://bpmnkit.com`, `https://studio.bpmnkit.com`, `https://bpmnkit-studio.pages.dev`, the desktop app (`tauri://localhost`, `http(s)://tauri.localhost`) or a `localhost` / `127.0.0.1` / `[::1]` origin on any port. Other origins get `403` with no CORS headers, and the allowed origin is reflected with `Vary: Origin` instead of `*`. Cross-site browser requests without an `Origin` are refused too. Add origins with `--allow-origin` or `BPMNKIT_PROXY_ALLOWED_ORIGINS`.
+  - **Loopback `Host` only**, against DNS rebinding. Add names with `--allow-host` or `BPMNKIT_PROXY_ALLOWED_HOSTS`.
+  - **Workspace roots.** `/fs/*` and `/element-templates` work only inside folders passed with `--root` / `BPMNKIT_PROXY_ROOTS` or opened by Studio. The proxy refuses to open the filesystem root, your home directory, a folder that contains it, or a hidden folder unless you pass it with `--root`. Inside a root, only `.bpmn`, `.dmn`, `.form` and `.md` files and their metadata can be touched; `..` and symlinks out of the root are refused. The `/fs/*` routes accept an optional `root` (query or body) naming the workspace the path belongs to.
+  - `@bpmnkit/proxy` exports `createProxyServer`, `listenProxy` and the `ProxyServerOptions` type; `startServer(port, options)` takes the same options.
+  - The desktop app's bundled AI server (`proxy-rs`) applies the same bind, `Host` and origin rules.
+
+  Programs that send no `Origin` header (the CLI, the MCP server, `curl`) work as before. First-party clients need no change; Studio now names its project root on every file call so saves keep working after the proxy restarts.
+
+  Why a minor for `@bpmnkit/cli` at 1.x: the command line is unchanged apart from four new optional flags. What changes is what the proxy lets in, and the only callers it now turns away are ones that were never meant to reach it — any web page and any host on the network. A web app on your own origin needs `--allow-origin`; a proxy you reach over the network needs `--host` and `--allow-host`. Closing a hole that let any site read your files does not wait for a major.
+
+- 56ad670: - `@bpmnkit/patterns/templates` (new export): 25 runnable Camunda 8 process templates — order
+  to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven
+  AI agent patterns — each with DMN/forms where used and a `.bpmn.tests.json` scenario set that
+  passes on `@bpmnkit/engine`'s `runScenario`. `ALL_TEMPLATES`, `TEMPLATE_CATEGORIES`,
+  `getTemplate`, `templatesInCategory`, `templateFiles`, `listJobTypes`. The package now
+  depends on `@bpmnkit/core`.
+  - `casen template list [--category]` and `casen template use <id> [dir] [--force]` write a
+    template's files into a project.
+  - Core: `receiveTask(..., { correlationKey })` now writes the `zeebe:subscription` it
+    documented; it was silently dropped, so the task failed `deploy/message-catch-no-correlation`.
+- 56ad670: Typed code generation from BPMN, and a worker contract check.
+
+  `@bpmnkit/core` adds `generateProcessTypes(definitions | definitions[], options?)`, which returns TypeScript source, and `extractProcessContract`, which returns the same contract as data. Both are pure and deterministic. The source types the process ids and every static job type: its input variables, its output, its task headers as literal types, and the error codes that catch events handle. It also types message names (with correlation keys), signal names, error codes and escalation codes, and a `JobTypes` map for typed workers. Values are `unknown` and keys are exact. The typed workers guide documents the rules.
+
+  `casen generate types` (`casen gen types`) writes the file from BPMN files, directories or globs. `--check` exits 1 when the file is stale. `--check-workers <glob>` reports BPMN job types that have no worker and worker registrations that match no job type. This scan is a heuristic. `--strict` makes it exit 1 on a mismatch.
+
+  `@bpmnkit/worker-client`: `createWorkerClient<JobTypes>()` types `job.variables`, `job.complete()`, `job.throwError()` and the new `job.customHeaders` by job type. Without a type argument, the client is untyped as before.
+
+### Patch Changes
+
+- 56ad670: `casen dev --help` no longer prints the command as "casen dev dev".
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 56ad670: **Security hardening: the AI CLIs the proxy starts can no longer run commands, touch files or open URLs.**
+
+  `/chat` started `claude` with `--dangerously-skip-permissions --permission-mode bypassPermissions`, so anything that reached the route — an XSS on an allowed origin, or a prompt injection carried in a BPMN file, chat text or a process variable — could have the CLI run shell commands on your machine. `copilot` ran with `--yolo`, and so did the desktop app's `gemini`. The diagram tool `compose_diagram` (and `sdk_search` / `sdk_execute`) ran the model's code under `node:vm`, which a Bridge function's `constructor` escapes to `process`.
+  - **No built-in tools, no bypass.** Every run — `/chat`, `/improve`, `/operate/chat`, `/operate/incident-assist`, `/operate/ai-search`, the `io.bpmnkit:llm:1` worker, `casen ask` — gets permission checks on and no shell, file or web tools. `claude` runs with `--tools "" --strict-mcp-config --setting-sources "" --permission-mode dontAsk`; `copilot` with `--deny-tool=shell --deny-tool=write --deny-tool=url` and no `--allow-all-tools`; `gemini` with a policy that denies every tool, `--extensions none`, and `--skip-trust` for the empty run folder.
+  - **Only the proxy's diagram tools for diagram edits.** A `/chat` edit may call the eight `bpmn` MCP tools and nothing else; none of your own MCP servers, settings, plugins or project instructions load. Each run starts in an empty temporary folder.
+  - **`compose_diagram`, `sdk_search` and `sdk_execute` run in an `isolated-vm` isolate** that sees only copies of what the Bridge returns.
+  - **Request data is fenced.** Chat text, diagrams, incident details and variable values reach the model inside `<untrusted-input>` tags the system prompt marks as data. `claude` gets the conversation on stdin and `--system-prompt` in place of its coding-agent prompt.
+  - `@bpmnkit/proxy` exports `askText(cli, systemPrompt, userText)` for a one-off tool-less answer; `casen ask` now uses it.
+  - The desktop app's AI server (`proxy-rs`) applies the same flags, fencing and empty working folder, and no longer passes `--yolo` to `gemini`.
+
+  Features are unchanged: the AI panel still edits diagrams through the MCP tools, and `/improve`, incident assist and AI search still answer with text or JSON. A developer who set up Bedrock or Vertex for `claude` through `~/.claude/settings.json` `env` needs those variables in the proxy's environment instead, since user settings are no longer loaded.
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [4e3bf2f]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/api@1.0.1
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/engine@1.1.0
+  - @bpmnkit/connectors@1.1.0
+  - @bpmnkit/proxy@0.4.0
+  - @bpmnkit/ascii@1.0.1
+  - @bpmnkit/profiles@0.0.21
+  - @bpmnkit/connector-gen@1.0.1
+  - @bpmnkit/patterns@0.1.0
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,5 +1,21 @@
 # @bpmnkit/profiles
 
+## 0.0.21
+
+### Patch Changes
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- 56ad670: A profile store that is not valid JSON (or not a JSON object) now raises an error that names the file, instead of being read as empty — the next save used to overwrite every profile in it. A store with missing keys (`profiles`, `active`, `meta`) is read with those keys empty instead of throwing a `TypeError`.
+- 56ad670: The profile store (`config.json`), which holds client secrets and passwords, is now written readable by its owner only (`0600`, in a `0700` directory on first creation). A store written by an earlier release is tightened the next time it is saved.
+
+  Deleting a profile now deletes its metadata too, so a new profile saved under the same name no longer inherits the old description, tags and creation date.
+
+  `getAuthHeader` caches OAuth2 tokens per token URL, client id, audience and scope instead of per client id alone, so two profiles that share a client id — one cluster's Zeebe and Operate audiences, or two clusters behind one identity provider — no longer receive each other's token.
+
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/api@1.0.1
+
 ## 0.0.20
 
 ### Patch Changes

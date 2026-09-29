@@ -1,5 +1,45 @@
 # @bpmnkit/feel
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: Camunda 8's FEEL built-ins, and a parity suite against Camunda's documentation.
+  - New built-ins from Camunda's engine: `assert`, `is empty`, `partition`, `duplicate values`,
+    `is blank`, `trim`, `extract`, `uuid`, `to base64`, `from base64`, `to json`, `from json`,
+    `fromAi`, and `date and time(value, timezone)`, which moves an instant to another zone's
+    clock.
+  - **Behaviour change:** `last day of month` now returns the date of the month's last day, as
+    Camunda defines it. It used to return the day number, so `last day of month(date("2022-10-01"))`
+    was `31` and is now `date("2022-10-31")`. Use `last day of month(d).day` for the number.
+  - `time + duration`, `time - duration`, `time - time` and `duration / duration` evaluate instead
+    of returning `null`.
+  - `time("T23:59:00")` and date-times in Java's `+02:00[Europe/Berlin]` form parse.
+  - `overlaps before` and `overlaps after` no longer report an overlap where ranges only touch at
+    an open end, following DMN's definition. Two more DMN TCK cases pass: 1,941 of 2,053.
+  - The package matches 375 of the 378 runnable examples in Camunda 8's FEEL documentation;
+    `tests/camunda-parity.test.ts` checks them and lists the three differences with reasons.
+
+### Patch Changes
+
+- 56ad670: A boolean literal in a unary test now compares with a boolean input, as Camunda documents ("the input value is equal to that value"): the input entry `true` no longer matches `false`, and `false` now matches `false`. Tests that read `?` are unchanged. A variable named like a built-in (`count`, `sum`) now resolves to the variable; calls such as `count(xs)` still reach the built-in.
+- 56ad670: Descriptions and READMEs now say what each package does, with the numbers that back it.
+  - `@bpmnkit/feel` states its conformance — 1,939 of the DMN TCK's 2,053 FEEL cases (94.4%) —
+    instead of calling itself complete.
+  - `@bpmnkit/engine` is described as a simulator for tests and demos, and its README lists the
+    elements it executes and the ones it completes without their semantics.
+  - `@bpmnkit/plugins` counts its 34 plugins and documents the seven the README left out.
+  - `@bpmnkit/cli` declares `mcpName`, so `casen proxy mcp` can be listed in the MCP Registry.
+  - `@bpmnkit/astro-shared`'s `Seo` component loads Cloudflare Web Analytics when a build sets
+    `PUBLIC_CF_WEB_ANALYTICS_TOKEN`, and nothing otherwise.
+  - The desktop app is named BPMN Kit, ships icons for every platform, finds its bundled AI
+    server on Windows, and builds again: the proxy-rs build script still filtered on the
+    pre-rename `@bpmn-sdk/proxy` package. Installers are attached to GitHub Releases.
+  - The VS Code extension is packaged on every release and attached to GitHub Releases, and
+    published to the Visual Studio Marketplace and Open VSX once their tokens are configured.
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+
 ## 1.0.0
 
 ### Major Changes

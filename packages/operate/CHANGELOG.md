@@ -1,5 +1,44 @@
 # @bpmnkit/operate
 
+## 0.2.0
+
+### Minor Changes
+
+- 56ad670: Quality pass towards 1.0. Poll failures now show their reason above the view (for example `HTTP 401: No active profile`) instead of an empty table, and the message clears after the next good poll. `pollInterval: 0` now loads once and stops, as documented; before, it still polled every 30 s. `proxyUrl` can be relative (for a same-origin reverse proxy). A slow cluster no longer causes overlapping poll requests. Fixes: "Retry Job" called an endpoint the Orchestration Cluster API does not have; it now sends `PATCH /jobs/{jobKey}` with `{ changeset: { retries: 3 } }`. Each poll no longer sends the tables back to page 1. Switching profile reloads the whole view, so detail pages and the instance state filter use the new profile. `setTheme()` also re-themes an open diagram. A deep link to a process definition shows its name and versions. A deep-linked instance that is not in the list keeps its header. A failed diagram or incident request is no longer loaded as BPMN or shown as an incident. The detail views and stores exported for BPMN Kit Studio are now marked `@internal`. Adds a Vitest suite and a docs page with Camunda 8 Run and SaaS setup.
+
+### Patch Changes
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/api@1.0.1
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/plugins@1.1.0
+  - @bpmnkit/ui@0.3.1
+  - @bpmnkit/canvas@1.0.1
+
 ## 0.1.5
 
 ### Patch Changes

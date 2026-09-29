@@ -1,5 +1,90 @@
 # @bpmnkit/editor
 
+## 1.1.0
+
+### Minor Changes
+
+- 56ad670: The editor ships in ten languages. English stays built in; German, Spanish, French, Italian,
+  Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) are separate entry points
+  (`@bpmnkit/editor/locales/de` and so on), so a bundle carries only the languages it imports.
+  The translations are machine-assisted and use the BPMN terms Camunda Modeler uses; corrections
+  are welcome (see "Improving a translation" in `CONTRIBUTING.md`).
+  - `@bpmnkit/editor`: `createTranslate(locale)` builds the existing `Translate` hook from a
+    locale. Messages can be plural objects, chosen with `Intl.PluralRules` from `count`. Also new:
+    the `Locale`, `LocaleMessage` and `PluralMessage` types, `AVAILABLE_LOCALES` (every language
+    with its own name, for a picker), `matchLocale()` (the best match for `navigator.languages`),
+    and `createSideDock({ translate })`. The HUD, dock, menus, dialogs and screen-reader
+    announcements now translate every string. Before, many of them — the undo tooltips, the
+    more-actions menu, the start screen, the link buttons and the dock tabs — were always
+    English. A mouse wheel now scrolls the dock's tab strip when a long language overflows it,
+    and the element-group picker measures its own width, so a long group name does not push it
+    past the canvas edge.
+  - `@bpmnkit/plugins`: new optional `translate` option on `config-panel`, `config-panel-bpmn`,
+    `command-palette`, `command-palette-editor` (third argument), `main-menu`, `history`,
+    `process-runner`, `tabs` and `storage-tabs-bridge`. The properties panel translates schema
+    labels, hints, placeholders and option labels when it draws them. Strings it does not know,
+    such as connector template names, pass through unchanged. The panel header now shows the
+    element's name ("Service Task") instead of its type id ("serviceTask"). `main-menu` has an
+    optional Language section (`language: { current, options, onSelect }`), and `MenuAction`
+    has an optional `checked` flag. The play-mode chaos summary reads "unhandled errors: 2",
+    which avoids a wrong English plural.
+  - `@bpmnkit/ui`: `:lang(ja)` and `:lang(zh)` add CJK fallback faces to
+    `--bpmnkit-ds-font-sans` and `--bpmnkit-ds-font-mono`, so Japanese and Chinese text picks
+    the correct form of shared Han characters.
+
+- 56ad670: Process documentation export: a document to circulate, built from the model.
+
+  `@bpmnkit/core` adds `renderDocumentationHtml`, `renderDocumentationMarkdown` and `renderDocumentationDocx`. They take parsed definitions plus optional DMN decisions and forms. The HTML is self-contained and print-ready: an inline SVG diagram on a landscape page, a table of contents, and a section per process or pool. Each section has its lanes, a steps table and a detail block for every element in flow order: type, documentation, lane, job type, headers, mappings, called decision, called process, form, assignment, timers, messages, errors and the conditions on outgoing flows. The decision tables and form fields follow. Print → Save as PDF gives a clean PDF on A4 or Letter. Markdown has the same content without the diagram. The Word file is a small hand-written OOXML package with the diagram as SVG. `buildProcessDocumentation` returns the structured content, and `documentationToHtml`, `documentationToMarkdown` and `documentationToDocx` render it. Output is deterministic and all model text is escaped.
+
+  `@bpmnkit/editor`: the HUD's More menu has **Export documentation…**. It offers a print view, HTML, Markdown and Word. The new `getDocumentationContext` option on `initEditorHud` supplies the linked decisions and forms. All new strings go through the editor's `translate` hook.
+
+  `@bpmnkit/cli`: `casen doc export <file.bpmn> [linked .dmn/.form…] --format html|md|docx [--out] [--title] [--paper a4|letter]`.
+
+  `@bpmnkit/drop`: a shared drop has a **Docs** button for anyone who can read it. It documents the drop's BPMN file together with every DMN and form file in the drop.
+
+### Patch Changes
+
+- 56ad670: Deleting a gateway's or an activity's default flow now clears its `default` attribute, so the exported XML no longer points at a flow that is gone.
+- 56ad670: Diagram labels now render in their `BPMNLabelStyle` font. A `BPMNLabel` whose `labelStyle`
+  references a `<bpmndi:BPMNLabelStyle>` is drawn in that style's `dc:Font` — family (with the
+  default stack behind it as fallback), size in px, bold, italic, underline and strike-through —
+  by the canvas, by `exportSvg`, and in the editor's inline label editor. Wrapping and line height
+  follow the resolved size, so a bigger or smaller font breaks lines accordingly; label positions
+  still come from the DI bounds. A label without a `labelStyle`, or with one that names no style,
+  keeps the default font: BPMN DI defines no diagram- or plane-level default style.
+
+  `@bpmnkit/core` (minor, new exports): `collectLabelStyles(defs)` indexes the document's label
+  styles by id, `resolveLabelFont(label, styles)` picks the one a DI label references, and
+  `labelFontCss(font, defaultFamily, defaultSize)` turns it into CSS values; types `BpmnLabelFont`
+  and `LabelFontCss`.
+
+  `@bpmnkit/canvas` (patch, a rendering fix): `RenderContext` gains an optional `labelStyles`,
+  filled by `buildRenderContext`.
+
+  `@bpmnkit/editor` (patch): moving an external label with `setLabelPosition` no longer drops the
+  label's `labelStyle` reference and other `BPMNLabel` attributes.
+
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+- Updated dependencies [56ad670]
+  - @bpmnkit/core@1.1.0
+  - @bpmnkit/canvas@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,5 +1,12 @@
 # @bpmnkit/api
 
+## 1.0.1
+
+### Patch Changes
+
+- 56ad670: The OAuth token cache file is now written readable by its owner only (0600, in a 0700 directory), and a cache written earlier is tightened on its next write.
+- 56ad670: Each README now shows the package's product tier (Core, Tools or Experimental) and what that tier promises. The `@bpmnkit/reebe-wasm` README and description say that Reebe is a dev/test engine, not for production: a clean-room implementation of the Zeebe API, not affiliated with Camunda.
+
 ## 1.0.0
 
 ### Major Changes
