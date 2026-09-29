@@ -1,6 +1,6 @@
 # How to use cluster variables — Access using FEEL expressions
 
-You can reference cluster variables anywhere Camunda Modeler supports FEEL expressions.
+You can reference cluster variables anywhere the Camunda modeling interface supports FEEL expressions.
 They are exposed through the following namespaces:
 
 - `camunda.vars.cluster`

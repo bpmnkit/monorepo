@@ -1,20 +1,16 @@
 # Introduction to Camunda 8 — What are the Camunda 8 components?
 
-### Modeler
-
-Design fully-executable process and decision models that reduce misalignment and handoff friction while giving engineers the freedom they need to build the right solution. Camunda Modeler gives business users an intuitive way to model processes and decisions using the BPMN and DMN standards so their intent is clear, structured, and directly usable by developers. Developers can take the model as-is and build scalable, flexible solutions without worrying about losing alignment with business intent. Available via [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/workspace/modeler/index) and a dedicated [desktop app](https://docs.camunda.io/docs/next/components/modeler/desktop-modeler/index).
-
-#### Connectors
+### Connectors
 
 Connectors communicate with any system or technology, reducing the time it takes to automate and orchestrate business processes. [Outbound connectors](https://docs.camunda.io/docs/next/reference/glossary#outbound-connector) trigger events outside of Camunda, while [inbound connectors](https://docs.camunda.io/docs/next/reference/glossary#inbound-connector) allow processes running on Camunda to receive messages from external systems. Connectors also serve as the tool layer for AI agents, enabling agents to interact with external systems in a governed, reusable way. Browse connectors in [Camunda Marketplace](https://marketplace.camunda.com/).
 
-#### AI agents
+### AI agents
 
 Build governed [AI agents](https://docs.camunda.io/docs/next/reference/glossary#ai-agent) with guardrails so they can solve complex problems with autonomy. Camunda's [agentic BPMN](https://docs.camunda.io/docs/next/components/agentic-orchestration/ai-agents) lets teams model deterministic process logic and dynamic agentic behavior, such as reasoning loops, memory, prompts, RAG, and human‑in‑the‑loop boundaries, in one unified, executable model.
 
-#### Forms
+### Forms
 
-Some automated processes require human contribution and interaction. [Create and implement custom forms](https://docs.camunda.io/docs/next/components/modeler/forms/utilizing-forms) that give work instructions, collect information, and help people make decisions about the tasks they need to complete.
+Some automated processes require human contribution and interaction. [Create and implement custom forms](https://docs.camunda.io/docs/next/components/hub/workspace/modeler/modeling/utilize-forms) that give work instructions, collect information, and help people make decisions about the tasks they need to complete.
 
 ### Tasklist
 
@@ -34,7 +30,16 @@ With [Operate](https://docs.camunda.io/docs/next/components/operate/operate-intr
 
 ### Camunda Hub
 
-With [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/index), you'll manage organizational resources, analyze operations and business value, and deliver agentic processes at scale with Camunda Hub.
+[Camunda Hub](https://docs.camunda.io/docs/next/components/hub/index) is a unified platform for managing organizational resources and delivering business processes. It's organized into two levels: organization and workspace.
+
+- **Organization level**: This is the management and governance layer. Center of excellence teams govern the infrastructure and tooling delivery teams need, including managing users, runtime environments, a catalog of shared reusable resources, and workspaces.
+- **Workspace level**: This is the process modeling and delivery layer. Delivery teams design business process and decision models, discover and use approved catalog assets, and deploy projects to development, testing, staging, and production environments.
+
+With this separation, center of excellence teams govern infrastructure and standards at the organization level, while delivery teams work within organizational guardrails to design, test, and deploy business solutions at the workspace level.
+
+### Desktop Modeler
+
+[Desktop Modeler](https://docs.camunda.io/docs/next/components/modeler/desktop-modeler/index) is a standalone desktop application for modeling business processes. Desktop Modeler gives business users and developers an intuitive way to design fully-executable process and decision models so their intent is clear, structured, and directly usable by developers. At the same time, Desktop Modeler integrates into your preferred IDE and local filesystem for a professional software development setup.
 
 ---
 Source: https://docs.camunda.io/docs/next/components/concepts/concepts-overview

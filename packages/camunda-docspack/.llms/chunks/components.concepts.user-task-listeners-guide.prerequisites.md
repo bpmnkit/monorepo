@@ -25,9 +25,7 @@ Log in with the email address and password you used in the previous form, or use
 
 ![login](./../img/login.png)
 
-After login, select the square-shaped **Camunda components** icon in the upper-left corner, and select **Console** to view the Console overview page. This is the central place to manage the clusters, diagrams, and forms you want to deploy to Camunda 8.
-
-![overview-home](./../img/home.png)
+After login, you're brought directly to [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/index). From here, you can manage your clusters, workspaces, projects, and other organizational resources.
 
 You must also know how to model a process with a user task.  
 If you haven't done this before, first follow the steps in our guide to [get started with human task orchestration](https://docs.camunda.io/docs/next/guides/getting-started-orchestrate-human-tasks).

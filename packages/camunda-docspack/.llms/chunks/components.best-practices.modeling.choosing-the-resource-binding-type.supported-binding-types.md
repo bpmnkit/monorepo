@@ -52,7 +52,7 @@ Camunda 8 supports the following binding types:
           
             
               The version tag is a user-provided string (for example 1.2.0.Final) that makes it easy to identify a certain version of a resource and track it across multiple deployment stages (e.g. dev, test, prod).
-              You can set the version tag for a BPMN process, DMN decision, or Form in the Modeler's properties panel.
+              You can set the version tag for a BPMN process, DMN decision, or Form in the properties panel in the modeling interface.
             
           
           A version tag is different from the numeric process definition version assigned by the Orchestration Cluster.

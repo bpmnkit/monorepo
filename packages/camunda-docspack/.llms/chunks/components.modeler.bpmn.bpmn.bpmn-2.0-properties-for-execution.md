@@ -1,4 +1,4 @@
-# BPMN in Modeler — BPMN 2.0 properties for execution
+# Modeling with BPMN — BPMN 2.0 properties for execution
 
 ![Save BPMN Diagram](./assets/quickstart-3.png)
 

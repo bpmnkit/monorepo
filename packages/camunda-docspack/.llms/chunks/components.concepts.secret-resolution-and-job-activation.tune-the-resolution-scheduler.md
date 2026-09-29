@@ -1,10 +1,13 @@
 # Secret resolution and job activation — Tune the resolution scheduler
 
-Configure the scheduler under `camunda.processing.engine.secrets`. The defaults are intended for stores that respond in less than a second. The separate `camunda.secrets.cache.ttl` setting controls how long a resolved value remains cached before the reference must be resolved again.
+Configure the scheduler under `camunda.processing.engine.secrets`.
+
+- The defaults are intended for stores that respond in less than a second.
+- The separate `camunda.secrets.cache.ttl` setting controls how long a resolved value remains cached before the reference must be resolved again.
 
 Under a steady stream of pending references, cycles run close to `wake-delay` apart, not `interval`: `interval` only bounds how long a scheduler with nothing to resolve waits before checking again, growing there from `wake-delay` in geometric steps rather than jumping straight to it.
 
-| Property                 | Default | Change it when                                                                                                                                                                                        |
+| Property                 | Default | Change it when the following applies:                                                                                                                                                                 |
 | :----------------------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wake-delay`             | `50ms`  | Jobs that reference secrets take too long to activate under a steady stream of requests. A shorter delay reduces that latency at the cost of polling the stores more often.                           |
 | `interval`               | `5s`    | A scheduler that is genuinely idle takes too long to notice a newly pending reference, or you want its idle ceiling to be different. Under load this value is rarely reached; see `wake-delay` above. |

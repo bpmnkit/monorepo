@@ -1,8 +1,12 @@
 # Self-Managed resource planning — Secondary storage considerations
 
-The resource tables above assume Elasticsearch as the secondary storage backend. If you are using a different backend:
+The resource tables above assume Elasticsearch as the secondary storage backend.
 
-- **OpenSearch:** Similar resource profile to Elasticsearch. The tables above generally apply.
+All Zeebe partitions currently export data to the same Elasticsearch indices. Write throughput for an index scales with the number of primary shards, not the number of Elasticsearch nodes. Scaling Zeebe partitions does not automatically reshard the indices. Reassess the shard count for your indices when scaling the number of partitions. See the [Elasticsearch shards documentation](https://docs.camunda.io/docs/next/self-managed/concepts/secondary-storage/managing-secondary-storage#shards).
+
+If you are using a different backend:
+
+- **OpenSearch:** Similar resource profile to Elasticsearch. The tables above generally apply, including the index-sharding consideration.
 - **RDBMS (PostgreSQL, available from 8.9):** Replace the Elasticsearch resource block with appropriately sized PostgreSQL resources. Adjust throughput expectations **downward by approximately 30%** compared to the Elasticsearch-based tables. Unlike Elasticsearch, RDBMS scales primarily **vertically** (a larger instance) rather than horizontally, so plan your initial sizing with more headroom, as adding capacity later is more disruptive.
 
 **Note**

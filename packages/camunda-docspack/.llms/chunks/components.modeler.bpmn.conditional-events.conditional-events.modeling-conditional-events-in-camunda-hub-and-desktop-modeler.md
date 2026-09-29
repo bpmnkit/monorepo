@@ -1,6 +1,6 @@
-# Conditional events — Modeling conditional events in Modeler
+# Conditional events — Modeling conditional events in Camunda Hub and Desktop Modeler
 
-Camunda Modeler supports conditional start events, intermediate conditional catch events, and interrupting or non-interrupting conditional boundary events.
+Camunda Hub and Desktop Modeler support conditional start events, intermediate conditional catch events, and interrupting or non-interrupting conditional boundary events.
 
 To add a conditional event:
 

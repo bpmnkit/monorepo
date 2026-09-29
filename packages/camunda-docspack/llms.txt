@@ -2,7 +2,7 @@
 
 > Camunda 8 documentation as an offline, version-locked docspack package for AI agents
 
-Version 0.1.3. 1054 chunks documenting camunda@8.10.
+Version 0.1.3. 1076 chunks documenting camunda@8.10.
 
 ```sh
 npm i -D @bpmnkit/camunda-docspack
@@ -12,15 +12,15 @@ npx bpmnkit-docs ask "how do I deploy a process"
 ## apis-tools
 
 - [Intermediate tutorial](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.md) — 153 tokens
-- [Intermediate tutorial — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites.md) — 610 tokens
-- [Intermediate tutorial — Prerequisites — Set up authentication](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites-set-up-authentication.md) — 371 tokens
+- [Intermediate tutorial — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites.md) — 643 tokens
+- [Intermediate tutorial — Prerequisites — Set up authentication](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites-set-up-authentication.md) — 384 tokens
 - [Intermediate tutorial — Deploy resources (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.deploy-resources-post.md) — 746 tokens
 - [Intermediate tutorial — Create and start a process instance (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.create-and-start-a-process-instance-post.md) — 310 tokens
 - [Intermediate tutorial — Retrieve a process instance (GET)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.retrieve-a-process-instance-get.md) — 233 tokens
 - [Intermediate tutorial — Troubleshooting](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.troubleshooting.md) — 101 tokens
 - [Authentication](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.md) — 347 tokens
 - [Authentication — Authenticate API calls](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.authenticate-api-calls.md) — 206 tokens
-- [Authentication — Using a token (OIDC/JWT)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.using-a-token-oidc-jwt.md) — 731 tokens
+- [Authentication — Using a token (OIDC/JWT)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.using-a-token-oidc-jwt.md) — 729 tokens
 - [Data fetching](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.md) — 189 tokens
 - [Data fetching — Supported operations](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.supported-operations.md) — 433 tokens
 - [Data fetching — User task support](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support.md) — 87 tokens
@@ -33,9 +33,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Data fetching — Search example](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.search-example.md) — 432 tokens
 - [Orchestration Cluster REST API](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.md) — 224 tokens
 - [Orchestration Cluster REST API — Key features](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.key-features.md) — 339 tokens
-- [Orchestration Cluster REST API — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.getting-started.md) — 724 tokens
+- [Orchestration Cluster REST API — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.getting-started.md) — 734 tokens
 - [Orchestration Cluster REST API — API reference](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference.md) — 48 tokens
-- [Orchestration Cluster REST API — API reference — Base URLs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-base-urls.md) — 192 tokens
+- [Orchestration Cluster REST API — API reference — Base URLs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-base-urls.md) — 198 tokens
 - [Orchestration Cluster REST API — API reference — Versioning](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-versioning.md) — 172 tokens
 - [Orchestration Cluster REST API — API reference — Request size limits](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-request-size-limits.md) — 85 tokens
 - [Orchestration Cluster REST API — API reference — Naming conventions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-naming-conventions.md) — 462 tokens
@@ -47,10 +47,10 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Secrets — Understand resolve responses](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.understand-resolve-responses.md) — 388 tokens
 - [Secrets — List secrets](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.list-secrets.md) — 153 tokens
 - [Try with Swagger](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.md) — 188 tokens
-- [Try with Swagger — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites.md) — 297 tokens
-- [Try with Swagger — Authentication in Swagger UI](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md) — 270 tokens
+- [Try with Swagger — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites.md) — 280 tokens
+- [Try with Swagger — Authentication in Swagger UI](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md) — 268 tokens
 - [Try with Swagger — Using Swagger UI effectively](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.using-swagger-ui-effectively.md) — 315 tokens
-- [Try with Swagger — Managing Swagger UI availability](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability.md) — 157 tokens
+- [Try with Swagger — Managing Swagger UI availability](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability.md) — 170 tokens
 - [Try with Swagger — Next steps](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.next-steps.md) — 176 tokens
 - [Activate activities within an ad-hoc sub-process](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.activate-ad-hoc-sub-process-activities.api.md) — 324 tokens
 - [Activate jobs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.activate-jobs.api.md) — 498 tokens
@@ -280,7 +280,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Update user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-user-task.api.md) — 517 tokens
 - [Update user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-user.api.md) — 267 tokens
 - [Beginner tutorial](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.md) — 276 tokens
-- [Beginner tutorial — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.getting-started.md) — 394 tokens
+- [Beginner tutorial — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.getting-started.md) — 407 tokens
 - [Beginner tutorial — List all roles (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.list-all-roles-post.md) — 564 tokens
 - [Beginner tutorial — Create a role (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.create-a-role-post.md) — 175 tokens
 - [Beginner tutorial — Retrieve a role (GET)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.retrieve-a-role-get.md) — 167 tokens
@@ -289,13 +289,13 @@ npx bpmnkit-docs ask "how do I deploy a process"
 
 ## components
 
-- [Data flow](.llms/chunks/components.best-practices.architecture.data-flow.md) — 322 tokens
-- [Data flow — Command processing path](.llms/chunks/components.best-practices.architecture.data-flow.command-processing-path.md) — 321 tokens
-- [Data flow — Export pipeline](.llms/chunks/components.best-practices.architecture.data-flow.export-pipeline.md) — 471 tokens
-- [Data flow — Query path](.llms/chunks/components.best-practices.architecture.data-flow.query-path.md) — 191 tokens
-- [Data flow — Optimize data flow](.llms/chunks/components.best-practices.architecture.data-flow.optimize-data-flow.md) — 567 tokens
-- [Data flow — Performance and sizing factors](.llms/chunks/components.best-practices.architecture.data-flow.performance-and-sizing-factors.md) — 162 tokens
-- [Deciding about your stack](.llms/chunks/components.best-practices.architecture.deciding-about-your-stack.md) — 736 tokens
+- [Data flow](.llms/chunks/components.best-practices.architecture.data-flow.md) — 345 tokens
+- [Data flow — Command processing path](.llms/chunks/components.best-practices.architecture.data-flow.command-processing-path.md) — 336 tokens
+- [Data flow — Export pipeline](.llms/chunks/components.best-practices.architecture.data-flow.export-pipeline.md) — 617 tokens
+- [Data flow — Query path](.llms/chunks/components.best-practices.architecture.data-flow.query-path.md) — 206 tokens
+- [Data flow — Optimize data flow](.llms/chunks/components.best-practices.architecture.data-flow.optimize-data-flow.md) — 581 tokens
+- [Data flow — Performance and sizing factors](.llms/chunks/components.best-practices.architecture.data-flow.performance-and-sizing-factors.md) — 159 tokens
+- [Deciding about your stack](.llms/chunks/components.best-practices.architecture.deciding-about-your-stack.md) — 734 tokens
 - [Deciding about your stack — Customize your stack](.llms/chunks/components.best-practices.architecture.deciding-about-your-stack.customize-your-stack.md) — 215 tokens
 - [Run benchmarks](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.md) — 247 tokens
 - [Run benchmarks — Run your own benchmarks](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.run-your-own-benchmarks.md) — 282 tokens
@@ -306,10 +306,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Size your SaaS cluster — Data retention](.llms/chunks/components.best-practices.architecture.sizing-saas.data-retention.md) — 315 tokens
 - [Size your SaaS cluster — Next steps](.llms/chunks/components.best-practices.architecture.sizing-saas.next-steps.md) — 37 tokens
 - [Self-Managed resource planning](.llms/chunks/components.best-practices.architecture.sizing-self-managed.md) — 510 tokens
-- [Self-Managed resource planning — Baseline performance](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-performance.md) — 282 tokens
+- [Self-Managed resource planning — Baseline performance](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-performance.md) — 346 tokens
+- [Self-Managed resource planning — How we test](.llms/chunks/components.best-practices.architecture.sizing-self-managed.how-we-test.md) — 581 tokens
 - [Self-Managed resource planning — Baseline resource configuration](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration.md) — 58 tokens
-- [Self-Managed resource planning — Baseline resource configuration — without-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-without-optimize.md) — 337 tokens
-- [Self-Managed resource planning — Baseline resource configuration — with-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-with-optimize.md) — 468 tokens
+- [Self-Managed resource planning — Baseline resource configuration — without-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-without-optimize.md) — 549 tokens
+- [Self-Managed resource planning — Baseline resource configuration — with-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-with-optimize.md) — 687 tokens
 - [Self-Managed resource planning — Primary storage](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage.md) — 183 tokens
 - [Self-Managed resource planning — Primary storage — Disk space](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-disk-space.md) — 755 tokens
 - [Self-Managed resource planning — Primary storage — Event log](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-event-log.md) — 236 tokens
@@ -317,8 +318,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Self-Managed resource planning — Primary storage — RocksDB](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-rocksdb.md) — 130 tokens
 - [Self-Managed resource planning — Primary storage — Effects on disk growth](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-effects-on-disk-growth.md) — 418 tokens
 - [Self-Managed resource planning — Memory](.llms/chunks/components.best-practices.architecture.sizing-self-managed.memory.md) — 756 tokens
-- [Self-Managed resource planning — Scale your cluster](.llms/chunks/components.best-practices.architecture.sizing-self-managed.scale-your-cluster.md) — 444 tokens
-- [Self-Managed resource planning — Secondary storage considerations](.llms/chunks/components.best-practices.architecture.sizing-self-managed.secondary-storage-considerations.md) — 183 tokens
+- [Self-Managed resource planning — Scale your cluster](.llms/chunks/components.best-practices.architecture.sizing-self-managed.scale-your-cluster.md) — 503 tokens
+- [Self-Managed resource planning — Secondary storage considerations](.llms/chunks/components.best-practices.architecture.sizing-self-managed.secondary-storage-considerations.md) — 270 tokens
 - [Self-Managed resource planning — Next steps](.llms/chunks/components.best-practices.architecture.sizing-self-managed.next-steps.md) — 36 tokens
 - [Size your environment](.llms/chunks/components.best-practices.architecture.sizing-your-environment.md) — 141 tokens
 - [Size your environment — Sizing requirements and influencing factors](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors.md) — 39 tokens
@@ -419,7 +420,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Writing good workers — Scaling workers — Blocking code with virtual threads](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-blocking-code-with-virtual-threads.md) — 160 tokens
 - [Writing good workers — Scaling workers — Non-blocking / reactive code](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-non-blocking-reactive-code.md) — 127 tokens
 - [Writing good workers — Scaling workers — Recommendation](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-recommendation.md) — 107 tokens
-- [Writing good workers — Performance best-practices](.llms/chunks/components.best-practices.development.writing-good-workers.performance-best-practices.md) — 265 tokens
+- [Writing good workers — Performance best-practices](.llms/chunks/components.best-practices.development.writing-good-workers.performance-best-practices.md) — 262 tokens
 - [Writing good workers — Client library examples](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples.md) — 72 tokens
 - [Writing good workers — Client library examples — Java](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-java.md) — 847 tokens
 - [Writing good workers — Client library examples — Java (2)](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-java-2.md) — 871 tokens
@@ -431,8 +432,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Doing a proper POC — Defining a scope relevant to your business](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business.md) — 106 tokens
 - [Doing a proper POC — Defining a scope relevant to your business — Involving the right people](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-involving-the-right-people.md) — 284 tokens
 - [Doing a proper POC — Defining a scope relevant to your business — Planning the technical environment](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-planning-the-technical-environment.md) — 345 tokens
-- [Doing a proper POC — Defining a scope relevant to your business — Selecting the time frame](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-selecting-the-time-frame.md) — 186 tokens
-- [Doing a proper POC — Presenting the results](.llms/chunks/components.best-practices.management.doing-a-proper-poc.presenting-the-results.md) — 802 tokens
+- [Doing a proper POC — Defining a scope relevant to your business — Selecting the time frame](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-selecting-the-time-frame.md) — 182 tokens
+- [Doing a proper POC — Presenting the results](.llms/chunks/components.best-practices.management.doing-a-proper-poc.presenting-the-results.md) — 803 tokens
 - [Following the customer success path](.llms/chunks/components.best-practices.management.following-the-customer-success-path.md) — 827 tokens
 - [Following the customer success path — (2)](.llms/chunks/components.best-practices.management.following-the-customer-success-path.2.md) — 315 tokens
 - [Following the customer success path — Estimating effort](.llms/chunks/components.best-practices.management.following-the-customer-success-path.estimating-effort.md) — 642 tokens
@@ -455,7 +456,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Choosing the DMN hit policy — Understanding DMN hit policy use cases — Collect: deciding which groups of people may review an order](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-collect-deciding-which-groups-of-people-may-review-an-order.md) — 225 tokens
 - [Choosing the DMN hit policy — Understanding DMN hit policy use cases — Sum: accepting a customer based on soft criteria](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-sum-accepting-a-customer-based-on-soft-criteria.md) — 351 tokens
 - [Choosing the resource binding type](.llms/chunks/components.best-practices.modeling.choosing-the-resource-binding-type.md) — 227 tokens
-- [Choosing the resource binding type — Supported binding types](.llms/chunks/components.best-practices.modeling.choosing-the-resource-binding-type.supported-binding-types.md) — 653 tokens
+- [Choosing the resource binding type — Supported binding types](.llms/chunks/components.best-practices.modeling.choosing-the-resource-binding-type.supported-binding-types.md) — 656 tokens
 - [Creating readable process models](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.md) — 325 tokens
 - [Creating readable process models — Recommended practices — Modeling symmetrically](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-symmetrically.md) — 309 tokens
 - [Creating readable process models — Recommended practices — Modeling from left to right](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-from-left-to-right.md) — 264 tokens
@@ -475,7 +476,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Modeling beyond the happy path — Forking off at a particular point — Dealing with results](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-results.md) — 376 tokens
 - [Modeling beyond the happy path — Forking off at a particular point — Dealing with events](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-events.md) — 301 tokens
 - [Modeling beyond the happy path — Forking off at a particular point — Dealing with missing results via timeouts](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-missing-results-via-timeouts.md) — 300 tokens
-- [Modeling beyond the happy path — Forking off during (one or several) activities](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-during-one-or-several-activities.md) — 801 tokens
+- [Modeling beyond the happy path — Forking off during (one or several) activities](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-during-one-or-several-activities.md) — 805 tokens
 - [Modeling beyond the happy path — Being able to react all the time](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.being-able-to-react-all-the-time.md) — 494 tokens
 - [Modeling beyond the happy path — Boundary events as alternative for event based gateways — Using receive tasks with boundary events](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.boundary-events-as-alternative-for-event-based-gateways-using-receive-tasks-with-boundary-events.md) — 347 tokens
 - [Modeling beyond the happy path — Boundary events as alternative for event based gateways — Modeling a multi phase escalation path](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.boundary-events-as-alternative-for-event-based-gateways-modeling-a-multi-phase-escalation-path.md) — 726 tokens
@@ -508,9 +509,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Naming BPMN elements — Helpful practices](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.helpful-practices.md) — 115 tokens
 - [Naming technically relevant IDs](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.md) — 200 tokens
 - [Naming technically relevant IDs — Using naming conventions for BPMN IDs](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids.md) — 590 tokens
-- [Naming technically relevant IDs — Using naming conventions for BPMN IDs — Editing IDs with Camunda Modeler](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids-with-camunda-modeler.md) — 431 tokens
+- [Naming technically relevant IDs — Using naming conventions for BPMN IDs — Editing IDs](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids.md) — 445 tokens
 - [Naming technically relevant IDs — Using naming conventions for BPMN IDs — Aligning the BPMN file name with the process ID](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-aligning-the-bpmn-file-name-with-the-process-id.md) — 83 tokens
-- [Naming technically relevant IDs — Generating ID constants classes](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.generating-id-constants-classes.md) — 175 tokens
+- [Naming technically relevant IDs — Generating ID constants classes](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.generating-id-constants-classes.md) — 174 tokens
 - [Reporting about processes](.llms/chunks/components.best-practices.operations.reporting-about-processes.md) — 687 tokens
 - [Reporting about processes — History architecture](.llms/chunks/components.best-practices.operations.reporting-about-processes.history-architecture.md) — 396 tokens
 - [Reporting about processes — Connecting custom business intelligence systems (BI), data warehouses (DWH), or monitoring solutions](.llms/chunks/components.best-practices.operations.reporting-about-processes.connecting-custom-business-intelligence-systems-bi-data-warehouses-dwh-or-monitoring-solutions.md) — 190 tokens
@@ -550,19 +551,19 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Mapping rules — How to use mapping rules](.llms/chunks/components.concepts.access-control.mapping-rules.how-to-use-mapping-rules.md) — 387 tokens
 - [Mapping rules — References](.llms/chunks/components.concepts.access-control.mapping-rules.references.md) — 77 tokens
 - [Batch operations](.llms/chunks/components.concepts.batch-operations.md) — 292 tokens
-- [Batch operations — Types](.llms/chunks/components.concepts.batch-operations.types.md) — 268 tokens
+- [Batch operations — Types](.llms/chunks/components.concepts.batch-operations.types.md) — 312 tokens
 - [Batch operations — States](.llms/chunks/components.concepts.batch-operations.states.md) — 269 tokens
 - [Batch operations — Authorization](.llms/chunks/components.concepts.batch-operations.authorization.md) — 158 tokens
 - [Batch operations — Next steps](.llms/chunks/components.concepts.batch-operations.next-steps.md) — 159 tokens
-- [BPMN, DMN, and FEEL](.llms/chunks/components.concepts.bpmn-dmn-feel.md) — 207 tokens
+- [BPMN, DMN, and FEEL](.llms/chunks/components.concepts.bpmn-dmn-feel.md) — 208 tokens
 - [BPMN, DMN, and FEEL — FEEL expressions](.llms/chunks/components.concepts.bpmn-dmn-feel.feel-expressions.md) — 92 tokens
 - [Clusters](.llms/chunks/components.concepts.clusters.md) — 626 tokens
 - [Clusters — Cluster size](.llms/chunks/components.concepts.clusters.cluster-size.md) — 242 tokens
 - [Clusters — Free Trial clusters](.llms/chunks/components.concepts.clusters.free-trial-clusters.md) — 362 tokens
-- [Introduction to Camunda 8](.llms/chunks/components.concepts.concepts-overview.md) — 538 tokens
+- [Introduction to Camunda 8](.llms/chunks/components.concepts.concepts-overview.md) — 550 tokens
 - [Introduction to Camunda 8 — Camunda 8 use cases](.llms/chunks/components.concepts.concepts-overview.camunda-8-use-cases.md) — 625 tokens
 - [Introduction to Camunda 8 — What are the core quality attributes of Camunda 8?](.llms/chunks/components.concepts.concepts-overview.what-are-the-core-quality-attributes-of-camunda-8.md) — 374 tokens
-- [Introduction to Camunda 8 — What are the Camunda 8 components?](.llms/chunks/components.concepts.concepts-overview.what-are-the-camunda-8-components.md) — 672 tokens
+- [Introduction to Camunda 8 — What are the Camunda 8 components?](.llms/chunks/components.concepts.concepts-overview.what-are-the-camunda-8-components.md) — 781 tokens
 - [Introduction to Camunda 8 — How does Camunda 8 compare to other solutions?](.llms/chunks/components.concepts.concepts-overview.how-does-camunda-8-compare-to-other-solutions.md) — 329 tokens
 - [Introduction to Camunda 8 — Next steps](.llms/chunks/components.concepts.concepts-overview.next-steps.md) — 112 tokens
 - [Conditionals](.llms/chunks/components.concepts.conditionals.md) — 146 tokens
@@ -573,7 +574,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Conditionals — Trigger root-level conditional start events via API](.llms/chunks/components.concepts.conditionals.trigger-root-level-conditional-start-events-via-api.md) — 339 tokens
 - [Decision instance deletion](.llms/chunks/components.concepts.decision-instance-deletion.md) — 161 tokens
 - [Decision instance deletion — Technical details](.llms/chunks/components.concepts.decision-instance-deletion.technical-details.md) — 300 tokens
-- [Element templates](.llms/chunks/components.concepts.element-templates.md) — 281 tokens
+- [Element templates](.llms/chunks/components.concepts.element-templates.md) — 279 tokens
 - [Element templates — Next steps](.llms/chunks/components.concepts.element-templates.next-steps.md) — 72 tokens
 - [Execution listeners](.llms/chunks/components.concepts.execution-listeners.md) — 218 tokens
 - [Execution listeners — Define an execution listener](.llms/chunks/components.concepts.execution-listeners.define-an-execution-listener.md) — 353 tokens
@@ -601,7 +602,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Global user task listeners — Execution order](.llms/chunks/components.concepts.global-user-task-listeners.execution-order.md) — 314 tokens
 - [Global user task listeners — Limitations](.llms/chunks/components.concepts.global-user-task-listeners.limitations.md) — 108 tokens
 - [Incidents](.llms/chunks/components.concepts.incidents.md) — 220 tokens
-- [Incidents — Resolving](.llms/chunks/components.concepts.incidents.resolving.md) — 518 tokens
+- [Incidents — Resolving](.llms/chunks/components.concepts.incidents.resolving.md) — 638 tokens
 - [Job workers](.llms/chunks/components.concepts.job-workers.md) — 467 tokens
 - [Job workers — Requesting jobs](.llms/chunks/components.concepts.job-workers.requesting-jobs.md) — 773 tokens
 - [Job workers — Completing or failing jobs](.llms/chunks/components.concepts.job-workers.completing-or-failing-jobs.md) — 593 tokens
@@ -637,7 +638,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Multi-tenancy](.llms/chunks/components.concepts.multi-tenancy.md) — 200 tokens
 - [Multi-tenancy — How multi-tenancy works](.llms/chunks/components.concepts.multi-tenancy.how-multi-tenancy-works.md) — 387 tokens
 - [Multi-tenancy — Example: tenant membership in action](.llms/chunks/components.concepts.multi-tenancy.example-tenant-membership-in-action.md) — 173 tokens
-- [Multi-tenancy — Enable multi-tenancy checks](.llms/chunks/components.concepts.multi-tenancy.enable-multi-tenancy-checks.md) — 225 tokens
+- [Multi-tenancy — Enable multi-tenancy checks](.llms/chunks/components.concepts.multi-tenancy.enable-multi-tenancy-checks.md) — 234 tokens
 - [Multi-tenancy — Manage tenants](.llms/chunks/components.concepts.multi-tenancy.manage-tenants.md) — 267 tokens
 - [Outbound connectors vs. job workers](.llms/chunks/components.concepts.outbound-connectors-job-workers.md) — 167 tokens
 - [Outbound connectors vs. job workers — Delivery](.llms/chunks/components.concepts.outbound-connectors-job-workers.delivery.md) — 413 tokens
@@ -645,8 +646,6 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Outbound connectors vs. job workers — Context](.llms/chunks/components.concepts.outbound-connectors-job-workers.context.md) — 250 tokens
 - [Outbound connectors vs. job workers — Which one should you choose?](.llms/chunks/components.concepts.outbound-connectors-job-workers.which-one-should-you-choose.md) — 163 tokens
 - [Outbound connectors vs. job workers — Learn more](.llms/chunks/components.concepts.outbound-connectors-job-workers.learn-more.md) — 54 tokens
-- [Projects](.llms/chunks/components.concepts.process-applications.md) — 230 tokens
-- [Projects — Next steps](.llms/chunks/components.concepts.process-applications.next-steps.md) — 41 tokens
 - [Process instance creation](.llms/chunks/components.concepts.process-instance-creation.md) — 137 tokens
 - [Process instance creation — Create and execute asynchronously](.llms/chunks/components.concepts.process-instance-creation.create-and-execute-asynchronously.md) — 199 tokens
 - [Process instance creation — Create and await results](.llms/chunks/components.concepts.process-instance-creation.create-and-await-results.md) — 481 tokens
@@ -657,11 +656,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Process instance creation — FEEL context variables — Propagation to child instances](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-propagation-to-child-instances.md) — 167 tokens
 - [Process instance creation — FEEL context variables — Searching and filtering by business ID](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-searching-and-filtering-by-business-id.md) — 737 tokens
 - [Process instance creation — FEEL context variables — Late Business ID assignment](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-late-business-id-assignment.md) — 586 tokens
-- [Process instance creation — FEEL context variables — Uniqueness control](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-uniqueness-control.md) — 508 tokens
+- [Process instance creation — FEEL context variables — Uniqueness control](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-uniqueness-control.md) — 511 tokens
 - [Process instance creation — FEEL context variables — Process instance migration](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-process-instance-migration.md) — 247 tokens
 - [Process instance creation — FEEL context variables — Limitations](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-limitations.md) — 113 tokens
 - [Process instance creation — Tags](.llms/chunks/components.concepts.process-instance-creation.tags.md) — 594 tokens
-- [Process instance creation — Next steps](.llms/chunks/components.concepts.process-instance-creation.next-steps.md) — 41 tokens
+- [Process instance creation — Next steps](.llms/chunks/components.concepts.process-instance-creation.next-steps.md) — 42 tokens
 - [Process instance deletion](.llms/chunks/components.concepts.process-instance-deletion.md) — 135 tokens
 - [Process instance deletion — Limitations](.llms/chunks/components.concepts.process-instance-deletion.limitations.md) — 251 tokens
 - [Process instance deletion — Eventual consistency](.llms/chunks/components.concepts.process-instance-deletion.eventual-consistency.md) — 352 tokens
@@ -693,48 +692,69 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Process instance modification — Move an element instance](.llms/chunks/components.concepts.process-instance-modification.move-an-element-instance.md) — 491 tokens
 - [Process instance modification — Execute the modification instructions](.llms/chunks/components.concepts.process-instance-modification.execute-the-modification-instructions.md) — 223 tokens
 - [Process instance modification — Limitations](.llms/chunks/components.concepts.process-instance-modification.limitations.md) — 398 tokens
+- [Process instance suspension](.llms/chunks/components.concepts.process-instance-suspension.md) — 172 tokens
+- [Process instance suspension — Suspend and resume a process instance](.llms/chunks/components.concepts.process-instance-suspension.suspend-and-resume-a-process-instance.md) — 170 tokens
+- [Process instance suspension — Behavior during suspension](.llms/chunks/components.concepts.process-instance-suspension.behavior-during-suspension.md) — 530 tokens
+- [Process instance suspension — Allowed actions on suspended instances](.llms/chunks/components.concepts.process-instance-suspension.allowed-actions-on-suspended-instances.md) — 212 tokens
+- [Process instance suspension — Impact on Connectors](.llms/chunks/components.concepts.process-instance-suspension.impact-on-connectors.md) — 164 tokens
+- [Process instance suspension — In-flight batch operations](.llms/chunks/components.concepts.process-instance-suspension.in-flight-batch-operations.md) — 615 tokens
+- [Process instance suspension — Limitations](.llms/chunks/components.concepts.process-instance-suspension.limitations.md) — 269 tokens
 - [Processes](.llms/chunks/components.concepts.processes.md) — 336 tokens
-- [Processes — BPMN](.llms/chunks/components.concepts.processes.bpmn.md) — 226 tokens
+- [Processes — BPMN](.llms/chunks/components.concepts.processes.bpmn.md) — 195 tokens
 - [Processes — Process execution](.llms/chunks/components.concepts.processes.process-execution.md) — 575 tokens
+- [Projects](.llms/chunks/components.concepts.projects.md) — 145 tokens
+- [Projects — Using projects](.llms/chunks/components.concepts.projects.using-projects.md) — 193 tokens
+- [Projects — Process applications in Desktop Modeler](.llms/chunks/components.concepts.projects.process-applications-in-desktop-modeler.md) — 158 tokens
+- [Projects — Next steps](.llms/chunks/components.concepts.projects.next-steps.md) — 75 tokens
 - [Resource deletion](.llms/chunks/components.concepts.resource-deletion.md) — 163 tokens
-- [Resource deletion — Deleting a process definition](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition.md) — 592 tokens
-- [Resource deletion — Deleting a decision requirements graph](.llms/chunks/components.concepts.resource-deletion.deleting-a-decision-requirements-graph.md) — 333 tokens
-- [Secret resolution and job activation](.llms/chunks/components.concepts.secret-resolution-and-job-activation.md) — 297 tokens
-- [Secret resolution and job activation — Availability](.llms/chunks/components.concepts.secret-resolution-and-job-activation.availability.md) — 256 tokens
+- [Resource deletion — Deleting a process definition](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition.md) — 182 tokens
+- [Resource deletion — Deleting a process definition — Deleting the latest version](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition-deleting-the-latest-version.md) — 195 tokens
+- [Resource deletion — Deleting a process definition — Call activities](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition-call-activities.md) — 78 tokens
+- [Resource deletion — Deleting a process definition — Draining](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition-draining.md) — 403 tokens
+- [Resource deletion — Deleting a process definition — Historic data](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition-historic-data.md) — 327 tokens
+- [Resource deletion — Deleting a decision requirements graph](.llms/chunks/components.concepts.resource-deletion.deleting-a-decision-requirements-graph.md) — 384 tokens
+- [Secret resolution and job activation](.llms/chunks/components.concepts.secret-resolution-and-job-activation.md) — 275 tokens
+- [Secret resolution and job activation — Availability](.llms/chunks/components.concepts.secret-resolution-and-job-activation.availability.md) — 268 tokens
 - [Secret resolution and job activation — Resolve references before activation](.llms/chunks/components.concepts.secret-resolution-and-job-activation.resolve-references-before-activation.md) — 734 tokens
 - [Secret resolution and job activation — Activate a job that references secrets](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets.md) — 268 tokens
 - [Secret resolution and job activation — Activate a job that references secrets — Long polling](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-long-polling.md) — 357 tokens
 - [Secret resolution and job activation — Activate a job that references secrets — Job push](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-job-push.md) — 166 tokens
 - [Secret resolution and job activation — Activate a job that references secrets — Understand what a job worker receives](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-understand-what-a-job-worker-receives.md) — 427 tokens
 - [Secret resolution and job activation — Secret values location](.llms/chunks/components.concepts.secret-resolution-and-job-activation.secret-values-location.md) — 256 tokens
-- [Secret resolution and job activation — Understand why a job is not activated](.llms/chunks/components.concepts.secret-resolution-and-job-activation.understand-why-a-job-is-not-activated.md) — 314 tokens
-- [Secret resolution and job activation — Tune the resolution scheduler](.llms/chunks/components.concepts.secret-resolution-and-job-activation.tune-the-resolution-scheduler.md) — 553 tokens
+- [Secret resolution and job activation — Understand why a job is not activated](.llms/chunks/components.concepts.secret-resolution-and-job-activation.understand-why-a-job-is-not-activated.md) — 315 tokens
+- [Secret resolution and job activation — Tune the resolution scheduler](.llms/chunks/components.concepts.secret-resolution-and-job-activation.tune-the-resolution-scheduler.md) — 561 tokens
 - [Secret resolution and job activation — Secret resolution across physical tenants](.llms/chunks/components.concepts.secret-resolution-and-job-activation.secret-resolution-across-physical-tenants.md) — 235 tokens
 - [Secret resolution and job activation — Related resources](.llms/chunks/components.concepts.secret-resolution-and-job-activation.related-resources.md) — 110 tokens
-- [Troubleshoot secret resolution failures](.llms/chunks/components.concepts.secret-resolution-incidents.md) — 183 tokens
-- [Troubleshoot secret resolution failures — Find your symptom](.llms/chunks/components.concepts.secret-resolution-incidents.find-your-symptom.md) — 519 tokens
-- [Troubleshoot secret resolution failures — Resolve secret lookup failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md) — 393 tokens
-- [Troubleshoot secret resolution failures — Resolve secret injection failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md) — 551 tokens
-- [Troubleshoot secret resolution failures — Reduce oversized secret values](.llms/chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md) — 325 tokens
+- [Troubleshoot secret resolution failures](.llms/chunks/components.concepts.secret-resolution-incidents.md) — 167 tokens
+- [Troubleshoot secret resolution failures — Find your symptom](.llms/chunks/components.concepts.secret-resolution-incidents.find-your-symptom.md) — 536 tokens
+- [Troubleshoot secret resolution failures — Resolve secret lookup failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md) — 503 tokens
+- [Troubleshoot secret resolution failures — Resolve secret injection failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md) — 640 tokens
+- [Troubleshoot secret resolution failures — Reduce oversized secret values](.llms/chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md) — 426 tokens
 - [Troubleshoot secret resolution failures — Identify failures that raise no incident](.llms/chunks/components.concepts.secret-resolution-incidents.identify-failures-that-raise-no-incident.md) — 441 tokens
 - [Troubleshoot secret resolution failures — Resume a suspended job after secret resolution](.llms/chunks/components.concepts.secret-resolution-incidents.resume-a-suspended-job-after-secret-resolution.md) — 173 tokens
 - [Troubleshoot secret resolution failures — Diagnose the cause](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause.md) — 849 tokens
 - [Troubleshoot secret resolution failures — Diagnose the cause (2)](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause-2.md) — 279 tokens
 - [Troubleshoot secret resolution failures — Retry after fixing the cause](.llms/chunks/components.concepts.secret-resolution-incidents.retry-after-fixing-the-cause.md) — 327 tokens
 - [Troubleshoot secret resolution failures — Related resources](.llms/chunks/components.concepts.secret-resolution-incidents.related-resources.md) — 106 tokens
-- [Secret resolution](.llms/chunks/components.concepts.secret-resolution.md) — 307 tokens
+- [Secret resolution](.llms/chunks/components.concepts.secret-resolution.md) — 416 tokens
 - [Secret resolution — Reference syntax](.llms/chunks/components.concepts.secret-resolution.reference-syntax.md) — 421 tokens
-- [Secret resolution — Two resolution paths](.llms/chunks/components.concepts.secret-resolution.two-resolution-paths.md) — 341 tokens
-- [Secret resolution — Physical-tenant scope](.llms/chunks/components.concepts.secret-resolution.physical-tenant-scope.md) — 150 tokens
-- [Secret resolution — Cache behavior](.llms/chunks/components.concepts.secret-resolution.cache-behavior.md) — 237 tokens
+- [Secret resolution — Resolution paths](.llms/chunks/components.concepts.secret-resolution.resolution-paths.md) — 357 tokens
+- [Secret resolution — Physical tenant scope](.llms/chunks/components.concepts.secret-resolution.physical-tenant-scope.md) — 151 tokens
+- [Secret resolution — Cache behavior](.llms/chunks/components.concepts.secret-resolution.cache-behavior.md) — 329 tokens
 - [Secret resolution — Related resources](.llms/chunks/components.concepts.secret-resolution.related-resources.md) — 124 tokens
+- [Secrets](.llms/chunks/components.concepts.secrets.md) — 274 tokens
+- [Secrets — Reference a secret](.llms/chunks/components.concepts.secrets.reference-a-secret.md) — 391 tokens
+- [Secrets — Store and create secrets](.llms/chunks/components.concepts.secrets.store-and-create-secrets.md) — 504 tokens
+- [Secrets — Resolve, list, and troubleshoot](.llms/chunks/components.concepts.secrets.resolve-list-and-troubleshoot.md) — 140 tokens
+- [Secrets — Control access to secrets](.llms/chunks/components.concepts.secrets.control-access-to-secrets.md) — 678 tokens
+- [Secrets — Related resources](.llms/chunks/components.concepts.secrets.related-resources.md) — 211 tokens
 - [Signals](.llms/chunks/components.concepts.signals.md) — 165 tokens
 - [Signals — Signal subscriptions](.llms/chunks/components.concepts.signals.signal-subscriptions.md) — 244 tokens
 - [Example user task listener](.llms/chunks/components.concepts.user-task-listeners-guide.md) — 173 tokens
-- [Example user task listener — Prerequisites](.llms/chunks/components.concepts.user-task-listeners-guide.prerequisites.md) — 433 tokens
+- [Example user task listener — Prerequisites](.llms/chunks/components.concepts.user-task-listeners-guide.prerequisites.md) — 405 tokens
 - [Example user task listener — Step 1: Create a process with a user task in Hub](.llms/chunks/components.concepts.user-task-listeners-guide.step-1-create-a-process-with-a-user-task-in-hub.md) — 280 tokens
 - [Example user task listener — Step 4: Create a cluster](.llms/chunks/components.concepts.user-task-listeners-guide.step-4-create-a-cluster.md) — 322 tokens
-- [Example user task listener — Step 5: Deploy and run the process](.llms/chunks/components.concepts.user-task-listeners-guide.step-5-deploy-and-run-the-process.md) — 334 tokens
+- [Example user task listener — Step 5: Deploy and run the process](.llms/chunks/components.concepts.user-task-listeners-guide.step-5-deploy-and-run-the-process.md) — 345 tokens
 - [Example user task listener — Step 7: Implement the listener](.llms/chunks/components.concepts.user-task-listeners-guide.step-7-implement-the-listener.md) — 443 tokens
 - [Example user task listener — Step 8: Verify the result in Operate and Tasklist](.llms/chunks/components.concepts.user-task-listeners-guide.step-8-verify-the-result-in-operate-and-tasklist.md) — 381 tokens
 - [Example user task listener — Additional resources and next steps](.llms/chunks/components.concepts.user-task-listeners-guide.additional-resources-and-next-steps.md) — 92 tokens
@@ -757,11 +777,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Variables — Variable scopes — Variable propagation by BPMN element](.llms/chunks/components.concepts.variables.variable-scopes-variable-propagation-by-bpmn-element.md) — 609 tokens
 - [Variables — Variable scopes — Internal engine variables](.llms/chunks/components.concepts.variables.variable-scopes-internal-engine-variables.md) — 159 tokens
 - [Variables — Variable scopes — Local variables](.llms/chunks/components.concepts.variables.variable-scopes-local-variables.md) — 84 tokens
-- [Variables — Variable scopes — Define local variables](.llms/chunks/components.concepts.variables.variable-scopes-define-local-variables.md) — 124 tokens
-- [Variables — Variable scopes — Scope behavior in common modeling patterns](.llms/chunks/components.concepts.variables.variable-scopes-scope-behavior-in-common-modeling-patterns.md) — 522 tokens
+- [Variables — Variable scopes — Define local variables](.llms/chunks/components.concepts.variables.variable-scopes-define-local-variables.md) — 134 tokens
+- [Variables — Variable scopes — Scope behavior in common modeling patterns](.llms/chunks/components.concepts.variables.variable-scopes-scope-behavior-in-common-modeling-patterns.md) — 659 tokens
 - [Variables — Input/output variable mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings.md) — 327 tokens
-- [Variables — Input/output variable mappings — Input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-input-mappings.md) — 470 tokens
-- [Variables — Input/output variable mappings — Secret references in input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings.md) — 922 tokens
+- [Variables — Input/output variable mappings — Input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-input-mappings.md) — 480 tokens
+- [Variables — Input/output variable mappings — Secret references in input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings.md) — 896 tokens
 - [Variables — Input/output variable mappings — Secret references in input mappings (2)](.llms/chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings-2.md) — 429 tokens
 - [Variables — Input/output variable mappings — Output mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-output-mappings.md) — 683 tokens
 - [Variables — Input/output variable mappings — Nested variables in mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-nested-variables-in-mappings.md) — 161 tokens
@@ -793,21 +813,22 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Ad-hoc sub-processes — XML representation](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.xml-representation.md) — 104 tokens
 - [](.llms/chunks/components.modeler.bpmn.assets.react-components.iso-8601-date-time.md) — 100 tokens
 - [Design a process using BPMN](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.md) — 288 tokens
-- [Design a process using BPMN — Set up](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.set-up.md) — 773 tokens
-- [Design a process using BPMN — Execute your process diagram](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.execute-your-process-diagram.md) — 234 tokens
-- [Design a process using BPMN — Additional resources and next steps](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.additional-resources-and-next-steps.md) — 87 tokens
-- [BPMN coverage](.llms/chunks/components.modeler.bpmn.bpmn-coverage.md) — 156 tokens
+- [Design a process using BPMN — Set up](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.set-up.md) — 770 tokens
+- [Design a process using BPMN — Execute your process diagram](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.execute-your-process-diagram.md) — 211 tokens
+- [Design a process using BPMN — Additional resources and next steps](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.additional-resources-and-next-steps.md) — 79 tokens
+- [BPMN coverage](.llms/chunks/components.modeler.bpmn.bpmn-coverage.md) — 162 tokens
 - [BPMN primer](.llms/chunks/components.modeler.bpmn.bpmn-primer.md) — 831 tokens
-- [BPMN primer — Modeling BPMN diagrams](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams.md) — 74 tokens
+- [BPMN primer — Modeling BPMN diagrams](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams.md) — 68 tokens
 - [BPMN primer — Modeling BPMN diagrams — Sequence flow: Controlling the flow of execution](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-sequence-flow-controlling-the-flow-of-execution.md) — 202 tokens
 - [BPMN primer — Modeling BPMN diagrams — Tasks: Units of work](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-tasks-units-of-work.md) — 219 tokens
 - [BPMN primer — Modeling BPMN diagrams — Gateways: Steering flow](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-gateways-steering-flow.md) — 143 tokens
 - [BPMN primer — Modeling BPMN diagrams — Events: Waiting for something to happen](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-events-waiting-for-something-to-happen.md) — 202 tokens
 - [BPMN primer — Modeling BPMN diagrams — Subprocesses: Grouping elements](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-subprocesses-grouping-elements.md) — 153 tokens
 - [BPMN primer — Additional resources](.llms/chunks/components.modeler.bpmn.bpmn-primer.additional-resources.md) — 48 tokens
-- [BPMN in Modeler](.llms/chunks/components.modeler.bpmn.bpmn.md) — 141 tokens
-- [BPMN in Modeler — Start modeling](.llms/chunks/components.modeler.bpmn.bpmn.start-modeling.md) — 262 tokens
-- [BPMN in Modeler — BPMN 2.0 properties for execution](.llms/chunks/components.modeler.bpmn.bpmn.bpmn-2.0-properties-for-execution.md) — 53 tokens
+- [Modeling with BPMN](.llms/chunks/components.modeler.bpmn.bpmn.md) — 148 tokens
+- [Modeling with BPMN — Start modeling](.llms/chunks/components.modeler.bpmn.bpmn.start-modeling.md) — 143 tokens
+- [Modeling with BPMN — Creating BPMN elements](.llms/chunks/components.modeler.bpmn.bpmn.creating-bpmn-elements.md) — 143 tokens
+- [Modeling with BPMN — BPMN 2.0 properties for execution](.llms/chunks/components.modeler.bpmn.bpmn.bpmn-2.0-properties-for-execution.md) — 53 tokens
 - [Business rule tasks](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.md) — 323 tokens
 - [Business rule tasks — Defining a called decision {#defining-a-task}](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.defining-a-called-decision-defining-a-task.md) — 477 tokens
 - [Business rule tasks — Variable mappings](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.variable-mappings.md) — 201 tokens
@@ -833,7 +854,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Conditional events — Event sub-process conditional start events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.event-sub-process-conditional-start-events.md) — 254 tokens
 - [Conditional events — Intermediate conditional catch events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.intermediate-conditional-catch-events.md) — 330 tokens
 - [Conditional events — Define conditions and variable filters](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.define-conditions-and-variable-filters.md) — 314 tokens
-- [Conditional events — Modeling conditional events in Modeler](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-modeler.md) — 201 tokens
+- [Conditional events — Modeling conditional events in Camunda Hub and Desktop Modeler](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-camunda-hub-and-desktop-modeler.md) — 210 tokens
 - [Conditional events — XML representation](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.xml-representation.md) — 138 tokens
 - [Conditional events — Additional resources](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.additional-resources.md) — 27 tokens
 - [Data flow](.llms/chunks/components.modeler.bpmn.data-flow.md) — 267 tokens
@@ -841,7 +862,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Data flow — Concurrency considerations](.llms/chunks/components.modeler.bpmn.data-flow.concurrency-considerations.md) — 222 tokens
 - [Data flow — Additional resources](.llms/chunks/components.modeler.bpmn.data-flow.additional-resources.md) — 53 tokens
 - [Embedded subprocess](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.md) — 209 tokens
-- [Embedded subprocess — Collapsed subprocesses](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.collapsed-subprocesses.md) — 228 tokens
+- [Embedded subprocess — Collapsed subprocesses](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.collapsed-subprocesses.md) — 231 tokens
 - [Embedded subprocess — Variable mappings](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.variable-mappings.md) — 212 tokens
 - [Embedded subprocess — Additional resources](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.additional-resources.md) — 74 tokens
 - [Error events](.llms/chunks/components.modeler.bpmn.error-events.error-events.md) — 141 tokens
@@ -863,7 +884,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Overview](.llms/chunks/components.modeler.bpmn.events.md) — 271 tokens
 - [Overview — Events in general](.llms/chunks/components.modeler.bpmn.events.events-in-general.md) — 320 tokens
 - [Overview — Intermediate events](.llms/chunks/components.modeler.bpmn.events.intermediate-events.md) — 185 tokens
-- [Exclusive gateway](.llms/chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.md) — 369 tokens
+- [Exclusive gateway](.llms/chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.md) — 374 tokens
 - [Exclusive gateway — Conditions](.llms/chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.conditions.md) — 225 tokens
 - [Overview](.llms/chunks/components.modeler.bpmn.gateways.md) — 127 tokens
 - [Inclusive gateway](.llms/chunks/components.modeler.bpmn.inclusive-gateways.inclusive-gateways.md) — 609 tokens
@@ -873,6 +894,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Link events — Additional resources](.llms/chunks/components.modeler.bpmn.link-events.link-events.additional-resources.md) — 85 tokens
 - [Manual tasks](.llms/chunks/components.modeler.bpmn.manual-tasks.manual-tasks.md) — 208 tokens
 - [Overview](.llms/chunks/components.modeler.bpmn.markers.md) — 239 tokens
+- [Overview — Add a marker to an element](.llms/chunks/components.modeler.bpmn.markers.add-a-marker-to-an-element.md) — 103 tokens
 - [Message events](.llms/chunks/components.modeler.bpmn.message-events.message-events.md) — 237 tokens
 - [Message events — Message start events](.llms/chunks/components.modeler.bpmn.message-events.message-events.message-start-events.md) — 538 tokens
 - [Message events — Intermediate message catch events](.llms/chunks/components.modeler.bpmn.message-events.message-events.intermediate-message-catch-events.md) — 199 tokens
@@ -931,11 +953,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [User tasks — User task implementation types — Scheduling](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-scheduling.md) — 324 tokens
 - [User tasks — User task implementation types — Define user task priority](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-define-user-task-priority.md) — 191 tokens
 - [User tasks — User task implementation types — Variable mappings](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-variable-mappings.md) — 185 tokens
-- [User tasks — User task implementation types — User task forms](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-forms.md) — 663 tokens
+- [User tasks — User task implementation types — User task forms](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-forms.md) — 671 tokens
 - [User tasks — User task implementation types — Task headers](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-task-headers.md) — 68 tokens
 - [User tasks — User task implementation types — User task listeners](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-listeners.md) — 242 tokens
 - [User tasks — Job worker implementation](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.job-worker-implementation.md) — 599 tokens
-- [User tasks — Additional resources](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.additional-resources.md) — 540 tokens
+- [User tasks — Additional resources](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.additional-resources.md) — 542 tokens
 - [AI agent functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.md) — 210 tokens
 - [AI agent functions — fromAi(value, description)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description.md) — 148 tokens
 - [AI agent functions — fromAi(value, description, type)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description-type.md) — 183 tokens
@@ -1003,7 +1025,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Temporal functions — day of year(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.day-of-year-date.md) — 178 tokens
 - [Temporal functions — month of year(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.month-of-year-date.md) — 195 tokens
 - [Temporal functions — last day of month(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.last-day-of-month-date.md) — 120 tokens
-- [Supported data types](.llms/chunks/components.modeler.feel.cluster-variable.data-types.md) — 351 tokens
+- [Supported data types](.llms/chunks/components.modeler.feel.cluster-variable.data-types.md) — 321 tokens
 - [Supported data types — Where references can appear in a value](.llms/chunks/components.modeler.feel.cluster-variable.data-types.where-references-can-appear-in-a-value.md) — 267 tokens
 - [Supported data types — Create a variable of kind `SECRET_REFERENCE`](.llms/chunks/components.modeler.feel.cluster-variable.data-types.create-a-variable-of-kind-secret_reference.md) — 151 tokens
 - [Supported data types — Read a variable of kind `SECRET_REFERENCE`](.llms/chunks/components.modeler.feel.cluster-variable.data-types.read-a-variable-of-kind-secret_reference.md) — 144 tokens
@@ -1013,8 +1035,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Common use cases — Multi-tenant SLA configuration](.llms/chunks/components.modeler.feel.cluster-variable.examples.multi-tenant-sla-configuration.md) — 219 tokens
 - [Common use cases — Integration credentials and endpoints](.llms/chunks/components.modeler.feel.cluster-variable.examples.integration-credentials-and-endpoints.md) — 212 tokens
 - [Get started with cluster variables](.llms/chunks/components.modeler.feel.cluster-variable.get-started.md) — 202 tokens
-- [Get started with cluster variables — Step 2: Override for a specific tenant](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-2-override-for-a-specific-tenant.md) — 372 tokens
-- [Get started with cluster variables — Step 4: Deploy and test your process](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-4-deploy-and-test-your-process.md) — 200 tokens
+- [Get started with cluster variables — Step 2: Override for a specific tenant](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-2-override-for-a-specific-tenant.md) — 377 tokens
+- [Get started with cluster variables — Step 4: Deploy and test your process](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-4-deploy-and-test-your-process.md) — 205 tokens
 - [Get started with cluster variables — Next steps](.llms/chunks/components.modeler.feel.cluster-variable.get-started.next-steps.md) — 64 tokens
 - [Metadata](.llms/chunks/components.modeler.feel.cluster-variable.metadata.md) — 204 tokens
 - [Metadata — Structure and constraints](.llms/chunks/components.modeler.feel.cluster-variable.metadata.structure-and-constraints.md) — 215 tokens
@@ -1029,7 +1051,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Scope resolution — Resolution priority](.llms/chunks/components.modeler.feel.cluster-variable.scope-and-priority.resolution-priority.md) — 528 tokens
 - [Scope resolution — Multi-tenant considerations](.llms/chunks/components.modeler.feel.cluster-variable.scope-and-priority.multi-tenant-considerations.md) — 227 tokens
 - [How to use cluster variables](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.md) — 631 tokens
-- [How to use cluster variables — Access using FEEL expressions](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.access-using-feel-expressions.md) — 480 tokens
+- [How to use cluster variables — Access using FEEL expressions](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.access-using-feel-expressions.md) — 482 tokens
 - [How to use cluster variables — Usage best practices](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.usage-best-practices.md) — 156 tokens
 - [FEEL Playground](.llms/chunks/components.modeler.feel.feel-playground.md) — 371 tokens
 - [FEEL Playground — Validate your FEEL expression {#validate}](.llms/chunks/components.modeler.feel.feel-playground.validate-your-feel-expression-validate.md) — 477 tokens

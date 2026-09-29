@@ -57,7 +57,7 @@ curl https://${CLUSTER_ID}.${REGION_ID}.privateconnectivity.camunda.io/api/v2/to
 ```
 
 Replace the placeholders with the values for your environment.
-See [Base URLs](#base-urls) for details on SaaS (public and secure connectivity) and self-managed setups.
+See [base URLs](#base-urls) for details on SaaS (public and secure connectivity) and self-managed setups.
 
 #### Using Postman
 
@@ -69,12 +69,12 @@ This request returns information about your cluster topology, confirming that yo
 
 If you're just getting started with process automation, try this simple workflow:
 
-1. **Model a process** – Create a simple BPMN process with a user task using [Camunda Modeler](https://camunda.com/download/modeler/)
+1. **Model a process** – Create a simple BPMN process with a user task using [Camunda Hub](https://docs.camunda.io/docs/next/components/hub/workspace/modeler/index) or [Desktop Modeler](https://docs.camunda.io/docs/next/components/modeler/desktop-modeler/index)
 2. **Deploy the process** – Use [`POST /deployments`](https://docs.camunda.io/docs/next/apis-tools/orchestration-cluster-api-rest/specifications/create-deployment.api) to deploy your BPMN file
 3. **Start a process instance** – Use [`POST /process-instances`](https://docs.camunda.io/docs/next/apis-tools/orchestration-cluster-api-rest/specifications/create-process-instance.api) to create a new process instance
 4. **Complete a user task** – Use [`POST /user-tasks/{userTaskKey}/completion`](https://docs.camunda.io/docs/next/apis-tools/orchestration-cluster-api-rest/specifications/complete-user-task.api) to complete the task
 
-For a complete walkthrough with code examples, see our [Getting Started Tutorial](https://docs.camunda.io/docs/next/guides/getting-started-example).
+For a complete walkthrough with code examples, see our [getting started tutorial](https://docs.camunda.io/docs/next/guides/getting-started-example).
 
 ### Explore the API
 

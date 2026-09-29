@@ -2,8 +2,8 @@
 
 Resolve the incident after correcting the underlying problem. Resolving the incident retries the failed operation and makes the job activatable again.
 
-| You fixed                                     | After you resolve the incident                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| You fixed:                                    | After you resolve the incident:                                                       |
+| :-------------------------------------------- | :------------------------------------------------------------------------------------ |
 | The secret in the store or store access       | The broker requests resolution again, and the job activates once the value is cached. |
 | The variable or input mapping                 | Camunda retries injection against the current job variables.                          |
 | The size of the secret value or job variables | The job activates once the resolved values fit within the message-size limit.         |

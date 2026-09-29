@@ -10,6 +10,8 @@ A [business rule task](https://docs.camunda.io/docs/next/components/modeler/bpmn
 
 ### Historic data
 
+By default, deleting a decision requirements graph removes it from Zeebe's runtime state only. Its historic data remains in secondary storage until explicitly deleted, so it may continue to appear in Operate and Tasklist history views until then.
+
 Optionally enable historic data deletion to permanently remove all data related to the decision definition from secondary storage.
 
 **Warning**

@@ -1,8 +1,12 @@
 # Data flow — Optimize data flow
 
-Optimize sits on top of the export pipeline as a second-tier consumer. See it in violet in the diagram below:
+Optimize sits on top of the export pipeline as a second-tier consumer.
 
-![Camunda 8.8+ architecture overview - Data Flow Optimize](assets/architecture-8.8plus-data-flow-optimize.jpg)
+This is highlighted purple in the following diagram:
+
+<!-- Source: Miro board https://miro.com/app/board/uXjVGiNnJBc=/?moveToWidget=3458764684816569431&cot=14 -->
+
+![Camunda 8.10+ architecture overview - Data Flow Optimize](assets/architecture-8.10plus-data-flow-optimize.jpg)
 
 1. The Elasticsearch/OpenSearch exporter writes raw engine events into per-partition Elasticsearch/OpenSearch indices.
 2. Optimize's **importer** reads from those indices and transforms the data into its own analytics indices.

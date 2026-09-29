@@ -6,7 +6,7 @@ Leveraging typical BI system's **ETL** (extract, transform, and load) features a
 
 To get the data into the BI system, leverage one of the mechanisms described above. Our recommendation generally is:
 
-- In SaaS, leverage the history API to regularly pull data, as custom exporters are not supported there.
+- In SaaS, leverage the Operate API to regularly pull data, as custom exporters are not supported there.
 
 ---
 Source: https://docs.camunda.io/docs/next/components/best-practices/operations/reporting-about-processes

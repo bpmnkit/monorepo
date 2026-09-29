@@ -10,7 +10,7 @@ To do this, take the following steps:
 const authorizationConfiguration = {
   clientId: process.env.CAMUNDA_CLIENT_ID,
   clientSecret: process.env.CAMUNDA_CLIENT_SECRET,
-  // These settings come from your .env file. Note that CAMUNDA_TOKEN_AUDIENCE is represented by ZEEBE_TOKEN_AUDIENCE in the Console UI.
+  // These settings come from your .env file. Note that CAMUNDA_TOKEN_AUDIENCE is represented by ZEEBE_TOKEN_AUDIENCE in the Hub UI.
   audience: process.env.CAMUNDA_TOKEN_AUDIENCE,
 };
 ```

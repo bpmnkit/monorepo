@@ -5,9 +5,11 @@ Its processing path (command lifecycle) follows this pattern:
 
 **Client (REST or gRPC) → Camunda API (Gateway) → Broker (Command API) → Raft partition (log) → Raft replication → Processing Engine → event on log → RocksDB state update → Client response**
 
-See it in green in the diagram below:
+This path is highlighted green in the following diagram:
 
-![Camunda 8.8+ architecture overview - Data Flow Command processing path](assets/architecture-8.8plus-data-flow-command.jpg)
+<!-- Source: Miro board https://miro.com/app/board/uXjVGiNnJBc=/?moveToWidget=3458764684814573543&cot=14 -->
+
+![Camunda 8.10+ architecture overview - Data Flow Command processing path](assets/architecture-8.10plus-data-flow-command.jpg)
 
 Client responses are not sent until the command is fully processed by the engine. The engine can only process a command once it has been committed to the log (as part of the Raft consensus protocol). Commands are read sequentially per partition, only one command per partition is processed at a time, and only the Raft partition leader runs the engine.
 

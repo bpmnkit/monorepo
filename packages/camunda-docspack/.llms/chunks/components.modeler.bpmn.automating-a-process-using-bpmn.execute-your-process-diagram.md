@@ -5,13 +5,15 @@ If you change a diagram and it is auto-saved, this has no effect on your cluster
 
 When you deploy the diagram, it becomes available on the selected cluster and new instances can start.
 
-To execute your completed process diagram, click the blue **Deploy** button.
+To execute your completed process diagram:
 
-You can now start a new process instance to initiate your process diagram. Click the blue **Run** button.
+1. Make sure you have [connected at least one cluster to your project](https://docs.camunda.io/docs/next/components/hub/workspace/manage-projects/create-a-project#connect-clusters).
+1. Reopen the BPMN diagram.
+1. At the top right of the modeling interface, click **Deploy & run**.
+1. Select a target **Stage**.
+1. Click **Deploy & run**.
 
-You can now monitor your instances in [Operate](https://docs.camunda.io/docs/next/components/operate/operate-introduction). Click the square-shaped **Camunda components** button to move between apps, and view process instances once in Operate.
-
-You can also visit an ongoing list of user tasks required in your BPMN diagram. Navigate to [Tasklist](https://docs.camunda.io/docs/next/components/tasklist/introduction-to-tasklist) for a closer look.
+You can now monitor your instances in [Operate](https://docs.camunda.io/docs/next/components/operate/userguide/basic-operate-navigation#open-operate).
 
 **Note**
 Variables are part of a process instance and represent the data of the instance. To learn more about these values, variable scope, and input/output mappings, visit our documentation on [variables](https://docs.camunda.io/docs/next/components/concepts/variables).
