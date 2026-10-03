@@ -89,9 +89,9 @@ function check(dir) {
 	}
 
 	// repository
-	if (!pkg.repository?.url?.includes("github.com/bpmnkit/monorepo")) {
+	if (!pkg.repository?.url?.includes("github.com/bpmnkit/bpmnkit")) {
 		issues.push(
-			`"repository.url" must reference github.com/bpmnkit/monorepo (got: ${JSON.stringify(pkg.repository?.url)})`,
+			`"repository.url" must reference github.com/bpmnkit/bpmnkit (got: ${JSON.stringify(pkg.repository?.url)})`,
 		)
 	}
 

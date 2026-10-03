@@ -5,7 +5,7 @@ This file is installed to `.claude/aikit.md` by `casen skills install`. The skil
 These are lightweight, CLI-only slash commands. For the full skill set — `/bpmnkit:implement`, `/bpmnkit:extend`, `/bpmnkit:agent`, `/bpmnkit:connect`, plus generated reference docs (`plan-format.md`, `connectors.md`, `agentic.md`, `feel.md`) — install the Claude Code plugin instead:
 
 ```sh
-/plugin marketplace add github:bpmnkit/monorepo
+/plugin marketplace add github:bpmnkit/bpmnkit
 /plugin install bpmnkit
 ```
 

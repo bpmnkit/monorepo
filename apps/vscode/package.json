@@ -15,11 +15,11 @@
 	"keywords": ["bpmn", "dmn", "camunda", "zeebe", "workflow"],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmnkit/monorepo"
+		"url": "https://github.com/bpmnkit/bpmnkit"
 	},
 	"homepage": "https://bpmnkit.com",
 	"bugs": {
-		"url": "https://github.com/bpmnkit/monorepo/issues"
+		"url": "https://github.com/bpmnkit/bpmnkit/issues"
 	},
 	"main": "./dist/extension.cjs",
 	"scripts": {

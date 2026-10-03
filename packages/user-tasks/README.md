@@ -4,12 +4,12 @@
   <p>Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks)
-  [![license](https://img.shields.io/npm/l/@bpmnkit/user-tasks?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
-  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
-  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/user-tasks?style=flat-square)](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/bpmnkit)
+  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/bpmnkit)
   [![tier: experimental](https://img.shields.io/badge/tier-experimental-d97706?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/user-tasks/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/bpmnkit) · [Changelog](https://github.com/bpmnkit/bpmnkit/blob/main/packages/user-tasks/CHANGELOG.md)
 </div>
 
 > **Experimental tier.** May change or be discontinued. Not for production. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
@@ -168,7 +168,7 @@ interface UserTask {
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+[MIT](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="32" height="32" alt="BPMN Kit"></a>

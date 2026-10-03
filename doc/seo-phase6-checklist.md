@@ -62,7 +62,7 @@ script tag with no account behind it would just be dead weight). Once an account
    the same package, gated so dev builds don't report. This is a small follow-up PR once
    an account/site-ID exists; there's no useful stub to add before that.
 4. What to actually watch: which of `/connectors`, `/compare`, `/use-cases`, `/blog`,
-   and `/glossary` pages drive outbound clicks to `github.com/bpmnkit/monorepo` or
+   and `/glossary` pages drive outbound clicks to `github.com/bpmnkit/bpmnkit` or
    `npmjs.com/org/bpmnkit` — that's the real conversion event for a library, not
    pageviews.
 

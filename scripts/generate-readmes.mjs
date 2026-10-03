@@ -8,7 +8,7 @@ import { APPS, PUBLISHED, STABLE, TIER, TIERS } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL = "https://bpmnkit.com/favicon.svg"
-const GITHUB = "https://github.com/bpmnkit/monorepo"
+const GITHUB = "https://github.com/bpmnkit/bpmnkit"
 const DOCS = "https://bpmnkit.com/docs"
 
 // ── Shared header / footer ────────────────────────────────────────────────────
@@ -3040,7 +3040,7 @@ See the [Pattern Library guide](https://bpmnkit.com/docs/guides/patterns) for a 
 			"Thin Zeebe REST client for standalone workers — no BPMNKit SDK required at runtime",
 		content: `## Overview
 
-\`@bpmnkit/worker-client\` is a minimal TypeScript wrapper around the Zeebe REST API. It is the only runtime dependency for workers scaffolded by the BPMNKit AIKit \`/implement\` skill. It works with both local [reebe](https://github.com/bpmnkit/monorepo) and Camunda 8 cloud.
+\`@bpmnkit/worker-client\` is a minimal TypeScript wrapper around the Zeebe REST API. It is the only runtime dependency for workers scaffolded by the BPMNKit AIKit \`/implement\` skill. It works with both local [reebe](https://github.com/bpmnkit/bpmnkit) and Camunda 8 cloud.
 
 The key principle: workers built with this package have **zero BPMNKit runtime dependency**. They are standalone Node.js programs that can run anywhere.
 
@@ -3459,7 +3459,7 @@ const rootReadme = `<div align="center">
   <h1>BPMN Kit</h1>
   <p>The complete TypeScript toolkit for Camunda 8 process automation</p>
 
-  [![license](https://img.shields.io/github/license/bpmnkit/monorepo?style=flat-square)](${GITHUB}/blob/main/LICENSE)
+  [![license](https://img.shields.io/github/license/bpmnkit/bpmnkit?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
   [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
@@ -3667,7 +3667,7 @@ createOperate({
 ## Repository Structure
 
 \`\`\`
-bpmnkit/monorepo
+bpmnkit/bpmnkit
 ├── packages/           # Published npm packages
 │   ├── core/           # @bpmnkit/core    — BPMN/DMN/Form SDK
 │   ├── canvas/         # @bpmnkit/canvas  — SVG viewer
@@ -3722,8 +3722,8 @@ enforces build approval refuses them and the install dies with
 corepack enable              # reads the packageManager pin, fetches the right binary
 # or: npm install -g pnpm@12.4.1
 
-git clone https://github.com/bpmnkit/monorepo.git
-cd monorepo
+git clone https://github.com/bpmnkit/bpmnkit.git
+cd bpmnkit
 pnpm install
 \`\`\`
 

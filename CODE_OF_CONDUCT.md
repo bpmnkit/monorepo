@@ -25,7 +25,7 @@ place where someone is representing the project in public.
 ## Reporting
 
 Report unacceptable behaviour privately to the maintainers through GitHub's
-[private vulnerability reporting form](https://github.com/bpmnkit/monorepo/security/advisories/new),
+[private vulnerability reporting form](https://github.com/bpmnkit/bpmnkit/security/advisories/new),
 which is the only private channel this project currently has. Mark the report clearly as a code
 of conduct matter rather than a security issue.
 

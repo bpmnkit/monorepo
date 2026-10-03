@@ -251,7 +251,7 @@ const editor = new BpmnEditor({
 	plugins: [
 		mainMenuPlugin,
 		createWatermarkPlugin({
-			links: [{ label: "Github", url: "https://github.com/bpmnkit/monorepo" }],
+			links: [{ label: "Github", url: "https://github.com/bpmnkit/bpmnkit" }],
 			logo: LOGO_SVG,
 		}),
 		bridge.tabsPlugin,

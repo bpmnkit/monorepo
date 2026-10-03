@@ -125,10 +125,10 @@ request — nothing in the extension stores, displays or logs them.
 ## Support
 
 This extension is **pre-1.0 and community-supported**. It is developed in the open in the
-[bpmnkit monorepo](https://github.com/bpmnkit/monorepo) alongside the packages it is built
+[bpmnkit monorepo](https://github.com/bpmnkit/bpmnkit) alongside the packages it is built
 from, and it ships when they do.
 
-- Bugs and requests: <https://github.com/bpmnkit/monorepo/issues>
+- Bugs and requests: <https://github.com/bpmnkit/bpmnkit/issues>
 - No response-time commitment, and no support contract is implied.
 - Minor versions may change behaviour before 1.0. The features above will not disappear;
   settings names and command titles may still move.

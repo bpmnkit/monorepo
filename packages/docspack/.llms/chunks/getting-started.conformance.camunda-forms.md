@@ -18,7 +18,7 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   a redeployed BPMN process always gets a new version, even when it has not changed;
   single-node only, no published comparison with Zeebe, and no published performance figures
 
-Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
+Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/bpmnkit/issues).
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance

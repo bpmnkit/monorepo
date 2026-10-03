@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
-const GITHUB = "https://github.com/bpmnkit/monorepo"
+const GITHUB = "https://github.com/bpmnkit/bpmnkit"
 const HOMEPAGE = "https://bpmnkit.com"
 const BUGS_URL = `${GITHUB}/issues`
 

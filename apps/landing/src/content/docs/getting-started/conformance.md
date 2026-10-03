@@ -17,7 +17,7 @@ describes the current `main` branch.
 
 - The cases are extracted from a checkout of the TCK by
   `packages/feel/tasks/extract-tck-tests.mjs` and run by `packages/feel/tests/tck.test.ts`.
-- The [DMN TCK workflow](https://github.com/bpmnkit/monorepo/actions/workflows/dmn-tck.yml)
+- The [DMN TCK workflow](https://github.com/bpmnkit/bpmnkit/actions/workflows/dmn-tck.yml)
   runs them against the latest TCK every Monday.
 - The 112 cases that do not pass are listed in `KNOWN_FAILURES` in that test file, each with
   its reason. The run fails if a listed case starts passing, so the list cannot go stale.
@@ -265,4 +265,4 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   a redeployed BPMN process always gets a new version, even when it has not changed;
   single-node only, no published comparison with Zeebe, and no published performance figures
 
-Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
+Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/bpmnkit/issues).

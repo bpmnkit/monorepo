@@ -4,12 +4,12 @@
   <p>Example casen worker plugin — processes HTTP connector jobs using the JSONPlaceholder API</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/casen-worker-http?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/casen-worker-http)
-  [![license](https://img.shields.io/npm/l/@bpmnkit/casen-worker-http?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
-  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
-  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/casen-worker-http?style=flat-square)](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/bpmnkit)
+  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/bpmnkit)
   [![tier: tools](https://img.shields.io/badge/tier-tools-2563eb?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/plugins-cli/casen-worker-http/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/bpmnkit) · [Changelog](https://github.com/bpmnkit/bpmnkit/blob/main/plugins-cli/casen-worker-http/CHANGELOG.md)
 </div>
 
 > **Tools tier.** Maintained, on 0.x: a minor release can break, so pin a version. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
@@ -116,7 +116,7 @@ export default plugin
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+[MIT](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="32" height="32" alt="BPMN Kit"></a>

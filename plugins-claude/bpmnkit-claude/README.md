@@ -30,7 +30,7 @@ Ask the first how to drive BPMN Kit, the second what the engine does. See
 **From marketplace:**
 
 ```sh
-/plugin marketplace add github:bpmnkit/monorepo
+/plugin marketplace add github:bpmnkit/bpmnkit
 /plugin install bpmnkit
 ```
 

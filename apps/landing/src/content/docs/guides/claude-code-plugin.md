@@ -42,7 +42,7 @@ Or add to your project's `.claude/settings.json`:
 ### Via marketplace
 
 ```sh
-/plugin marketplace add github:bpmnkit/monorepo
+/plugin marketplace add github:bpmnkit/bpmnkit
 /plugin install bpmnkit
 ```
 

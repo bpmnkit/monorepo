@@ -52,7 +52,7 @@ Provenance attestation requires authentication via a token even though the build
 
 ### 3. Add the token to GitHub Actions secrets
 
-In the GitHub repository (`bpmnkit/monorepo`):
+In the GitHub repository (`bpmnkit/bpmnkit`):
 
 1. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 2. Name: `NPM_TOKEN`
@@ -123,11 +123,18 @@ The release workflow is configured for **npm provenance**, which cryptographical
 
 When `NPM_CONFIG_PROVENANCE=true` is set, npm publishes an [OIDC-based attestation](https://docs.npmjs.com/generating-provenance-statements) alongside the package. Consumers can verify:
 
-- The package was built from `github.com/bpmnkit/monorepo`
+- The package was built from `github.com/bpmnkit/bpmnkit`
 - The exact git commit and workflow run that produced it
 - The build was not tampered with between CI and the registry
 
 This is visible on the npm package page as a **"Built and signed on GitHub Actions"** badge.
+
+### Trust configuration on npm
+
+Each package's trusted-publisher configuration on npmjs.com names the repository
+`bpmnkit/bpmnkit` and the workflow file `release.yml`. Renaming either breaks publishing until
+the configuration is moved — `scripts/migrate-npm-trust.mjs` does that for every package, and
+`doc/repo-rename.md` is the runbook it was written for.
 
 ### Why `id-token: write`
 

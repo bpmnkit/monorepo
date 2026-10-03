@@ -191,7 +191,7 @@ biome.json         # Biome configuration
 
 When creating a new published package under `packages/` or `apps/`, complete all of the following before finishing:
 
-1. **`package.json` required fields** — must include: `description`, `keywords` (≥ 3 entries), `license: "MIT"`, `repository.url` (pointing to `github.com/bpmnkit/monorepo`), `homepage: "https://bpmnkit.com"`, `bugs.url`, `publishConfig.access: "public"`. Match the field order of existing packages (build config first, then metadata).
+1. **`package.json` required fields** — must include: `description`, `keywords` (≥ 3 entries), `license: "MIT"`, `repository.url` (pointing to `github.com/bpmnkit/bpmnkit`), `homepage: "https://bpmnkit.com"`, `bugs.url`, `publishConfig.access: "public"`. Match the field order of existing packages (build config first, then metadata).
 
 2. **`scripts/generate-readmes.mjs`** — add an entry to the `packages` object with `name`, `description`, and `content` (Overview, Features, Installation, Quick Start, API Reference). Also add the package to the `footer()` function's related packages list.
 

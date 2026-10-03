@@ -1,6 +1,6 @@
 # Using BPMN Kit with AI — Runnable examples
 
-Three scripts in [`apps/examples/src/ai`](https://github.com/bpmnkit/monorepo/tree/main/apps/examples/src/ai)
+Three scripts in [`apps/examples/src/ai`](https://github.com/bpmnkit/bpmnkit/tree/main/apps/examples/src/ai)
 do exactly the above. They need no API key and no network — the whole set runs
 in about three seconds:
 

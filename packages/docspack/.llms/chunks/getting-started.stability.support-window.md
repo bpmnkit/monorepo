@@ -4,7 +4,7 @@ Fixes land on the **latest minor of the current major**. When a new major ships,
 major gets security fixes for **six months**; other fixes require an upgrade.
 
 Security issues should be reported through
-[GitHub](https://github.com/bpmnkit/monorepo/issues) rather than in a public pull request.
+[GitHub](https://github.com/bpmnkit/bpmnkit/issues) rather than in a public pull request.
 
 
 ## Which packages this covers
@@ -38,7 +38,7 @@ short of the first two conditions; the rest are worked examples, scaffolders, or
 builds with no API of their own to freeze.
 
 The membership is not only prose. It lives in `STABLE` in
-[`scripts/published-packages.mjs`](https://github.com/bpmnkit/monorepo/blob/main/scripts/published-packages.mjs),
+[`scripts/published-packages.mjs`](https://github.com/bpmnkit/bpmnkit/blob/main/scripts/published-packages.mjs),
 and the repo's own checks enforce both directions of it: nothing on the list may lack tests or
 a documentation page, and nothing at 1.0.0 or above may be missing from the list. A major
 version cannot arrive by accident.

@@ -8,7 +8,7 @@ Security problems are the exception — do not open an issue or a pull request f
 
 ## Where to start
 
-Issues labelled [`good first issue`](https://github.com/bpmnkit/monorepo/labels/good%20first%20issue)
+Issues labelled [`good first issue`](https://github.com/bpmnkit/bpmnkit/labels/good%20first%20issue)
 are scoped to one package, have a known cause, and say how to verify the fix. If none are open,
 these are real, small gaps, each with a pointer to where the change goes:
 

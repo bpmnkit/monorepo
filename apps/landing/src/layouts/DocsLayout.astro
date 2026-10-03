@@ -30,7 +30,7 @@ const product = slug === undefined ? undefined : productForDoc(slug)
 const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3)
 
 const editUrl = slug
-	? `https://github.com/bpmnkit/monorepo/edit/main/apps/landing/src/content/docs/${slug}.md`
+	? `https://github.com/bpmnkit/bpmnkit/edit/main/apps/landing/src/content/docs/${slug}.md`
 	: undefined
 
 const jsonLd = breadcrumbJsonLd([

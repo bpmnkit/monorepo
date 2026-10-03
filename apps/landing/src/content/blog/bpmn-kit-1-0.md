@@ -96,7 +96,7 @@ We would rather show a number than an adjective, so the new
   corpus.
 
 Everything is MIT-licensed, developed in the open on
-[GitHub](https://github.com/bpmnkit/monorepo), and every package's `CHANGELOG.md` says what
+[GitHub](https://github.com/bpmnkit/bpmnkit), and every package's `CHANGELOG.md` says what
 changed. If something on this page is wrong, or you are using BPMN Kit and want to tell us
-how, [open an issue](https://github.com/bpmnkit/monorepo/issues) or write to
+how, [open an issue](https://github.com/bpmnkit/bpmnkit/issues) or write to
 [hello@bpmnkit.com](mailto:hello@bpmnkit.com).

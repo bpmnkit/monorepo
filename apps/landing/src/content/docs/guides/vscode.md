@@ -17,7 +17,7 @@ extension, which is the point: the files it shows you are the files git has, byt
 ## Installing
 
 Every version is attached as a `.vsix` to a
-[GitHub Release](https://github.com/bpmnkit/monorepo/releases?q=vscode-v) tagged
+[GitHub Release](https://github.com/bpmnkit/bpmnkit/releases?q=vscode-v) tagged
 `vscode-v<version>`. Download it and install it with **Extensions → … → Install from VSIX…**,
 or from a terminal:
 
@@ -32,8 +32,8 @@ are live.
 To build it yourself from the monorepo:
 
 ```sh
-git clone https://github.com/bpmnkit/monorepo
-cd monorepo && pnpm install
+git clone https://github.com/bpmnkit/bpmnkit
+cd bpmnkit && pnpm install
 pnpm turbo build --filter bpmnkit...
 pnpm --filter bpmnkit package     # → apps/vscode/bpmnkit.vsix
 ```
@@ -174,8 +174,8 @@ chance of changing it.
 ## Support
 
 The extension is pre-1.0 and community-supported, developed in the open in the
-[monorepo](https://github.com/bpmnkit/monorepo) alongside the packages it is built from.
+[monorepo](https://github.com/bpmnkit/bpmnkit) alongside the packages it is built from.
 Minor versions may change behaviour before 1.0: the features above will not disappear, but
 setting names and command titles may still move. Bugs and requests go to
-[GitHub issues](https://github.com/bpmnkit/monorepo/issues). MIT-licensed, like everything
+[GitHub issues](https://github.com/bpmnkit/bpmnkit/issues). MIT-licensed, like everything
 else in the repository.

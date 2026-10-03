@@ -5,7 +5,7 @@
 	"description": "Create, validate, simulate and deploy Camunda 8 BPMN processes, forms and DMN from an agent.",
 	"websiteUrl": "https://bpmnkit.com/docs/guides/ai#mcp-server",
 	"repository": {
-		"url": "https://github.com/bpmnkit/monorepo",
+		"url": "https://github.com/bpmnkit/bpmnkit",
 		"source": "github",
 		"subfolder": "apps/cli"
 	},

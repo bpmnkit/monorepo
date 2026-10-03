@@ -12,7 +12,7 @@ variable mappings too. If you're generating processes or decision tables program
 being able to parse and evaluate FEEL yourself — outside of a running Camunda engine —
 is useful for validation, testing, and tooling.
 
-[`@bpmnkit/feel`](https://github.com/bpmnkit/monorepo/tree/main/packages/feel) is a zero-dependency FEEL
+[`@bpmnkit/feel`](https://github.com/bpmnkit/bpmnkit/tree/main/packages/feel) is a zero-dependency FEEL
 parser and evaluator with [87 built-in functions](/feel-functions) implemented.
 
 ## Parsing and evaluating an expression

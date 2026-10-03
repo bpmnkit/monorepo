@@ -3,14 +3,14 @@
   <h1>BPMN Kit</h1>
   <p>The complete TypeScript toolkit for Camunda 8 process automation</p>
 
-  [![license](https://img.shields.io/github/license/bpmnkit/monorepo?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![license](https://img.shields.io/github/license/bpmnkit/bpmnkit?style=flat-square)](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
   [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
-  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/bpmnkit)
   [![stable](https://img.shields.io/badge/core%20packages-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/bpmnkit)
 </div>
 
 ---
@@ -42,7 +42,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **`casen` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](https://github.com/bpmnkit/monorepo/releases?q=desktop)
+- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](https://github.com/bpmnkit/bpmnkit/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff `.bpmn`, `.dmn` and `.form` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
@@ -213,7 +213,7 @@ createOperate({
 ## Repository Structure
 
 ```
-bpmnkit/monorepo
+bpmnkit/bpmnkit
 ├── packages/           # Published npm packages
 │   ├── core/           # @bpmnkit/core    — BPMN/DMN/Form SDK
 │   ├── canvas/         # @bpmnkit/canvas  — SVG viewer
@@ -268,8 +268,8 @@ enforces build approval refuses them and the install dies with
 corepack enable              # reads the packageManager pin, fetches the right binary
 # or: npm install -g pnpm@12.4.1
 
-git clone https://github.com/bpmnkit/monorepo.git
-cd monorepo
+git clone https://github.com/bpmnkit/bpmnkit.git
+cd bpmnkit
 pnpm install
 ```
 

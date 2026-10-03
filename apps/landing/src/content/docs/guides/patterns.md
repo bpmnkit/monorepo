@@ -130,4 +130,4 @@ are welcome via pull request.
 ## See also
 
 - [Building Processes with AI](/docs/guides/ai-implement) — how Claude uses patterns during `/bpmnkit:implement`
-- [`@bpmnkit/patterns` source](https://github.com/bpmnkit/monorepo/tree/main/packages/patterns)
+- [`@bpmnkit/patterns` source](https://github.com/bpmnkit/bpmnkit/tree/main/packages/patterns)

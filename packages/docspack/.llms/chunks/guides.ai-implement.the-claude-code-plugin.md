@@ -3,7 +3,7 @@
 The richest way to drive this pipeline is the `bpmnkit` Claude Code plugin:
 
 ```sh
-/plugin marketplace add github:bpmnkit/monorepo
+/plugin marketplace add github:bpmnkit/bpmnkit
 /plugin install bpmnkit
 ```
 

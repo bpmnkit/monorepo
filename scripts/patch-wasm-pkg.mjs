@@ -30,9 +30,9 @@ pkg.version = version
 pkg.description = "WebAssembly playground for the Reebe BPMN workflow engine"
 pkg.keywords = ["bpmn", "wasm", "workflow", "engine", "webassembly"]
 pkg.license = "MIT"
-pkg.repository = { type: "git", url: "https://github.com/bpmnkit/monorepo" }
+pkg.repository = { type: "git", url: "https://github.com/bpmnkit/bpmnkit" }
 pkg.homepage = "https://bpmnkit.com"
-pkg.bugs = { url: "https://github.com/bpmnkit/monorepo/issues" }
+pkg.bugs = { url: "https://github.com/bpmnkit/bpmnkit/issues" }
 pkg.publishConfig = { access: "public" }
 
 if (Array.isArray(pkg.files)) {

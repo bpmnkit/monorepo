@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-10-03 — Rename the repository to `bpmnkit/bpmnkit`
+
+- Every live reference to `github.com/bpmnkit/monorepo` (package manifests, generated READMEs,
+  site links, docs, `server.json`, the Claude plugin, `check-packages.mjs`, `patch-wasm-pkg.mjs`)
+  now names `bpmnkit/bpmnkit`; `cd monorepo` in clone instructions is `cd bpmnkit`. CHANGELOGs,
+  past progress entries, plans and recordings keep the old links — GitHub redirects them.
+- New `scripts/migrate-npm-trust.mjs` moves each published package's npm trusted-publishing
+  configuration to the new repository (dry run by default, `--apply` to write).
+- New `doc/repo-rename.md`: the order to rename, merge and move npm trust in.
+
 ## 2026-10-02 — Docspack: retrieval fixes from a comparison with Camunda's docs MCP
 
 A side-by-side run of 8 questions against `@bpmnkit/camunda-docspack` and Camunda's docs MCP

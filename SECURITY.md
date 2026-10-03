@@ -5,7 +5,7 @@
 **Please do not open a public issue or pull request for a security problem.**
 
 Report it privately through GitHub's
-[security advisory form](https://github.com/bpmnkit/monorepo/security/advisories/new). That
+[security advisory form](https://github.com/bpmnkit/bpmnkit/security/advisories/new). That
 opens a channel only the maintainers can see, and it is the fastest way to reach us.
 
 Useful things to include, as far as you have them: which package and version, what an attacker

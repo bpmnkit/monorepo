@@ -4,12 +4,12 @@
   <p>The Reebe dev/test BPMN engine, compiled to WebAssembly for the browser and Node.js</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/reebe-wasm?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/reebe-wasm)
-  [![license](https://img.shields.io/npm/l/@bpmnkit/reebe-wasm?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
-  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
-  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/reebe-wasm?style=flat-square)](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/bpmnkit)
+  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/bpmnkit)
   [![tier: experimental](https://img.shields.io/badge/tier-experimental-d97706?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/apps/reebe-wasm/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/bpmnkit) · [Changelog](https://github.com/bpmnkit/bpmnkit/blob/main/apps/reebe-wasm/CHANGELOG.md)
 </div>
 
 > **Experimental tier.** May change or be discontinued. Not for production. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
@@ -18,7 +18,7 @@
 
 ## Overview
 
-`@bpmnkit/reebe-wasm` is the WebAssembly build of [Reebe](https://github.com/bpmnkit/monorepo/tree/main/apps/reebe), BPMN Kit's BPMN engine for development and tests, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It runs BPMN 2.0 processes in the browser or in Node.js, with no server.
+`@bpmnkit/reebe-wasm` is the WebAssembly build of [Reebe](https://github.com/bpmnkit/bpmnkit/tree/main/apps/reebe), BPMN Kit's BPMN engine for development and tests, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It runs BPMN 2.0 processes in the browser or in Node.js, with no server.
 
 > **Dev/test only — not for production.** Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public documentation. It is not affiliated with or endorsed by Camunda, and its behaviour is checked by its own tests, not against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
@@ -122,7 +122,7 @@ Requires [Rust](https://rustup.rs/) and [wasm-pack](https://rustwasm.github.io/w
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+[MIT](https://github.com/bpmnkit/bpmnkit/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="32" height="32" alt="BPMN Kit"></a>

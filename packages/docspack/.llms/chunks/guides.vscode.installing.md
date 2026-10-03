@@ -1,7 +1,7 @@
 # VS Code Extension — Installing
 
 Every version is attached as a `.vsix` to a
-[GitHub Release](https://github.com/bpmnkit/monorepo/releases?q=vscode-v) tagged
+[GitHub Release](https://github.com/bpmnkit/bpmnkit/releases?q=vscode-v) tagged
 `vscode-v<version>`. Download it and install it with **Extensions → … → Install from VSIX…**,
 or from a terminal:
 
@@ -16,8 +16,8 @@ are live.
 To build it yourself from the monorepo:
 
 ```sh
-git clone https://github.com/bpmnkit/monorepo
-cd monorepo && pnpm install
+git clone https://github.com/bpmnkit/bpmnkit
+cd bpmnkit && pnpm install
 pnpm turbo build --filter bpmnkit...
 pnpm --filter bpmnkit package     # → apps/vscode/bpmnkit.vsix
 ```

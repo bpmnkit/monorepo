@@ -26,7 +26,7 @@ import { APPS, PUBLISHED, TIER, TIERS, manifestVersion } from "./published-packa
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const OUT = join(ROOT, "apps/landing/src/generated/ecosystem.ts")
-const REPO = "https://github.com/bpmnkit/monorepo"
+const REPO = "https://github.com/bpmnkit/bpmnkit"
 const DOCS = join(ROOT, "apps/landing/src/content/docs")
 
 /** The docs page that describes a package: its `packages/` page, or the CLI's own section. */

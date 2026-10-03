@@ -48,8 +48,8 @@ The same engine compiles to WebAssembly as
 ### Option 1: Embedded SQLite (fastest, no dependencies)
 
 ```bash
-git clone https://github.com/bpmnkit/monorepo
-cd monorepo/apps/reebe
+git clone https://github.com/bpmnkit/bpmnkit
+cd bpmnkit/apps/reebe
 just dev-embedded
 ```
 
@@ -58,8 +58,8 @@ Starts Reebe with a built-in SQLite database — no Docker or PostgreSQL needed.
 ### Option 2: Docker Compose (PostgreSQL)
 
 ```bash
-git clone https://github.com/bpmnkit/monorepo
-cd monorepo/apps/reebe
+git clone https://github.com/bpmnkit/bpmnkit
+cd bpmnkit/apps/reebe
 docker-compose up
 ```
 

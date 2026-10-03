@@ -102,7 +102,7 @@ const skillsInstallCmd: Command = {
 			"These commands drive `casen` directly — no MCP server or proxy needed. " +
 				"For the full skill set (implement/extend/agent/connect/review/test/deploy + generated " +
 				"reference docs), install the Claude Code plugin instead: " +
-				"/plugin marketplace add github:bpmnkit/monorepo && /plugin install bpmnkit",
+				"/plugin marketplace add github:bpmnkit/bpmnkit && /plugin install bpmnkit",
 		)
 	},
 }
